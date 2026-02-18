@@ -1,4 +1,8 @@
-# NHANES Biomarker CV-Age Pipeline
+# NHANES Blood Biomarker Explorer
+
+Interactive explorer for age-related blood biomarker trajectories in NHANES.
+
+This project builds a static web dashboard where users can search biomarkers, compare trends across age and sex, and inspect ranking metrics across hundreds of blood tests.
 
 ## Scripts
 - `src/discover_nhanes.py` discovers laboratory variable metadata and blood candidates.
@@ -17,9 +21,12 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
 ```
 
 ## Open the dashboard
-- Double-click `/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes/Open_NHANES_Dashboard.command`
-- It starts a local server and opens:
-  - `http://127.0.0.1:8765/dashboard/index.html`
+- Local:
+  - Double-click `Open_NHANES_Dashboard.command`
+  - It starts a local server and opens `http://127.0.0.1:8765/dashboard/index.html`
+- Online:
+  - Open the GitHub Pages site (if enabled in your repo settings):
+  - `https://<github-username>.github.io/<repo-name>/`
 
 ## Performance model (on-demand data loading)
 - `dashboard/index.html` now loads only metadata + metrics initially.
@@ -31,7 +38,7 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
 - Use the top buttons in the dashboard:
   - `Plot CV`: CV vs age.
   - `Plot Mean`: mean vs age with:
-    - 95% confidence interval band (from binned mean ± 1.96*SE)
+    - central 95% range band (empirical 2.5th-97.5th percentile)
     - raw scatter sample (age vs value) for the selected biomarker
 
 ## Info tab
@@ -65,7 +72,7 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
   - `data/processed/biomarker_catalog.parquet`
 
 ## Mean mode interpretation
-- `95% CI` is the uncertainty of the binned mean (`mean ± 1.96 * std / sqrt(n)`), so it can be narrow even when raw points are wide.
+- The 95% range in Mean mode is the empirical spread of observed values in each age bin (not uncertainty of the mean).
 - To visualize raw spread, enable:
   - `Show ±1 SD band in Mean mode`
 
