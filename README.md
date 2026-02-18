@@ -37,21 +37,23 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
 ## Plot modes
 - Use the top buttons in the dashboard:
   - `Plot CV`: CV vs age.
-  - `Plot Mean`: mean vs age with:
-    - central 95% range band (empirical 2.5th-97.5th percentile)
+  - `Plot Median`: median vs age with:
+    - interquartile range (IQR) band (25th-75th percentile)
     - raw scatter sample (age vs value) for the selected biomarker
+  - `Symmetric Trim Per Tail (%)`: optional robust trimming within each age bin before summary stats are computed (for example 10-90, 20-80, 25-75).
 
 ## Info tab
 - Use `Info & Methods` (top tab) for:
   - analysis scope and filtering
   - healthy cohort definition
   - decline flag criteria
-  - interpretation notes for CV and mean views
+  - interpretation notes for CV and median views
 
 ## Compare tab
 - Use `Compare Rankings` (top tab) to compare biomarkers by Spearman trend quickly.
 - Controls:
   - sort mode: most negative, most positive, or largest absolute Spearman
+  - symmetric trim (% per tail), shared with dashboard outlier mode
   - top N count
 - Visual:
   - horizontal bar chart with hover details (`rho`, `p`, `n_bins`, `decline`, biomarker id)
@@ -71,10 +73,10 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
 - Pooled catalog is written to:
   - `data/processed/biomarker_catalog.parquet`
 
-## Mean mode interpretation
-- The 95% range in Mean mode is the empirical spread of observed values in each age bin (not uncertainty of the mean).
-- To visualize raw spread, enable:
-  - `Show ±1 SD band in Mean mode`
+## Median mode interpretation
+- `Plot Median` displays the age-binned median and IQR band (25th-75th percentile).
+- Trimming is symmetric by tail and is applied within each age bin before computing plotted summaries and trend metrics.
+- Raw sampled points are shown in median view to visualize spread and outliers.
 
 ## Tests
 ```bash
