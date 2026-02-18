@@ -4,6 +4,8 @@ Interactive explorer for age-related blood biomarker trajectories in NHANES.
 
 This project builds a static web dashboard where users can search biomarkers, compare trends across age and sex, and inspect ranking metrics across hundreds of blood tests.
 
+Documentation rule: when dashboard features/metrics change, update this README in the same commit.
+
 ## Scripts
 - `src/discover_nhanes.py` discovers laboratory variable metadata and blood candidates.
 - `src/download_nhanes.py` downloads required NHANES XPT files.
@@ -40,7 +42,10 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
   - `Plot Median`: median vs age with:
     - interquartile range (IQR) band (25th-75th percentile)
     - raw scatter sample (age vs value) for the selected biomarker
+  - `Plot Skewness`: skewness vs age (distribution asymmetry per age bin).
   - `Symmetric Trim Per Tail (%)`: optional robust trimming within each age bin before summary stats are computed (for example 10-90, 20-80, 25-75).
+  - Sex view: `Pooled`, `Female`, `Male`, `Both (Female + Male)`.
+    - In sex-specific views, trimming is done within each sex separately (not on pooled male+female values).
 
 ## Info tab
 - Use `Info & Methods` (top tab) for:
@@ -52,11 +57,23 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
 ## Compare tab
 - Use `Compare Rankings` (top tab) to compare biomarkers by Spearman trend quickly.
 - Controls:
+  - statistic: `CV vs age`, `Mean vs age`, or `Skewness vs age`
   - sort mode: most negative, most positive, or largest absolute Spearman
   - symmetric trim (% per tail), shared with dashboard outlier mode
+  - cohort: pooled, female, male, or both
   - top N count
 - Visual:
-  - horizontal bar chart with hover details (`rho`, `p`, `n_bins`, `decline`, biomarker id)
+  - horizontal bar chart with hover details (`rho`, `p`, `n_bins`, negative-trend flag, biomarker id)
+  - in `Both` cohort mode, female and male bars are shown side-by-side on the same biomarker list
+
+## Trend metrics in rankings
+- Spearman is computed between age-bin midpoint and the selected statistic (`CV`, `Mean`, or `Skewness`) after the selected trim mode.
+- `Negative trend` flag is true when:
+  - `n_bins >= 5`
+  - `spearman_rho < 0`
+  - `spearman_p < 0.05`
+  - linear slope of the selected statistic vs age is negative
+- The legacy CV-specific `decline` metric is preserved for CV and aligns with negative-trend behavior in CV mode.
 
 ## Pooling and variable screening
 - Biomarkers are pooled across NHANES cycles/files by normalized test name (not only by code name).
