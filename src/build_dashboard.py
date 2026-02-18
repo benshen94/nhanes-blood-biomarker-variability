@@ -100,6 +100,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     input[type="text"],
     input[type="search"],
     input[type="number"],
+    input[type="range"],
     select {
       width: 100%;
       padding: 8px;
@@ -119,6 +120,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       width: auto;
       margin: 0;
       accent-color: var(--accent);
+    }
+    input[type="range"] {
+      padding: 0;
+      border: 0;
+      margin: 8px 0 2px 0;
+      accent-color: var(--accent);
+      background: transparent;
+    }
+    .trim-caption {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 2px 0 10px 0;
     }
     .check-label {
       display: flex;
@@ -247,11 +260,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <option value=\"both\">Both (Female + Male)</option>
           </select>
 
-          <label for=\"trim-mode\">Outlier Handling</label>
-          <select id=\"trim-mode\">
-            <option value=\"all\" selected>All values</option>
-            <option value=\"trim_p10_p90\">Trim 10th-90th percentile (per age bin)</option>
-          </select>
+          <label for=\"trim-slider\">Symmetric Trim Per Tail (%)</label>
+          <input id=\"trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
+          <div id=\"trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
 
           <label class=\"check-label\"><input id=\"show-low-n\" type=\"checkbox\" checked /> Show low-n bins (&lt;30)</label>
 
@@ -288,11 +299,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               <option value=\"both\">Both (Female + Male)</option>
             </select>
           </label>
-          <label>Outlier Handling
-            <select id=\"compare-trim-mode\">
-              <option value=\"all\" selected>All values</option>
-              <option value=\"trim_p10_p90\">Trim 10th-90th percentile</option>
-            </select>
+          <label>Symmetric trim (% per tail)
+            <input id=\"compare-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
+            <div id=\"compare-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
           </label>
           <label>Top N
             <input id=\"compare-topn\" type=\"number\" min=\"10\" max=\"200\" step=\"5\" value=\"40\" />
@@ -335,7 +344,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <li><b>Plot CV</b>: age-binned CV trend.</li>
             <li><b>Plot Median</b>: age-binned median with interquartile band (25th-75th percentile) and raw scatter sample.</li>
             <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
-            <li>Optional robust mode trims values to the 10th-90th percentile within each age bin before computing mean/std/CV and median/IQR.</li>
+            <li>Optional robust mode uses configurable symmetric trimming within each age bin (for example 10-90, 20-80, 25-75) before computing summaries.</li>
             <li>Raw scatter is sampled for performance and readability.</li>
           </ul>
         </div>
@@ -380,8 +389,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const compareIncludeEnvEl = document.getElementById('compare-include-env');
     const cohortFilterEl = document.getElementById('cohort-filter');
     const compareCohortEl = document.getElementById('compare-cohort');
-    const trimModeEl = document.getElementById('trim-mode');
-    const compareTrimModeEl = document.getElementById('compare-trim-mode');
+    const trimSliderEl = document.getElementById('trim-slider');
+    const trimLabelEl = document.getElementById('trim-label');
+    const compareTrimSliderEl = document.getElementById('compare-trim-slider');
+    const compareTrimLabelEl = document.getElementById('compare-trim-label');
 
     const CATEGORY_PRIORITY = {
       'Routine - CBC': 1,
@@ -420,6 +431,31 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     function formatNum(v, d=4) {
       if (v === null || v === undefined || Number.isNaN(v)) return 'NA';
       return Number(v).toFixed(d);
+    }
+
+    function normalizeTrimPct(v) {
+      const n = Number(v ?? 0);
+      if (!Number.isFinite(n)) return 0;
+      return Math.max(0, Math.min(25, Math.round(n / 5) * 5));
+    }
+
+    function trimPctToMode(pct) {
+      const p = normalizeTrimPct(pct);
+      if (p <= 0) return 'all';
+      return `trim_${p}_${100 - p}`;
+    }
+
+    function trimModeToPct(mode) {
+      if (!mode || mode === 'all') return 0;
+      const m = String(mode).match(/^trim_(\d{1,2})_(\d{1,2})$/);
+      if (!m) return 0;
+      return normalizeTrimPct(Number(m[1]));
+    }
+
+    function trimLabelFromPct(pct) {
+      const p = normalizeTrimPct(pct);
+      if (p <= 0) return 'Using all values (0-100)';
+      return `${p}% each tail kept out -> using ${p}-${100 - p} percentile band`;
     }
 
     function setTopTab(tabName) {
@@ -566,14 +602,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       }
 
       const cohort = cohortFilterEl.value || 'pooled';
-      const trimMode = trimModeEl.value || 'all';
+      const trimMode = trimPctToMode(trimSliderEl.value);
       const trendByMode = pooled.trends || {};
       const pooledMetric = trendByMode[trimMode] || trendByMode.all || null;
       const sexMetricsByMode = pooled.sex_metrics || {};
       const sexMetrics = sexMetricsByMode[trimMode] || sexMetricsByMode.all || {};
       const rawBySex = (series && series.raw_total_n_by_sex) ? series.raw_total_n_by_sex : {};
       const rawCap = md.raw_sample_cap ?? 'NA';
-      const trimLabel = trimMode === 'trim_p10_p90' ? 'Trimmed 10th-90th percentile (per bin)' : 'All values';
+      const trimLabel = trimLabelFromPct(trimSliderEl.value);
 
       let html = `<div class="metric"><b>Category:</b> ${md.category || 'Other Clinical'}</div>`;
       html += `<div class="metric"><b>Outlier mode:</b> ${trimLabel}</div>`;
@@ -646,7 +682,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       state.currentId = id;
       const showLow = showLowNEl.checked;
       const cohort = cohortFilterEl.value || 'pooled';
-      const trimMode = trimModeEl.value || 'all';
+      const trimMode = trimPctToMode(trimSliderEl.value);
 
       const traces = [];
       const title = `${s.display_name || s.biomarker_name}`;
@@ -756,7 +792,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const tbl = document.getElementById('rank-table');
       const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
       const cohort = cohortFilterEl.value || 'pooled';
-      const trimMode = trimModeEl.value || 'all';
+      const trimMode = trimPctToMode(trimSliderEl.value);
       const ranked = metricsForView(
         getCompareMetrics().filter(r => visible.has(r.biomarker_id)),
         cohort,
@@ -784,8 +820,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     function renderComparePlot() {
       const mode = compareSortEl.value;
       const cohort = compareCohortEl.value || 'pooled';
-      const trimMode = compareTrimModeEl.value || 'all';
+      const trimMode = trimPctToMode(compareTrimSliderEl.value);
       const topN = Math.max(10, Math.min(200, Number(compareTopNEl.value || 40)));
+      const trimLabel = trimLabelFromPct(compareTrimSliderEl.value);
       compareTopNEl.value = String(topN);
 
       let ranked = metricsForView(getCompareMetrics(), cohort, trimMode).slice();
@@ -855,7 +892,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           x: 1,
           y: 1.12,
           showarrow: false,
-          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}, outliers: ${trimMode}`,
+          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}, outliers: ${trimLabel}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
         barmode: cohort === 'both' ? 'group' : 'relative',
@@ -910,8 +947,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       showLowNEl.checked = true;
       includeEnvEl.checked = false;
       compareIncludeEnvEl.checked = false;
-      trimModeEl.value = 'all';
-      compareTrimModeEl.value = 'all';
+      trimSliderEl.value = '0';
+      compareTrimSliderEl.value = '0';
+      trimLabelEl.textContent = trimLabelFromPct(trimSliderEl.value);
+      compareTrimLabelEl.textContent = trimLabelFromPct(compareTrimSliderEl.value);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
 
@@ -930,8 +969,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       compareTopNEl.addEventListener('change', renderComparePlot);
       compareCategoryEl.addEventListener('change', renderComparePlot);
       compareCohortEl.addEventListener('change', renderComparePlot);
-      compareTrimModeEl.addEventListener('change', () => {
-        trimModeEl.value = compareTrimModeEl.value;
+      compareTrimSliderEl.addEventListener('input', () => {
+        const pct = normalizeTrimPct(compareTrimSliderEl.value);
+        compareTrimSliderEl.value = String(pct);
+        trimSliderEl.value = String(pct);
+        compareTrimLabelEl.textContent = trimLabelFromPct(pct);
+        trimLabelEl.textContent = trimLabelFromPct(pct);
         renderRankTable();
         if (state.currentId) renderPlot(state.currentId);
         renderComparePlot();
@@ -959,8 +1002,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         renderComparePlot();
         if (state.currentId) await renderPlot(state.currentId);
       });
-      trimModeEl.addEventListener('change', async () => {
-        compareTrimModeEl.value = trimModeEl.value;
+      trimSliderEl.addEventListener('input', async () => {
+        const pct = normalizeTrimPct(trimSliderEl.value);
+        trimSliderEl.value = String(pct);
+        compareTrimSliderEl.value = String(pct);
+        trimLabelEl.textContent = trimLabelFromPct(pct);
+        compareTrimLabelEl.textContent = trimLabelFromPct(pct);
         renderRankTable();
         renderComparePlot();
         if (state.currentId) await renderPlot(state.currentId);
@@ -1245,6 +1292,27 @@ def classify_biomarker(name: str, variable_name: str, source_files: str) -> tupl
 AGE_BINS = list(np.arange(20, 90, 5)) + [200]
 AGE_LABELS = [f"{a}-{a+4}" for a in range(20, 85, 5)] + ["85+"]
 AGE_MIDS = {lab: mid for lab, mid in zip(AGE_LABELS, [a + 2.5 for a in range(20, 85, 5)] + [87.5])}
+TRIM_PCTS = [0, 5, 10, 15, 20, 25]
+
+
+def trim_mode_key(pct: int) -> str:
+    p = int(pct)
+    if p <= 0:
+        return "all"
+    return f"trim_{p}_{100-p}"
+
+
+def trim_mode_quantiles(mode: str) -> tuple[float, float] | None:
+    if mode == "all":
+        return None
+    m = re.match(r"trim_(\d{1,2})_(\d{1,2})$", str(mode))
+    if not m:
+        return None
+    lo = int(m.group(1))
+    hi = int(m.group(2))
+    if lo < 0 or hi > 100 or lo >= hi:
+        return None
+    return lo / 100.0, hi / 100.0
 
 
 def slope(x: np.ndarray, y: np.ndarray) -> float:
@@ -1384,57 +1452,38 @@ def build_outputs(
     raw_samples_by_sex: dict[str, dict[str, list[dict]]] = {}
     raw_counts: dict[str, int] = {}
     raw_counts_by_sex: dict[str, dict[str, int]] = {}
-    pooled_points_all: dict[str, list[dict]] = {}
-    pooled_points_trim: dict[str, list[dict]] = {}
-    sex_points_all: dict[str, dict[str, list[dict]]] = {}
-    sex_points_trim: dict[str, dict[str, list[dict]]] = {}
-    pooled_trends_all: dict[str, dict] = {}
-    pooled_trends_trim: dict[str, dict] = {}
-    sex_trends_all: dict[str, dict[str, dict]] = {}
-    sex_trends_trim: dict[str, dict[str, dict]] = {}
+    pooled_points_by_mode: dict[str, dict[str, list[dict]]] = {}
+    sex_points_by_mode: dict[str, dict[str, dict[str, list[dict]]]] = {}
+    pooled_trends_by_mode: dict[str, dict[str, dict]] = {}
+    sex_trends_by_mode: dict[str, dict[str, dict[str, dict]]] = {}
 
     if long_df is not None and not long_df.empty:
         use = long_df[["biomarker_id", "age_years", "value", "sex"]].dropna(subset=["biomarker_id", "age_years", "value"])
         use["sex_norm"] = use["sex"].astype(str).str.strip().str.lower()
         use.loc[~use["sex_norm"].isin(["male", "female"]), "sex_norm"] = "unknown"
 
-        pooled_binned_all = compute_binned_long(
-            use[["biomarker_id", "age_years", "value"]],
-            group_cols=["biomarker_id"],
-            trim_quantiles=None,
-        )
-        pooled_binned_trim = compute_binned_long(
-            use[["biomarker_id", "age_years", "value"]],
-            group_cols=["biomarker_id"],
-            trim_quantiles=(0.10, 0.90),
-        )
         sex_use = use[use["sex_norm"].isin(["male", "female"])][["biomarker_id", "age_years", "value", "sex_norm"]]
-        sex_binned_all = compute_binned_long(
-            sex_use,
-            group_cols=["biomarker_id", "sex_norm"],
-            trim_quantiles=None,
-        )
-        sex_binned_trim = compute_binned_long(
-            sex_use,
-            group_cols=["biomarker_id", "sex_norm"],
-            trim_quantiles=(0.10, 0.90),
-        )
-
-        pooled_points_all = grouped_to_points_map(pooled_binned_all)
-        pooled_points_trim = grouped_to_points_map(pooled_binned_trim)
-        sex_points_all = grouped_to_sex_points_map(sex_binned_all)
-        sex_points_trim = grouped_to_sex_points_map(sex_binned_trim)
-
-        for bid, pts in pooled_points_all.items():
-            pooled_trends_all[bid] = trend_from_points(pts)
-        for bid, pts in pooled_points_trim.items():
-            pooled_trends_trim[bid] = trend_from_points(pts)
-        for bid, by_sex in sex_points_all.items():
-            for sx, pts in by_sex.items():
-                sex_trends_all.setdefault(bid, {})[sx] = trend_from_points(pts)
-        for bid, by_sex in sex_points_trim.items():
-            for sx, pts in by_sex.items():
-                sex_trends_trim.setdefault(bid, {})[sx] = trend_from_points(pts)
+        for pct in TRIM_PCTS:
+            mode = trim_mode_key(pct)
+            q = trim_mode_quantiles(mode)
+            pooled_binned = compute_binned_long(
+                use[["biomarker_id", "age_years", "value"]],
+                group_cols=["biomarker_id"],
+                trim_quantiles=q,
+            )
+            sex_binned = compute_binned_long(
+                sex_use,
+                group_cols=["biomarker_id", "sex_norm"],
+                trim_quantiles=q,
+            )
+            pooled_pts = grouped_to_points_map(pooled_binned)
+            sex_pts = grouped_to_sex_points_map(sex_binned)
+            pooled_points_by_mode[mode] = pooled_pts
+            sex_points_by_mode[mode] = sex_pts
+            pooled_trends_by_mode[mode] = {bid: trend_from_points(pts) for bid, pts in pooled_pts.items()}
+            sex_trends_by_mode[mode] = {
+                bid: {sx: trend_from_points(pts) for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
+            }
 
         raw_counts = use.groupby("biomarker_id", observed=True).size().astype(int).to_dict()
         sex_counts_tbl = (
@@ -1471,11 +1520,12 @@ def build_outputs(
         for col in ["q25", "q75", "p10", "p90"]:
             if col not in base.columns:
                 base[col] = np.nan
-        pooled_points_all = grouped_to_points_map(base)
-        pooled_points_trim = grouped_to_points_map(base)
-        for bid, pts in pooled_points_all.items():
-            pooled_trends_all[bid] = trend_from_points(pts)
-            pooled_trends_trim[bid] = trend_from_points(pts)
+        for pct in TRIM_PCTS:
+            mode = trim_mode_key(pct)
+            pooled_points_by_mode[mode] = grouped_to_points_map(base)
+            pooled_trends_by_mode[mode] = {bid: trend_from_points(pts) for bid, pts in pooled_points_by_mode[mode].items()}
+            sex_points_by_mode[mode] = {}
+            sex_trends_by_mode[mode] = {}
 
     if catalog_df is not None and not catalog_df.empty:
         need = [
@@ -1523,8 +1573,10 @@ def build_outputs(
     metrics: list[dict] = []
     for r in metadata.itertuples(index=False):
         bid = str(r.biomarker_id)
-        trend_all = pooled_trends_all.get(bid, {"n_bins": 0, "spearman_rho": None, "spearman_p": None, "linear_slope_cv_per_year": None, "linear_slope_logcv_per_year": None, "decline_flag": False})
-        trend_trim = pooled_trends_trim.get(bid, {"n_bins": 0, "spearman_rho": None, "spearman_p": None, "linear_slope_cv_per_year": None, "linear_slope_logcv_per_year": None, "decline_flag": False})
+        fallback = {"n_bins": 0, "spearman_rho": None, "spearman_p": None, "linear_slope_cv_per_year": None, "linear_slope_logcv_per_year": None, "decline_flag": False}
+        trends = {mode: pooled_trends_by_mode.get(mode, {}).get(bid, fallback) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_metrics = {mode: sex_trends_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        trend_all = trends.get("all", fallback)
         metrics.append(
             {
                 "biomarker_id": bid,
@@ -1535,11 +1587,8 @@ def build_outputs(
                 "linear_slope_cv_per_year": trend_all.get("linear_slope_cv_per_year"),
                 "linear_slope_logcv_per_year": trend_all.get("linear_slope_logcv_per_year"),
                 "decline_flag": trend_all.get("decline_flag"),
-                "trends": {"all": trend_all, "trim_p10_p90": trend_trim},
-                "sex_metrics": {
-                    "all": sex_trends_all.get(bid, {}),
-                    "trim_p10_p90": sex_trends_trim.get(bid, {}),
-                },
+                "trends": trends,
+                "sex_metrics": sex_metrics,
             }
         )
 
@@ -1551,8 +1600,11 @@ def build_outputs(
         rel_path = safe_series_filename(bid)
         md = meta_by_id.get(bid, {})
         series_index[bid] = rel_path
-        all_points = pooled_points_all.get(bid, [])
-        trim_points = pooled_points_trim.get(bid, [])
+        points_by_filter = {mode: pooled_points_by_mode.get(mode, {}).get(bid, []) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_points_by_filter = {mode: sex_points_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        trends_by_filter = {mode: pooled_trends_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_trends_filter = {mode: sex_trends_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        all_points = points_by_filter.get("all", [])
         series_payloads[rel_path] = {
             "biomarker_id": bid,
             "biomarker_name": str(md.get("biomarker_name") or bid),
@@ -1569,19 +1621,13 @@ def build_outputs(
             "raw_total_n_by_sex": raw_counts_by_sex.get(str(bid), {}),
             "raw_sample_cap": int(md.get("raw_sample_cap", raw_sample_n)),
             "points": all_points,
-            "points_by_filter": {"all": all_points, "trim_p10_p90": trim_points},
+            "points_by_filter": points_by_filter,
             "raw_sample": raw_samples.get(str(bid), []),
             "raw_sample_by_sex": raw_samples_by_sex.get(str(bid), {}),
-            "sex_points": sex_points_all.get(str(bid), {}),
-            "sex_points_by_filter": {
-                "all": sex_points_all.get(str(bid), {}),
-                "trim_p10_p90": sex_points_trim.get(str(bid), {}),
-            },
-            "trends": {"all": pooled_trends_all.get(str(bid), {}), "trim_p10_p90": pooled_trends_trim.get(str(bid), {})},
-            "sex_metrics": {
-                "all": sex_trends_all.get(str(bid), {}),
-                "trim_p10_p90": sex_trends_trim.get(str(bid), {}),
-            },
+            "sex_points": sex_points_by_filter.get("all", {}),
+            "sex_points_by_filter": sex_points_by_filter,
+            "trends": trends_by_filter,
+            "sex_metrics": sex_trends_filter,
         }
 
     return metadata, metrics, series_index, series_payloads

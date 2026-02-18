@@ -81,6 +81,7 @@
     input[type="text"],
     input[type="search"],
     input[type="number"],
+    input[type="range"],
     select {
       width: 100%;
       padding: 8px;
@@ -100,6 +101,18 @@
       width: auto;
       margin: 0;
       accent-color: var(--accent);
+    }
+    input[type="range"] {
+      padding: 0;
+      border: 0;
+      margin: 8px 0 2px 0;
+      accent-color: var(--accent);
+      background: transparent;
+    }
+    .trim-caption {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 2px 0 10px 0;
     }
     .check-label {
       display: flex;
@@ -228,11 +241,9 @@
             <option value="both">Both (Female + Male)</option>
           </select>
 
-          <label for="trim-mode">Outlier Handling</label>
-          <select id="trim-mode">
-            <option value="all" selected>All values</option>
-            <option value="trim_p10_p90">Trim 10th-90th percentile (per age bin)</option>
-          </select>
+          <label for="trim-slider">Symmetric Trim Per Tail (%)</label>
+          <input id="trim-slider" type="range" min="0" max="25" step="5" value="0" />
+          <div id="trim-label" class="trim-caption">Using all values (0-100)</div>
 
           <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
 
@@ -269,11 +280,9 @@
               <option value="both">Both (Female + Male)</option>
             </select>
           </label>
-          <label>Outlier Handling
-            <select id="compare-trim-mode">
-              <option value="all" selected>All values</option>
-              <option value="trim_p10_p90">Trim 10th-90th percentile</option>
-            </select>
+          <label>Symmetric trim (% per tail)
+            <input id="compare-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="compare-trim-label" class="trim-caption">Using all values (0-100)</div>
           </label>
           <label>Top N
             <input id="compare-topn" type="number" min="10" max="200" step="5" value="40" />
@@ -316,7 +325,7 @@
             <li><b>Plot CV</b>: age-binned CV trend.</li>
             <li><b>Plot Median</b>: age-binned median with interquartile band (25th-75th percentile) and raw scatter sample.</li>
             <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
-            <li>Optional robust mode trims values to the 10th-90th percentile within each age bin before computing mean/std/CV and median/IQR.</li>
+            <li>Optional robust mode uses configurable symmetric trimming within each age bin (for example 10-90, 20-80, 25-75) before computing summaries.</li>
             <li>Raw scatter is sampled for performance and readability.</li>
           </ul>
         </div>
@@ -337,7 +346,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1771407186';
+    const DATA_VERSION = '1771407780';
 
     const selectEl = document.getElementById('biomarker-select');
     const searchEl = document.getElementById('search');
@@ -361,8 +370,10 @@
     const compareIncludeEnvEl = document.getElementById('compare-include-env');
     const cohortFilterEl = document.getElementById('cohort-filter');
     const compareCohortEl = document.getElementById('compare-cohort');
-    const trimModeEl = document.getElementById('trim-mode');
-    const compareTrimModeEl = document.getElementById('compare-trim-mode');
+    const trimSliderEl = document.getElementById('trim-slider');
+    const trimLabelEl = document.getElementById('trim-label');
+    const compareTrimSliderEl = document.getElementById('compare-trim-slider');
+    const compareTrimLabelEl = document.getElementById('compare-trim-label');
 
     const CATEGORY_PRIORITY = {
       'Routine - CBC': 1,
@@ -401,6 +412,31 @@
     function formatNum(v, d=4) {
       if (v === null || v === undefined || Number.isNaN(v)) return 'NA';
       return Number(v).toFixed(d);
+    }
+
+    function normalizeTrimPct(v) {
+      const n = Number(v ?? 0);
+      if (!Number.isFinite(n)) return 0;
+      return Math.max(0, Math.min(25, Math.round(n / 5) * 5));
+    }
+
+    function trimPctToMode(pct) {
+      const p = normalizeTrimPct(pct);
+      if (p <= 0) return 'all';
+      return `trim_${p}_${100 - p}`;
+    }
+
+    function trimModeToPct(mode) {
+      if (!mode || mode === 'all') return 0;
+      const m = String(mode).match(/^trim_(\d{1,2})_(\d{1,2})$/);
+      if (!m) return 0;
+      return normalizeTrimPct(Number(m[1]));
+    }
+
+    function trimLabelFromPct(pct) {
+      const p = normalizeTrimPct(pct);
+      if (p <= 0) return 'Using all values (0-100)';
+      return `${p}% each tail kept out -> using ${p}-${100 - p} percentile band`;
     }
 
     function setTopTab(tabName) {
@@ -547,14 +583,14 @@
       }
 
       const cohort = cohortFilterEl.value || 'pooled';
-      const trimMode = trimModeEl.value || 'all';
+      const trimMode = trimPctToMode(trimSliderEl.value);
       const trendByMode = pooled.trends || {};
       const pooledMetric = trendByMode[trimMode] || trendByMode.all || null;
       const sexMetricsByMode = pooled.sex_metrics || {};
       const sexMetrics = sexMetricsByMode[trimMode] || sexMetricsByMode.all || {};
       const rawBySex = (series && series.raw_total_n_by_sex) ? series.raw_total_n_by_sex : {};
       const rawCap = md.raw_sample_cap ?? 'NA';
-      const trimLabel = trimMode === 'trim_p10_p90' ? 'Trimmed 10th-90th percentile (per bin)' : 'All values';
+      const trimLabel = trimLabelFromPct(trimSliderEl.value);
 
       let html = `<div class="metric"><b>Category:</b> ${md.category || 'Other Clinical'}</div>`;
       html += `<div class="metric"><b>Outlier mode:</b> ${trimLabel}</div>`;
@@ -627,7 +663,7 @@
       state.currentId = id;
       const showLow = showLowNEl.checked;
       const cohort = cohortFilterEl.value || 'pooled';
-      const trimMode = trimModeEl.value || 'all';
+      const trimMode = trimPctToMode(trimSliderEl.value);
 
       const traces = [];
       const title = `${s.display_name || s.biomarker_name}`;
@@ -737,7 +773,7 @@
       const tbl = document.getElementById('rank-table');
       const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
       const cohort = cohortFilterEl.value || 'pooled';
-      const trimMode = trimModeEl.value || 'all';
+      const trimMode = trimPctToMode(trimSliderEl.value);
       const ranked = metricsForView(
         getCompareMetrics().filter(r => visible.has(r.biomarker_id)),
         cohort,
@@ -765,8 +801,9 @@
     function renderComparePlot() {
       const mode = compareSortEl.value;
       const cohort = compareCohortEl.value || 'pooled';
-      const trimMode = compareTrimModeEl.value || 'all';
+      const trimMode = trimPctToMode(compareTrimSliderEl.value);
       const topN = Math.max(10, Math.min(200, Number(compareTopNEl.value || 40)));
+      const trimLabel = trimLabelFromPct(compareTrimSliderEl.value);
       compareTopNEl.value = String(topN);
 
       let ranked = metricsForView(getCompareMetrics(), cohort, trimMode).slice();
@@ -836,7 +873,7 @@
           x: 1,
           y: 1.12,
           showarrow: false,
-          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}, outliers: ${trimMode}`,
+          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}, outliers: ${trimLabel}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
         barmode: cohort === 'both' ? 'group' : 'relative',
@@ -891,8 +928,10 @@
       showLowNEl.checked = true;
       includeEnvEl.checked = false;
       compareIncludeEnvEl.checked = false;
-      trimModeEl.value = 'all';
-      compareTrimModeEl.value = 'all';
+      trimSliderEl.value = '0';
+      compareTrimSliderEl.value = '0';
+      trimLabelEl.textContent = trimLabelFromPct(trimSliderEl.value);
+      compareTrimLabelEl.textContent = trimLabelFromPct(compareTrimSliderEl.value);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
 
@@ -911,8 +950,12 @@
       compareTopNEl.addEventListener('change', renderComparePlot);
       compareCategoryEl.addEventListener('change', renderComparePlot);
       compareCohortEl.addEventListener('change', renderComparePlot);
-      compareTrimModeEl.addEventListener('change', () => {
-        trimModeEl.value = compareTrimModeEl.value;
+      compareTrimSliderEl.addEventListener('input', () => {
+        const pct = normalizeTrimPct(compareTrimSliderEl.value);
+        compareTrimSliderEl.value = String(pct);
+        trimSliderEl.value = String(pct);
+        compareTrimLabelEl.textContent = trimLabelFromPct(pct);
+        trimLabelEl.textContent = trimLabelFromPct(pct);
         renderRankTable();
         if (state.currentId) renderPlot(state.currentId);
         renderComparePlot();
@@ -940,8 +983,12 @@
         renderComparePlot();
         if (state.currentId) await renderPlot(state.currentId);
       });
-      trimModeEl.addEventListener('change', async () => {
-        compareTrimModeEl.value = trimModeEl.value;
+      trimSliderEl.addEventListener('input', async () => {
+        const pct = normalizeTrimPct(trimSliderEl.value);
+        trimSliderEl.value = String(pct);
+        compareTrimSliderEl.value = String(pct);
+        trimLabelEl.textContent = trimLabelFromPct(pct);
+        compareTrimLabelEl.textContent = trimLabelFromPct(pct);
         renderRankTable();
         renderComparePlot();
         if (state.currentId) await renderPlot(state.currentId);
