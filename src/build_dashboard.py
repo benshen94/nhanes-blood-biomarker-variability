@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.stats import spearmanr
 
 from nhanes_common import ensure_dir
 
@@ -67,6 +68,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       display: flex;
       gap: 8px;
       margin-bottom: 14px;
+      flex-wrap: wrap;
     }
     .tab-btn {
       border: 1px solid var(--line);
@@ -95,7 +97,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
     .sticky { position: sticky; top: 12px; }
 
-    input, select {
+    input[type="text"],
+    input[type="search"],
+    input[type="number"],
+    select {
       width: 100%;
       padding: 8px;
       border: 1px solid var(--line);
@@ -109,6 +114,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.6px;
+    }
+    input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0 10px 0;
     }
     .mode-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
     .mode-btn {
@@ -158,6 +174,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       #plot { height: 430px; }
       .info-grid { grid-template-columns: 1fr; }
       .hero { flex-direction: column; align-items: flex-start; }
+      .wrap { padding: 14px; }
+      h1 { font-size: 28px; }
+      .sub { font-size: 15px; }
+      #compare-plot { height: 560px; }
+    }
+    @media (max-width: 760px) {
+      .tab-btn {
+        flex: 1 1 calc(50% - 8px);
+        text-align: center;
+      }
+      .table-wrap {
+        max-height: none;
+        overflow-x: auto;
+      }
+      table { font-size: 12px; min-width: 560px; }
+      #plot { height: 380px; }
+      #compare-plot { height: 500px; }
+      .compare-controls label { width: 100%; }
+      .compare-controls select,
+      .compare-controls input { width: 100%; }
+    }
+    @media (max-width: 520px) {
+      .tab-btn { flex: 1 1 100%; }
+      .mode-buttons { flex-wrap: wrap; }
+      .mode-btn { flex: 1 1 calc(50% - 8px); }
+      #plot { height: 340px; }
+      #compare-plot { height: 440px; }
     }
   </style>
 </head>
@@ -189,11 +232,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <input id=\"search\" list=\"biomarker-options\" placeholder=\"Type name, code, file...\" />
           <datalist id=\"biomarker-options\"></datalist>
 
+          <label for=\"category-filter\">Clinical Category</label>
+          <select id=\"category-filter\"></select>
+          <label class=\"check-label\"><input id=\"include-env\" type=\"checkbox\" /> Include environmental/toxicant assays</label>
+
           <label for=\"biomarker-select\">Select Biomarker</label>
           <select id=\"biomarker-select\"></select>
 
-          <label><input id=\"show-low-n\" type=\"checkbox\" /> Show low-n bins (&lt;30)</label>
-          <label><input id=\"show-sd-band\" type=\"checkbox\" /> Show ±1 SD band in Mean mode</label>
+          <label for=\"cohort-filter\">Sex Group</label>
+          <select id=\"cohort-filter\">
+            <option value=\"pooled\" selected>Pooled</option>
+            <option value=\"female\">Female</option>
+            <option value=\"male\">Male</option>
+            <option value=\"both\">Both (Female + Male)</option>
+          </select>
+
+          <label class=\"check-label\"><input id=\"show-low-n\" type=\"checkbox\" checked /> Show low-n bins (&lt;30)</label>
+          <label class=\"check-label\"><input id=\"show-sd-band\" type=\"checkbox\" /> Show ±1 SD band in Mean mode</label>
 
           <div id=\"metrics\" class=\"card\" style=\"margin-top:10px;\"></div>
         </div>
@@ -214,6 +269,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               <option value=\"negative\" selected>Most Negative Spearman</option>
               <option value=\"positive\">Most Positive Spearman</option>
               <option value=\"absolute\">Largest Absolute Spearman</option>
+            </select>
+          </label>
+          <label>Category
+            <select id=\"compare-category\"></select>
+          </label>
+          <label class=\"check-label\"><input id=\"compare-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
+          <label>Cohort
+            <select id=\"compare-cohort\">
+              <option value=\"pooled\" selected>Pooled</option>
+              <option value=\"female\">Female</option>
+              <option value=\"male\">Male</option>
+              <option value=\"both\">Both (Female + Male)</option>
             </select>
           </label>
           <label>Top N
@@ -255,8 +322,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <h3>Plot Modes</h3>
           <ul>
             <li><b>Plot CV</b>: age-binned CV trend.</li>
-            <li><b>Plot Mean</b>: age-binned mean with 95% CI band and raw scatter sample.</li>
-            <li>95% CI quantifies uncertainty in the mean (SE-based), not raw spread.</li>
+            <li><b>Plot Mean</b>: age-binned mean with central 95% range band and raw scatter sample.</li>
+            <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
+            <li>95% range is the empirical 2.5th-97.5th percentile interval of observed values in each age bin.</li>
             <li>Raw scatter is sampled for performance and readability.</li>
           </ul>
         </div>
@@ -296,12 +364,42 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const panelInfo = document.getElementById('panel-info');
     const compareSortEl = document.getElementById('compare-sort');
     const compareTopNEl = document.getElementById('compare-topn');
+    const categoryFilterEl = document.getElementById('category-filter');
+    const includeEnvEl = document.getElementById('include-env');
+    const compareCategoryEl = document.getElementById('compare-category');
+    const compareIncludeEnvEl = document.getElementById('compare-include-env');
+    const cohortFilterEl = document.getElementById('cohort-filter');
+    const compareCohortEl = document.getElementById('compare-cohort');
+
+    const CATEGORY_PRIORITY = {
+      'Routine - CBC': 1,
+      'Routine - CMP': 2,
+      'Cardiometabolic - Lipid': 3,
+      'Cardiometabolic - Glycemic': 4,
+      'Organ - Thyroid': 5,
+      'Organ - Renal': 6,
+      'Organ - Hepatic': 7,
+      'Specialized - Coagulation': 8,
+      'Specialized - Nutritional/Vitamin': 9,
+      'Specialized - Inflammatory': 10,
+      'Hormones/Reproductive': 11,
+      'Infectious/Serology': 12,
+      'Other Clinical': 13,
+      'Environmental/Toxicant': 14,
+    };
+
+    const COHORT_COLORS = {
+      pooled: '#0f766e',
+      female: '#d1495b',
+      male: '#2563eb',
+    };
 
     const state = {
       metadata: [],
       metrics: [],
       seriesIndex: {},
       metricsById: new Map(),
+      metadataById: new Map(),
       cache: new Map(),
       mode: 'cv',
       currentId: null,
@@ -342,8 +440,74 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       return series;
     }
 
+    function sortedCategories(metadata, includeEnv) {
+      const cats = new Set();
+      for (const m of metadata) {
+        if (!includeEnv && m.is_environmental) continue;
+        cats.add(m.category || 'Other Clinical');
+      }
+      return Array.from(cats).sort((a, b) => (CATEGORY_PRIORITY[a] ?? 999) - (CATEGORY_PRIORITY[b] ?? 999) || a.localeCompare(b));
+    }
+
+    function renderCategorySelect(selectNode, includeEnv, selectedValue) {
+      const cats = sortedCategories(state.metadata, includeEnv);
+      const options = [
+        { value: 'all_core', label: 'Clinical/core tests first' },
+        { value: 'all_non_env', label: 'All non-environmental blood tests' },
+        { value: 'all', label: 'All visible categories' },
+        ...cats.map(c => ({ value: `cat:${c}`, label: c })),
+      ];
+      selectNode.innerHTML = '';
+      for (const opt of options) {
+        const el = document.createElement('option');
+        el.value = opt.value;
+        el.textContent = opt.label;
+        selectNode.appendChild(el);
+      }
+      const keep = options.some(o => o.value === selectedValue) ? selectedValue : 'all_core';
+      selectNode.value = keep;
+    }
+
+    function metadataPasses(m, categoryValue, includeEnv) {
+      const isEnv = Boolean(m.is_environmental);
+      const isCore = Boolean(m.is_core_clinical);
+      const cat = m.category || 'Other Clinical';
+      if (!includeEnv && isEnv) return false;
+      if (categoryValue === 'all_core') return isCore && !isEnv;
+      if (categoryValue === 'all_non_env') return !isEnv;
+      if (categoryValue === 'all') return includeEnv ? true : !isEnv;
+      if (String(categoryValue || '').startsWith('cat:')) return cat === categoryValue.slice(4);
+      return includeEnv ? true : !isEnv;
+    }
+
+    function getDashboardMetadata() {
+      return state.metadata.filter(m => metadataPasses(m, categoryFilterEl.value, includeEnvEl.checked));
+    }
+
+    function getCompareMetrics() {
+      const byId = state.metadataById;
+      return state.metrics
+        .map(m => {
+          const md = byId.get(m.biomarker_id) || {};
+          const sexMetrics = m.sex_metrics || {};
+          return {
+            ...m,
+            display_name: md.display_name || m.biomarker_name || m.biomarker_id,
+            category: md.category || 'Other Clinical',
+            is_environmental: Boolean(md.is_environmental),
+            is_core_clinical: Boolean(md.is_core_clinical),
+            female_metric: sexMetrics.female || null,
+            male_metric: sexMetrics.male || null,
+          };
+        })
+        .filter(m => metadataPasses(m, compareCategoryEl.value, compareIncludeEnvEl.checked));
+    }
+
     function renderOptions() {
-      const opts = state.metadata.slice().sort((a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || '')));
+      const opts = getDashboardMetadata().slice().sort(
+        (a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || ''))
+      );
+      const previousId = state.currentId || selectEl.value;
       selectEl.innerHTML = '';
       optionsEl.innerHTML = '';
       for (const o of opts) {
@@ -357,24 +521,55 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         dopt.value = label;
         optionsEl.appendChild(dopt);
       }
+      if (opts.length === 0) {
+        state.currentId = null;
+        return null;
+      }
+      const next = opts.some(o => o.biomarker_id === previousId) ? previousId : opts[0].biomarker_id;
+      selectEl.value = next;
+      state.currentId = next;
+      return next;
     }
 
-    function renderMetrics(id) {
-      const m = state.metricsById.get(id);
+    function renderMetricRows(title, m, rawTotal, rawCap) {
+      if (!m) return `<div class="metric"><b>${title}:</b> no metrics</div>`;
+      const flagCls = m.decline_flag ? 'flag-true' : 'flag-false';
+      return `
+        <div class="metric"><b>${title} bins:</b> ${m.n_bins ?? 'NA'}</div>
+        <div class="metric"><b>${title} Spearman rho:</b> ${formatNum(m.spearman_rho, 4)}</div>
+        <div class="metric"><b>${title} Spearman p:</b> ${formatNum(m.spearman_p, 5)}</div>
+        <div class="metric"><b>${title} Slope CV/year:</b> ${formatNum(m.linear_slope_cv_per_year, 6)}</div>
+        <div class="metric"><b>${title} Slope log(CV)/year:</b> ${formatNum(m.linear_slope_logcv_per_year, 6)}</div>
+        <div class="metric"><b>${title} Raw points:</b> up to ${rawCap ?? 'NA'} sampled of ${rawTotal ?? 'NA'} total</div>
+        <div class="metric"><b>${title} Decline flag:</b> <span class="${flagCls}">${m.decline_flag}</span></div>
+      `;
+    }
+
+    function renderMetrics(id, series=null) {
+      const pooled = state.metricsById.get(id);
+      const md = state.metadataById.get(id) || {};
       const box = document.getElementById('metrics');
-      if (!m) {
+      if (!pooled) {
         box.innerHTML = '<div class="metric">No metrics available.</div>';
         return;
       }
-      const flagCls = m.decline_flag ? 'flag-true' : 'flag-false';
-      box.innerHTML = `
-        <div class="metric"><b>Bins used:</b> ${m.n_bins}</div>
-        <div class="metric"><b>Spearman rho:</b> ${formatNum(m.spearman_rho, 4)}</div>
-        <div class="metric"><b>Spearman p:</b> ${formatNum(m.spearman_p, 5)}</div>
-        <div class="metric"><b>Slope CV/year:</b> ${formatNum(m.linear_slope_cv_per_year, 6)}</div>
-        <div class="metric"><b>Slope log(CV)/year:</b> ${formatNum(m.linear_slope_logcv_per_year, 6)}</div>
-        <div class="metric"><b>Decline flag:</b> <span class="${flagCls}">${m.decline_flag}</span></div>
-      `;
+
+      const cohort = cohortFilterEl.value || 'pooled';
+      const sexMetrics = (series && series.sex_metrics) ? series.sex_metrics : (pooled.sex_metrics || {});
+      const rawBySex = (series && series.raw_total_n_by_sex) ? series.raw_total_n_by_sex : {};
+      const rawCap = md.raw_sample_cap ?? 'NA';
+
+      let html = `<div class="metric"><b>Category:</b> ${md.category || 'Other Clinical'}</div>`;
+      if (cohort === 'both') {
+        html += renderMetricRows('Female', sexMetrics.female || null, rawBySex.female ?? 'NA', rawCap);
+        html += renderMetricRows('Male', sexMetrics.male || null, rawBySex.male ?? 'NA', rawCap);
+      } else if (cohort === 'female' || cohort === 'male') {
+        const m = sexMetrics[cohort] || null;
+        html += renderMetricRows(cohort === 'female' ? 'Female' : 'Male', m, rawBySex[cohort] ?? 'NA', rawCap);
+      } else {
+        html += renderMetricRows('Pooled', pooled, md.raw_total_n ?? 'NA', rawCap);
+      }
+      box.innerHTML = html;
     }
 
     function setMode(mode) {
@@ -383,98 +578,143 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       modeMeanBtn.classList.toggle('active', mode === 'mean');
     }
 
+    function pickPointsByCohort(s, cohort) {
+      if (cohort === 'female') return (s.sex_points && s.sex_points.female) ? s.sex_points.female : [];
+      if (cohort === 'male') return (s.sex_points && s.sex_points.male) ? s.sex_points.male : [];
+      return s.points || [];
+    }
+
+    function pickRawByCohort(s, cohort) {
+      if (cohort === 'female') return (s.raw_sample_by_sex && s.raw_sample_by_sex.female) ? s.raw_sample_by_sex.female : [];
+      if (cohort === 'male') return (s.raw_sample_by_sex && s.raw_sample_by_sex.male) ? s.raw_sample_by_sex.male : [];
+      return s.raw_sample || [];
+    }
+
+    function lineTrace(points, color, label, modeName) {
+      return {
+        x: points.map(p => p.age_mid),
+        y: points.map(p => modeName === 'cv' ? p.cv : p.mean),
+        text: points.map(p => `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}`),
+        mode: 'lines+markers',
+        type: 'scatter',
+        marker: { size: points.map(p => p.passes_n_threshold ? 8 : 5), color },
+        line: { color, width: 2 },
+        hovertemplate: '%{text}<extra></extra>',
+        name: label
+      };
+    }
+
+    function ciBandTrace(points, color, label) {
+      const ciPoints = points.filter(p => p.range95_low !== null && p.range95_high !== null);
+      if (ciPoints.length < 2) return null;
+      return {
+        x: ciPoints.map(p => p.age_mid).concat(ciPoints.map(p => p.age_mid).reverse()),
+        y: ciPoints.map(p => p.range95_high).concat(ciPoints.map(p => p.range95_low).reverse()),
+        type: 'scatter',
+        fill: 'toself',
+        fillcolor: color,
+        line: { color: 'rgba(0,0,0,0)' },
+        hoverinfo: 'skip',
+        name: label
+      };
+    }
+
+    function sdBandTrace(points, color, label) {
+      if (points.length < 2) return null;
+      return {
+        x: points.map(p => p.age_mid).concat(points.map(p => p.age_mid).reverse()),
+        y: points.map(p => p.mean + (p.std || 0)).concat(points.map(p => p.mean - (p.std || 0)).reverse()),
+        type: 'scatter',
+        fill: 'toself',
+        fillcolor: color,
+        line: { color: 'rgba(0,0,0,0)' },
+        hoverinfo: 'skip',
+        name: label
+      };
+    }
+
     async function renderPlot(id) {
       const s = await loadSeries(id);
       if (!s) return;
       state.currentId = id;
       const showLow = showLowNEl.checked;
-      const points = showLow ? s.points : s.points.filter(p => p.passes_n_threshold);
+      const cohort = cohortFilterEl.value || 'pooled';
 
       const traces = [];
       const title = `${s.display_name || s.biomarker_name}`;
+      const selectedCohorts = cohort === 'both' ? ['female', 'male'] : [cohort];
+      const cohortLabel = { pooled: 'Pooled', female: 'Female', male: 'Male' };
+      const band95 = {
+        pooled: 'rgba(15,118,110,0.16)',
+        female: 'rgba(209,73,91,0.18)',
+        male: 'rgba(37,99,235,0.18)',
+      };
+      const bandSd = {
+        pooled: 'rgba(15,118,110,0.08)',
+        female: 'rgba(209,73,91,0.09)',
+        male: 'rgba(37,99,235,0.09)',
+      };
 
-      if (state.mode === 'cv') {
-        traces.push({
-          x: points.map(p => p.age_mid),
-          y: points.map(p => p.cv),
-          text: points.map(p => `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}`),
-          mode: 'lines+markers',
-          type: 'scatter',
-          marker: {
-            size: points.map(p => p.passes_n_threshold ? 9 : 6),
-            color: points.map(p => p.passes_n_threshold ? '#0f766e' : '#b45309')
-          },
-          line: { color: '#0f766e', width: 2 },
-          hovertemplate: '%{text}<extra></extra>',
-          name: 'CV'
-        });
-      } else {
-        if (showSdBandEl.checked && points.length > 1) {
-          traces.push({
-            x: points.map(p => p.age_mid).concat(points.map(p => p.age_mid).reverse()),
-            y: points.map(p => p.mean + (p.std || 0)).concat(points.map(p => p.mean - (p.std || 0)).reverse()),
-            type: 'scatter',
-            fill: 'toself',
-            fillcolor: 'rgba(15,118,110,0.08)',
-            line: { color: 'rgba(0,0,0,0)' },
-            hoverinfo: 'skip',
-            name: '±1 SD'
-          });
+      for (const c of selectedCohorts) {
+        const pointsRaw = pickPointsByCohort(s, c);
+        const points = showLow ? pointsRaw : pointsRaw.filter(p => p.passes_n_threshold);
+        if (!points || points.length === 0) continue;
+
+        if (state.mode === 'cv') {
+          traces.push(lineTrace(points, COHORT_COLORS[c], `${cohortLabel[c]} CV`, 'cv'));
+          continue;
         }
-        const ciPoints = points.filter(p => p.ci95_low !== null && p.ci95_high !== null);
-        if (ciPoints.length > 1) {
-          traces.push({
-            x: ciPoints.map(p => p.age_mid).concat(ciPoints.map(p => p.age_mid).reverse()),
-            y: ciPoints.map(p => p.ci95_high).concat(ciPoints.map(p => p.ci95_low).reverse()),
-            type: 'scatter',
-            fill: 'toself',
-            fillcolor: 'rgba(15,118,110,0.16)',
-            line: { color: 'rgba(0,0,0,0)' },
-            hoverinfo: 'skip',
-            name: '95% CI'
-          });
+
+        if (showSdBandEl.checked) {
+          const sd = sdBandTrace(points, bandSd[c], `${cohortLabel[c]} ±1 SD`);
+          if (sd) traces.push(sd);
         }
+        const ci = ciBandTrace(points, band95[c], `${cohortLabel[c]} 95% range`);
+        if (ci) traces.push(ci);
         traces.push({
-          x: points.map(p => p.age_mid),
-          y: points.map(p => p.mean),
-          text: points.map(p => `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>95%CI=[${formatNum(p.ci95_low, 4)}, ${formatNum(p.ci95_high, 4)}]`),
-          mode: 'lines+markers',
-          type: 'scatter',
-          marker: {
-            size: points.map(p => p.passes_n_threshold ? 9 : 6),
-            color: points.map(p => p.passes_n_threshold ? '#0f766e' : '#b45309')
-          },
-          line: { color: '#0f766e', width: 2 },
-          hovertemplate: '%{text}<extra></extra>',
-          name: 'Mean (binned)'
+          ...lineTrace(points, COHORT_COLORS[c], `${cohortLabel[c]} Mean (binned)`, 'mean'),
+          text: points.map(p => `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>95%range=[${formatNum(p.range95_low, 4)}, ${formatNum(p.range95_high, 4)}]`),
         });
-        if (s.raw_sample && s.raw_sample.length > 0) {
+
+        const raw = pickRawByCohort(s, c);
+        if (raw && raw.length > 0) {
           traces.push({
-            x: s.raw_sample.map(p => p.age_years),
-            y: s.raw_sample.map(p => p.value),
+            x: raw.map(p => p.age_years),
+            y: raw.map(p => p.value),
             mode: 'markers',
             type: 'scatter',
-            marker: { color: 'rgba(71,85,105,0.25)', size: 4 },
-            hovertemplate: 'age=%{x}<br>value=%{y:.4f}<extra>Raw sample</extra>',
-            name: 'Raw sample'
+            marker: { color: c === 'female' ? 'rgba(209,73,91,0.23)' : c === 'male' ? 'rgba(37,99,235,0.23)' : 'rgba(71,85,105,0.25)', size: 4 },
+            hovertemplate: 'age=%{x}<br>value=%{y:.4f}<extra>' + `${cohortLabel[c]} raw sample` + '</extra>',
+            name: `${cohortLabel[c]} Raw sample`
           });
         }
       }
 
+      renderMetrics(id, s);
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
       Plotly.newPlot('plot', traces, {
         title,
-        xaxis: { title: 'Age (years)' },
-        yaxis: { title: state.mode === 'cv' ? 'Coefficient of Variation (CV)' : 'Mean Biomarker Value' },
-        margin: { t: 56, l: 64, r: 18, b: 54 },
+        xaxis: { title: 'Age (years)', tickfont: { size: mobile ? 10 : 12 } },
+        yaxis: { title: state.mode === 'cv' ? 'Coefficient of Variation (CV)' : 'Mean Biomarker Value', tickfont: { size: mobile ? 10 : 12 } },
+        margin: mobile ? { t: 52, l: 46, r: 10, b: 44 } : { t: 56, l: 64, r: 18, b: 54 },
         paper_bgcolor: '#ffffff',
         plot_bgcolor: '#ffffff',
-        legend: { orientation: 'h', y: 1.08 }
+        legend: {
+          orientation: 'h',
+          y: 1.08,
+          font: { size: mobile ? 10 : 12 },
+          itemwidth: mobile ? 38 : undefined
+        }
       }, { responsive: true, displaylogo: false });
     }
 
     function renderRankTable() {
       const tbl = document.getElementById('rank-table');
-      const ranked = state.metrics.slice().sort((a, b) => (a.spearman_rho ?? 999) - (b.spearman_rho ?? 999));
+      const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
+      const ranked = state.metrics
+        .filter(r => visible.has(r.biomarker_id))
+        .slice()
+        .sort((a, b) => (a.spearman_rho ?? 999) - (b.spearman_rho ?? 999));
       const displayById = new Map(state.metadata.map(m => [m.biomarker_id, m.display_name || m.biomarker_name || m.biomarker_id]));
       const top = ranked.slice(0, 200);
       let html = '<thead><tr><th>Biomarker</th><th>Spearman rho</th><th>p</th><th>Decline</th></tr></thead><tbody>';
@@ -498,47 +738,117 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     function renderComparePlot() {
       const mode = compareSortEl.value;
+      const cohort = compareCohortEl.value || 'pooled';
       const topN = Math.max(10, Math.min(200, Number(compareTopNEl.value || 40)));
       compareTopNEl.value = String(topN);
+      let merged = getCompareMetrics();
 
-      const merged = state.metrics
-        .map(m => {
-          const md = state.metadata.find(x => x.biomarker_id === m.biomarker_id) || {};
-          return {
+      if (cohort === 'female') {
+        merged = merged
+          .map(m => ({ ...m, metric: m.female_metric }))
+          .filter(m => m.metric && m.metric.spearman_rho !== null && m.metric.spearman_rho !== undefined && !Number.isNaN(Number(m.metric.spearman_rho)));
+      } else if (cohort === 'male') {
+        merged = merged
+          .map(m => ({ ...m, metric: m.male_metric }))
+          .filter(m => m.metric && m.metric.spearman_rho !== null && m.metric.spearman_rho !== undefined && !Number.isNaN(Number(m.metric.spearman_rho)));
+      } else if (cohort === 'both') {
+        merged = merged
+          .filter(m => m.female_metric && m.male_metric)
+          .filter(m => m.female_metric.spearman_rho !== null && m.male_metric.spearman_rho !== null)
+          .map(m => ({
             ...m,
-            display_name: md.display_name || m.biomarker_name || m.biomarker_id,
-          };
-        })
-        .filter(m => m.spearman_rho !== null && m.spearman_rho !== undefined && !Number.isNaN(Number(m.spearman_rho)));
+            rho_female: Number(m.female_metric.spearman_rho),
+            rho_male: Number(m.male_metric.spearman_rho),
+          }));
+      } else {
+        merged = merged.filter(m => m.spearman_rho !== null && m.spearman_rho !== undefined && !Number.isNaN(Number(m.spearman_rho)));
+      }
 
       let ranked = merged.slice();
-      if (mode === 'negative') ranked.sort((a, b) => a.spearman_rho - b.spearman_rho);
-      if (mode === 'positive') ranked.sort((a, b) => b.spearman_rho - a.spearman_rho);
-      if (mode === 'absolute') ranked.sort((a, b) => Math.abs(b.spearman_rho) - Math.abs(a.spearman_rho));
+      const rankVal = (m) => {
+        if (cohort === 'both') {
+          const avg = (m.rho_female + m.rho_male) / 2;
+          if (mode === 'absolute') return Math.abs(avg);
+          return avg;
+        }
+        const rho = cohort === 'female' || cohort === 'male' ? Number(m.metric.spearman_rho) : Number(m.spearman_rho);
+        return mode === 'absolute' ? Math.abs(rho) : rho;
+      };
+      if (mode === 'negative') ranked.sort((a, b) => rankVal(a) - rankVal(b));
+      if (mode === 'positive') ranked.sort((a, b) => rankVal(b) - rankVal(a));
+      if (mode === 'absolute') ranked.sort((a, b) => rankVal(b) - rankVal(a));
       ranked = ranked.slice(0, topN);
 
       const y = ranked.map(r => r.display_name).reverse();
-      const x = ranked.map(r => Number(r.spearman_rho)).reverse();
-      const custom = ranked.map(r => [r.spearman_p, r.n_bins, r.decline_flag, r.biomarker_id]).reverse();
+      const categoryLabel = compareCategoryEl.options[compareCategoryEl.selectedIndex]?.textContent || 'All';
+      let traces = [];
+      let xTitle = 'Spearman rho (Age vs CV)';
 
-      const colors = x.map(v => (v < 0 ? '#0f766e' : '#b45309'));
-      const trace = {
-        type: 'bar',
-        orientation: 'h',
-        y,
-        x,
-        marker: { color: colors },
-        customdata: custom,
-        hovertemplate: 'rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>decline=%{customdata[2]}<br>id=%{customdata[3]}<extra></extra>',
-      };
+      if (cohort === 'both') {
+        const xF = ranked.map(r => Number(r.rho_female)).reverse();
+        const xM = ranked.map(r => Number(r.rho_male)).reverse();
+        traces = [
+          {
+            type: 'bar',
+            orientation: 'h',
+            y,
+            x: xF,
+            marker: { color: COHORT_COLORS.female },
+            name: 'Female',
+            customdata: ranked.map(r => [r.female_metric?.spearman_p, r.female_metric?.n_bins, r.biomarker_id, r.category]).reverse(),
+            hovertemplate: 'Female rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>id=%{customdata[2]}<br>category=%{customdata[3]}<extra></extra>',
+          },
+          {
+            type: 'bar',
+            orientation: 'h',
+            y,
+            x: xM,
+            marker: { color: COHORT_COLORS.male },
+            name: 'Male',
+            customdata: ranked.map(r => [r.male_metric?.spearman_p, r.male_metric?.n_bins, r.biomarker_id, r.category]).reverse(),
+            hovertemplate: 'Male rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>id=%{customdata[2]}<br>category=%{customdata[3]}<extra></extra>',
+          }
+        ];
+        xTitle = 'Spearman rho (female vs male, Age vs CV)';
+      } else {
+        const x = ranked.map(r => cohort === 'female' || cohort === 'male' ? Number(r.metric.spearman_rho) : Number(r.spearman_rho)).reverse();
+        const custom = ranked.map(r => {
+          if (cohort === 'female' || cohort === 'male') {
+            return [r.metric.spearman_p, r.metric.n_bins, r.metric.decline_flag, r.biomarker_id, r.category];
+          }
+          return [r.spearman_p, r.n_bins, r.decline_flag, r.biomarker_id, r.category];
+        }).reverse();
+        const colors = x.map(v => (v < 0 ? '#0f766e' : '#b45309'));
+        traces = [{
+          type: 'bar',
+          orientation: 'h',
+          y,
+          x,
+          marker: { color: colors },
+          customdata: custom,
+          hovertemplate: 'rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>decline=%{customdata[2]}<br>id=%{customdata[3]}<br>category=%{customdata[4]}<extra></extra>',
+          name: cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled',
+        }];
+      }
 
-      Plotly.newPlot('compare-plot', [trace], {
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('compare-plot', traces, {
         title: mode === 'negative' ? `Top ${topN} Most Negative Spearman Biomarkers` :
                mode === 'positive' ? `Top ${topN} Most Positive Spearman Biomarkers` :
                `Top ${topN} Largest |Spearman| Biomarkers`,
-        xaxis: { title: 'Spearman rho (Age vs CV)' },
-        yaxis: { automargin: true },
-        margin: { t: 56, l: 260, r: 16, b: 54 },
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.12,
+          showarrow: false,
+          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        barmode: cohort === 'both' ? 'group' : 'relative',
+        xaxis: { title: xTitle, tickfont: { size: mobile ? 10 : 12 } },
+        yaxis: { automargin: true, tickfont: { size: mobile ? 10 : 12 } },
+        margin: mobile ? { t: 64, l: 150, r: 10, b: 44 } : { t: 56, l: 260, r: 16, b: 54 },
         paper_bgcolor: '#ffffff',
         plot_bgcolor: '#ffffff',
       }, { responsive: true, displaylogo: false });
@@ -547,12 +857,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     async function applySearch() {
       const q = searchEl.value.toLowerCase().trim();
       if (!q) return;
-      const hit = state.metadata.find(m => `${m.display_name || ''} ${m.biomarker_name || ''} ${m.variable_name || ''} ${m.source_files || ''} ${m.source_variables || ''}`.toLowerCase().includes(q));
+      const hit = getDashboardMetadata().find(
+        m => `${m.display_name || ''} ${m.biomarker_name || ''} ${m.variable_name || ''} ${m.source_files || ''} ${m.source_variables || ''}`
+          .toLowerCase()
+          .includes(q)
+      );
       if (hit) {
         selectEl.value = hit.biomarker_id;
         renderMetrics(hit.biomarker_id);
         await renderPlot(hit.biomarker_id);
       }
+    }
+
+    async function refreshDashboardFromFilters() {
+      const id = renderOptions();
+      renderRankTable();
+      if (!id) {
+        document.getElementById('metrics').innerHTML = '<div class="metric">No biomarkers match current filters.</div>';
+        Plotly.newPlot('plot', [], { title: 'No biomarkers match current filters' }, { responsive: true, displaylogo: false });
+        return;
+      }
+      renderMetrics(id);
+      await renderPlot(id);
     }
 
     async function init() {
@@ -566,18 +892,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       state.metrics = metrics;
       state.seriesIndex = index;
       state.metricsById = new Map(metrics.map(m => [m.biomarker_id, m]));
+      state.metadataById = new Map(metadata.map(m => [m.biomarker_id, m]));
 
-      renderOptions();
-      renderRankTable();
+      showLowNEl.checked = true;
+      includeEnvEl.checked = false;
+      compareIncludeEnvEl.checked = false;
+      renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
+      renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
+
+      await refreshDashboardFromFilters();
       renderComparePlot();
-      showLowNEl.checked = false;
-
-      const first = state.metadata[0]?.biomarker_id;
-      if (first) {
-        selectEl.value = first;
-        renderMetrics(first);
-        await renderPlot(first);
-      }
 
       statusChip.textContent = `Ready: ${state.metadata.length} biomarkers indexed`;
 
@@ -589,13 +913,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       tabInfoBtn.addEventListener('click', () => setTopTab('info'));
       compareSortEl.addEventListener('change', renderComparePlot);
       compareTopNEl.addEventListener('change', renderComparePlot);
+      compareCategoryEl.addEventListener('change', renderComparePlot);
+      compareCohortEl.addEventListener('change', renderComparePlot);
+      compareIncludeEnvEl.addEventListener('change', () => {
+        renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, compareCategoryEl.value);
+        renderComparePlot();
+      });
       selectEl.addEventListener('change', async () => {
         const id = selectEl.value;
+        state.currentId = id;
         renderMetrics(id);
         await renderPlot(id);
       });
       searchEl.addEventListener('change', applySearch);
       searchEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') applySearch(); });
+      categoryFilterEl.addEventListener('change', refreshDashboardFromFilters);
+      includeEnvEl.addEventListener('change', async () => {
+        renderCategorySelect(categoryFilterEl, includeEnvEl.checked, categoryFilterEl.value);
+        await refreshDashboardFromFilters();
+      });
+      cohortFilterEl.addEventListener('change', async () => {
+        if (state.currentId) await renderPlot(state.currentId);
+      });
       showLowNEl.addEventListener('change', async () => {
         if (state.currentId) await renderPlot(state.currentId);
       });
@@ -609,6 +948,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       modeMeanBtn.addEventListener('click', async () => {
         setMode('mean');
         if (state.currentId) await renderPlot(state.currentId);
+      });
+      window.addEventListener('resize', () => {
+        const plotEl = document.getElementById('plot');
+        const compareEl = document.getElementById('compare-plot');
+        if (plotEl) Plotly.Plots.resize(plotEl);
+        if (compareEl) Plotly.Plots.resize(compareEl);
       });
     }
 
@@ -632,23 +977,304 @@ def safe_series_filename(biomarker_id: str) -> str:
 
 def clean_display_base(name: str) -> str:
     s = str(name or "").strip()
-    # Remove leading isomer-position locants (e.g., 1,2,3,4-)
-    s = re.sub(r"^\s*(?:\d+[’']?)(?:,\s*\d+[’']?)+\s*,?-?\s*", "", s)
-    # Remove short all-lower/number acronym parentheses that are not units (e.g., (ocdd), (hpcdf))
-    s = re.sub(r"\s*\(([a-z0-9_-]{2,12})\)", lambda m: "" if "/" not in m.group(1) else m.group(0), s)
+    s = re.sub(r"^\s*(?:\d+[a-z]?[’']?(?:,\s*\d+[a-z]?[’']?){1,20})\s*,?\s*-\s*", "", s)
+    s = re.sub(
+        r"\s*\(([a-z0-9_-]{2,16})\)",
+        lambda m: "" if "/" not in m.group(1) and "%" not in m.group(1) else m.group(0),
+        s,
+    )
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
+
+def parse_terminal_unit(label: str) -> tuple[str, str]:
+    s = str(label or "").strip()
+    m = re.search(r"\(([^()]*)\)\s*$", s)
+    if not m:
+        return s, ""
+    unit = m.group(1).strip()
+    base = s[: m.start()].strip().rstrip(",")
+    return base, unit
 
 
 def make_display_name(name: str, unit: str) -> str:
     base = clean_display_base(name)
     u = str(unit or "").strip()
-    if u:
-        if not re.search(rf"\(\s*{re.escape(u)}\s*\)\s*$", base, flags=re.IGNORECASE):
-            base = f"{base} ({u})"
-    else:
-        base = f"{base} (unit not reported)"
+    if not u:
+        _, parsed_unit = parse_terminal_unit(name)
+        if parsed_unit and ("/" in parsed_unit or "%" in parsed_unit):
+            u = parsed_unit
+    if u and not re.search(rf"\(\s*{re.escape(u)}\s*\)\s*$", base, flags=re.IGNORECASE):
+        base = f"{base} ({u})"
     return base
+
+
+def normalize_text(s: str) -> str:
+    x = str(s or "").lower()
+    x = x.replace("μ", "u").replace("µ", "u")
+    x = re.sub(r"[^a-z0-9]+", " ", x)
+    return re.sub(r"\s+", " ", x).strip()
+
+
+CORE_CATEGORY_SET = {
+    "Routine - CBC",
+    "Routine - CMP",
+    "Cardiometabolic - Lipid",
+    "Cardiometabolic - Glycemic",
+    "Organ - Thyroid",
+    "Organ - Renal",
+    "Organ - Hepatic",
+    "Specialized - Coagulation",
+    "Specialized - Nutritional/Vitamin",
+    "Specialized - Inflammatory",
+}
+
+CATEGORY_ORDER = {
+    "Routine - CBC": 1,
+    "Routine - CMP": 2,
+    "Cardiometabolic - Lipid": 3,
+    "Cardiometabolic - Glycemic": 4,
+    "Organ - Thyroid": 5,
+    "Organ - Renal": 6,
+    "Organ - Hepatic": 7,
+    "Specialized - Coagulation": 8,
+    "Specialized - Nutritional/Vitamin": 9,
+    "Specialized - Inflammatory": 10,
+    "Hormones/Reproductive": 11,
+    "Infectious/Serology": 12,
+    "Other Clinical": 13,
+    "Environmental/Toxicant": 14,
+}
+
+
+def is_environmental_marker(name: str, variable_name: str, source_files: str) -> bool:
+    txt = normalize_text(f"{name} {variable_name} {source_files}")
+    patterns = [
+        r"\bdioxin\b",
+        r"\bdibenzofuran\b",
+        r"\bpolychlorinated biphenyl\b",
+        r"\bpcb\d*\b",
+        r"\bperfluoro\b",
+        r"\bpfos\b|\bpfoa\b|\bpfna\b|\bpfda\b|\bpfua\b|\bpfhx\b",
+        r"\bbromodiphenyl\b",
+        r"\bheptachlor\b|\bendrin\b|\baldrin\b|\bmirex\b|\bnonachlor\b|\bchlordane\b|\bdieldrin\b",
+        r"\bbenzene\b|\btoluene\b|\bxylene\b|\bchloroform\b|\bbromoform\b",
+        r"\btrichloroethene\b|\btetrachloroethene\b|\btrichloroethane\b",
+        r"\bdichloroethane\b|\bdichlorobenzene\b",
+        r"\bcarbon tetrachloride\b|\bstyrene\b|\bethylbenzene\b|\bmtbe\b|\bmethyl tert butyl ether\b",
+        r"\bperchlorate\b|\bcotinine\b|\bhydroxycotinine\b",
+        r"\bcadmium\b|\blead\b|\bmercury\b",
+        r"\bacrylamide\b|\bglycideamide\b|\bcrotonaldehyde\b",
+        r"\bpesticide\b|\btoxicant\b|\bvolatile organic\b|\bvoc\b",
+    ]
+    return any(re.search(p, txt) is not None for p in patterns)
+
+
+def classify_biomarker(name: str, variable_name: str, source_files: str) -> tuple[str, bool, bool]:
+    txt = normalize_text(f"{name} {variable_name} {source_files}")
+    is_env = is_environmental_marker(name, variable_name, source_files)
+    if is_env:
+        return "Environmental/Toxicant", True, False
+
+    def has_any(keys: list[str]) -> bool:
+        return any(k in txt for k in keys)
+
+    if has_any(["a1c", "glycohemoglobin", "hemoglobin a1", "glucose", "insulin", "c peptide"]):
+        return "Cardiometabolic - Glycemic", False, True
+
+    if has_any(
+        [
+            "hemoglobin",
+            "hematocrit",
+            "platelet",
+            "lymphocyte",
+            "neutrophil",
+            "eosinophil",
+            "basophil",
+            "monocyte",
+            "white blood cell",
+            "red blood cell",
+            "reticulocyte",
+            "mcv",
+            "mch",
+            "mchc",
+            "rdw",
+        ]
+    ):
+        return "Routine - CBC", False, True
+
+    if has_any(["cholesterol", "triglyceride", "lipoprotein", "apolipoprotein", "hdl", "ldl"]):
+        return "Cardiometabolic - Lipid", False, True
+
+    if has_any(["thyroid", "tsh", "thyroxine", "triiodothyronine", "free t4", "t4", "t3", "thyroglobulin"]):
+        return "Organ - Thyroid", False, True
+
+    if has_any(["creatinine", "blood urea nitrogen", " bun ", "cystatin", "uric acid", "egfr", "kidney"]):
+        return "Organ - Renal", False, True
+
+    if has_any(
+        [
+            "alanine aminotransferase",
+            "aspartate aminotransferase",
+            "alkaline phosphatase",
+            "gamma glutamyl",
+            "bilirubin",
+            "albumin",
+            "total protein",
+            "globulin",
+            "lactate dehydrogenase",
+            " alt ",
+            " ast ",
+            " ggt ",
+            " ldh ",
+            "hepatic",
+            "liver",
+        ]
+    ):
+        return "Organ - Hepatic", False, True
+
+    if has_any(["prothrombin", "pt inr", "inr", "fibrinogen", "coag", "aptt", "ptt", "d dimer"]):
+        return "Specialized - Coagulation", False, True
+
+    if has_any(
+        [
+            "vitamin",
+            "folate",
+            "ferritin",
+            "transferrin",
+            "iron",
+            "retinol",
+            "tocopherol",
+            "carotene",
+            "selenium",
+            "zinc",
+            "copper",
+            "b12",
+            "b6",
+        ]
+    ):
+        return "Specialized - Nutritional/Vitamin", False, True
+
+    if has_any(["c reactive protein", " crp ", "hs crp", "sedimentation", "inflamm", "alpha 1 acid glycoprotein"]):
+        return "Specialized - Inflammatory", False, True
+
+    if has_any(
+        [
+            "testosterone",
+            "estradiol",
+            "progesterone",
+            "anti mullerian",
+            "inhibin",
+            "luteinizing hormone",
+            "follicle stimulating",
+            "shbg",
+            "prolactin",
+            "cortisol",
+            "androstenedione",
+        ]
+    ):
+        return "Hormones/Reproductive", False, False
+
+    if has_any(
+        [
+            "antibody",
+            "igg",
+            "igm",
+            "ige",
+            "measles",
+            "mumps",
+            "rubella",
+            "varicella",
+            "toxoplasma",
+            "chlamydia",
+            "pertussis",
+            "polio",
+            "tb ",
+            "cryptosporidium",
+        ]
+    ):
+        return "Infectious/Serology", False, False
+
+    if has_any(
+        [
+            "sodium",
+            "potassium",
+            "chloride",
+            "bicarbonate",
+            "co2",
+            "calcium",
+            "phosphorus",
+            "anion gap",
+            "osmolality",
+            "electrolyte",
+            "metabolic panel",
+        ]
+    ):
+        return "Routine - CMP", False, True
+
+    return "Other Clinical", False, False
+
+
+AGE_BINS = list(np.arange(20, 90, 5)) + [200]
+AGE_LABELS = [f"{a}-{a+4}" for a in range(20, 85, 5)] + ["85+"]
+AGE_MIDS = {lab: mid for lab, mid in zip(AGE_LABELS, [a + 2.5 for a in range(20, 85, 5)] + [87.5])}
+
+
+def slope(x: np.ndarray, y: np.ndarray) -> float:
+    if len(x) < 2:
+        return np.nan
+    return float(np.polyfit(x, y, 1)[0])
+
+
+def compute_binned_long(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
+    tmp = df.copy()
+    tmp["age_bin"] = pd.cut(tmp["age_years"], bins=AGE_BINS, labels=AGE_LABELS, right=False, include_lowest=True)
+    tmp["age_mid"] = tmp["age_bin"].map(AGE_MIDS).astype(float)
+    tmp = tmp.dropna(subset=["age_bin", "value"])
+    grouped = (
+        tmp.groupby(group_cols + ["age_bin", "age_mid"], observed=True)["value"]
+        .agg(
+            n="count",
+            mean="mean",
+            std="std",
+            p025=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 2.5)),
+            p975=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 97.5)),
+        )
+        .reset_index()
+    )
+    grouped["cv"] = grouped["std"] / grouped["mean"].abs()
+    grouped.loc[grouped["mean"].abs() < 1e-8, "cv"] = np.nan
+    grouped["passes_n_threshold"] = grouped["n"] >= 30
+    grouped = grouped.dropna(subset=["cv"]).reset_index(drop=True)
+    return grouped
+
+
+def trend_from_points(points: list[dict]) -> dict:
+    eligible = [p for p in points if bool(p.get("passes_n_threshold")) and p.get("cv") is not None]
+    x = np.asarray([float(p["age_mid"]) for p in eligible], dtype=float)
+    y = np.asarray([float(p["cv"]) for p in eligible], dtype=float)
+    rho = np.nan
+    pval = np.nan
+    if len(y) >= 2:
+        rho, pval = spearmanr(x, y)
+    pos = y > 0
+    out = {
+        "n_bins": int(len(eligible)),
+        "spearman_rho": float(rho) if pd.notna(rho) else None,
+        "spearman_p": float(pval) if pd.notna(pval) else None,
+        "linear_slope_cv_per_year": float(slope(x, y)) if len(y) >= 2 else None,
+        "linear_slope_logcv_per_year": float(slope(x[pos], np.log(y[pos]))) if int(pos.sum()) >= 2 else None,
+    }
+    out["decline_flag"] = bool(
+        out["n_bins"] >= 5
+        and out["spearman_rho"] is not None
+        and out["spearman_p"] is not None
+        and out["linear_slope_cv_per_year"] is not None
+        and out["spearman_rho"] < 0
+        and out["spearman_p"] < 0.05
+        and out["linear_slope_cv_per_year"] < 0
+    )
+    return out
 
 
 def build_outputs(
@@ -665,10 +1291,78 @@ def build_outputs(
     if "unit" not in cv_df.columns:
         cv_df["unit"] = ""
 
-    ci_se = 1.96 * (cv_df["std"] / np.sqrt(cv_df["n"].clip(lower=1)))
-    cv_df["ci95_low"] = cv_df["mean"] - ci_se
-    cv_df["ci95_high"] = cv_df["mean"] + ci_se
-    cv_df.loc[cv_df["std"].isna(), ["ci95_low", "ci95_high"]] = np.nan
+    raw_samples: dict[str, list[dict]] = {}
+    raw_samples_by_sex: dict[str, dict[str, list[dict]]] = {}
+    raw_counts: dict[str, int] = {}
+    raw_counts_by_sex: dict[str, dict[str, int]] = {}
+    sex_points_by_id: dict[str, dict[str, list[dict]]] = {}
+    sex_metrics_by_id: dict[str, dict[str, dict]] = {}
+    if long_df is not None and not long_df.empty:
+        use = long_df[["biomarker_id", "age_years", "value", "sex"]].dropna(subset=["biomarker_id", "age_years", "value"])
+        use["sex_norm"] = use["sex"].astype(str).str.strip().str.lower()
+        use.loc[~use["sex_norm"].isin(["male", "female"]), "sex_norm"] = "unknown"
+
+        pooled_binned = compute_binned_long(use[["biomarker_id", "age_years", "value"]], group_cols=["biomarker_id"])
+        pooled_q = pooled_binned[["biomarker_id", "age_bin", "age_mid", "p025", "p975"]].copy()
+        pooled_q["age_bin"] = pooled_q["age_bin"].astype(str)
+        cv_df["age_bin"] = cv_df["age_bin"].astype(str)
+        cv_df = cv_df.merge(pooled_q, on=["biomarker_id", "age_bin", "age_mid"], how="left")
+
+        raw_counts = use.groupby("biomarker_id", observed=True).size().astype(int).to_dict()
+        sex_counts_tbl = (
+            use[use["sex_norm"].isin(["male", "female"])]
+            .groupby(["biomarker_id", "sex_norm"], observed=True)
+            .size()
+            .reset_index(name="n")
+        )
+        for r in sex_counts_tbl.itertuples(index=False):
+            raw_counts_by_sex.setdefault(str(r.biomarker_id), {})[str(r.sex_norm)] = int(r.n)
+
+        rng = np.random.default_rng(random_seed)
+        for bid, g in use.groupby("biomarker_id", observed=True):
+            g_pool = g[["age_years", "value"]].dropna()
+            if len(g_pool) > raw_sample_n:
+                idx = rng.choice(len(g_pool), size=raw_sample_n, replace=False)
+                g_pool = g_pool.iloc[idx]
+            raw_samples[str(bid)] = [{"age_years": float(r.age_years), "value": float(r.value)} for r in g_pool.itertuples(index=False)]
+
+        for (bid, sex_norm), g in use[use["sex_norm"].isin(["male", "female"])].groupby(["biomarker_id", "sex_norm"], observed=True):
+            g2 = g[["age_years", "value"]].dropna()
+            if len(g2) > raw_sample_n:
+                idx = rng.choice(len(g2), size=raw_sample_n, replace=False)
+                g2 = g2.iloc[idx]
+            raw_samples_by_sex.setdefault(str(bid), {})[str(sex_norm)] = [
+                {"age_years": float(r.age_years), "value": float(r.value)} for r in g2.itertuples(index=False)
+            ]
+
+        sex_binned = compute_binned_long(
+            use[use["sex_norm"].isin(["male", "female"])][["biomarker_id", "age_years", "value", "sex_norm"]],
+            group_cols=["biomarker_id", "sex_norm"],
+        )
+        for (bid, sex_norm), g in sex_binned.groupby(["biomarker_id", "sex_norm"], observed=True):
+            pts = [
+                {
+                    "age_bin": str(r.age_bin),
+                    "age_mid": float(r.age_mid),
+                    "n": int(r.n),
+                    "mean": float(r.mean),
+                    "std": float(r.std) if pd.notna(r.std) else None,
+                    "cv": float(r.cv),
+                    "range95_low": float(r.p025) if pd.notna(r.p025) else None,
+                    "range95_high": float(r.p975) if pd.notna(r.p975) else None,
+                    "ci95_low": float(r.p025) if pd.notna(r.p025) else None,
+                    "ci95_high": float(r.p975) if pd.notna(r.p975) else None,
+                    "passes_n_threshold": bool(r.passes_n_threshold),
+                }
+                for r in g.sort_values("age_mid").itertuples(index=False)
+            ]
+            bid_s = str(bid)
+            sex_s = str(sex_norm)
+            sex_points_by_id.setdefault(bid_s, {})[sex_s] = pts
+            sex_metrics_by_id.setdefault(bid_s, {})[sex_s] = trend_from_points(pts)
+    else:
+        cv_df["p025"] = np.nan
+        cv_df["p975"] = np.nan
 
     if catalog_df is not None and not catalog_df.empty:
         need = [
@@ -700,9 +1394,18 @@ def build_outputs(
     metadata["source_file_count"] = pd.to_numeric(metadata["source_file_count"], errors="coerce").fillna(0).astype(int)
     metadata["source_variables"] = metadata["source_variables"].fillna("")
     metadata["source_variable_count"] = pd.to_numeric(metadata["source_variable_count"], errors="coerce").fillna(0).astype(int)
-    metadata["display_name"] = [
-        make_display_name(n, u) for n, u in zip(metadata["biomarker_name"].tolist(), metadata["unit"].tolist())
+    metadata["raw_total_n"] = metadata["biomarker_id"].map(raw_counts).fillna(0).astype(int)
+    metadata["raw_sample_cap"] = int(raw_sample_n)
+    metadata["display_name"] = [make_display_name(n, u) for n, u in zip(metadata["biomarker_name"], metadata["unit"])]
+    cat_rows = [
+        classify_biomarker(n, v, sf)
+        for n, v, sf in zip(metadata["biomarker_name"], metadata["variable_name"], metadata["source_files"])
     ]
+    metadata["category"] = [r[0] for r in cat_rows]
+    metadata["is_environmental"] = [bool(r[1]) for r in cat_rows]
+    metadata["is_core_clinical"] = [bool(r[2]) for r in cat_rows]
+    metadata["category_rank"] = metadata["category"].map(CATEGORY_ORDER).fillna(999).astype(int)
+    metadata = metadata.sort_values(["category_rank", "display_name", "biomarker_id"]).reset_index(drop=True)
 
     metrics_cols = [
         "biomarker_id",
@@ -718,35 +1421,34 @@ def build_outputs(
     metrics_clean = metrics_clean.replace([np.inf, -np.inf], np.nan)
     metrics_clean = metrics_clean.astype(object).where(pd.notna(metrics_clean), None)
     metrics = metrics_clean.to_dict(orient="records")
-
-    raw_samples: dict[str, list[dict]] = {}
-    if long_df is not None and not long_df.empty:
-        use = long_df[["biomarker_id", "age_years", "value"]].dropna()
-        rng = np.random.default_rng(random_seed)
-        for bid, g in use.groupby("biomarker_id", observed=True):
-            if len(g) > raw_sample_n:
-                idx = rng.choice(len(g), size=raw_sample_n, replace=False)
-                g = g.iloc[idx]
-            raw_samples[bid] = [
-                {"age_years": float(r.age_years), "value": float(r.value)} for r in g.itertuples(index=False)
-            ]
+    for m in metrics:
+        bid = str(m.get("biomarker_id"))
+        m["sex_metrics"] = sex_metrics_by_id.get(bid, {})
 
     series_index: dict[str, str] = {}
     series_payloads: dict[str, dict] = {}
+    meta_by_id = metadata.set_index("biomarker_id").to_dict(orient="index")
 
     for bid, g in cv_df.groupby("biomarker_id", observed=True):
         g = g.sort_values("age_mid")
         rel_path = safe_series_filename(bid)
+        md = meta_by_id.get(bid, {})
         series_index[bid] = rel_path
         series_payloads[rel_path] = {
             "biomarker_id": bid,
             "biomarker_name": g["biomarker_name"].iloc[0],
-            "display_name": make_display_name(
+            "display_name": str(md.get("display_name") or make_display_name(
                 str(g["biomarker_name"].iloc[0]),
                 str(g["unit"].iloc[0] if "unit" in g.columns else ""),
-            ),
+            )),
             "variable_name": g["variable_name"].iloc[0],
             "unit": g["unit"].iloc[0] if "unit" in g.columns else "",
+            "category": md.get("category", "Other Clinical"),
+            "is_environmental": bool(md.get("is_environmental", False)),
+            "is_core_clinical": bool(md.get("is_core_clinical", False)),
+            "raw_total_n": int(md.get("raw_total_n", 0)),
+            "raw_total_n_by_sex": raw_counts_by_sex.get(str(bid), {}),
+            "raw_sample_cap": int(md.get("raw_sample_cap", raw_sample_n)),
             "points": [
                 {
                     "age_bin": str(r.age_bin),
@@ -755,13 +1457,18 @@ def build_outputs(
                     "mean": float(r.mean),
                     "std": float(r.std) if pd.notna(r.std) else None,
                     "cv": float(r.cv),
-                    "ci95_low": float(r.ci95_low) if pd.notna(r.ci95_low) else None,
-                    "ci95_high": float(r.ci95_high) if pd.notna(r.ci95_high) else None,
+                    "range95_low": float(r.p025) if pd.notna(r.p025) else None,
+                    "range95_high": float(r.p975) if pd.notna(r.p975) else None,
+                    "ci95_low": float(r.p025) if pd.notna(r.p025) else None,
+                    "ci95_high": float(r.p975) if pd.notna(r.p975) else None,
                     "passes_n_threshold": bool(r.passes_n_threshold),
                 }
                 for r in g.itertuples(index=False)
             ],
-            "raw_sample": raw_samples.get(bid, []),
+            "raw_sample": raw_samples.get(str(bid), []),
+            "raw_sample_by_sex": raw_samples_by_sex.get(str(bid), {}),
+            "sex_points": sex_points_by_id.get(str(bid), {}),
+            "sex_metrics": sex_metrics_by_id.get(str(bid), {}),
         }
 
     return metadata, metrics, series_index, series_payloads
@@ -791,7 +1498,7 @@ def main() -> None:
     long_path = Path(args.long)
     long_df = None
     if long_path.exists():
-        long_df = pd.read_parquet(long_path, columns=["biomarker_id", "age_years", "value"])
+        long_df = pd.read_parquet(long_path, columns=["biomarker_id", "age_years", "value", "sex"])
 
     metadata, metrics, series_index, series_payloads = build_outputs(
         cv_df=cv_df,
