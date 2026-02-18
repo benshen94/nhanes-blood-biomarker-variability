@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local runtime files
+*.pid
+*.log
+
+# Large local data artifacts (not for git)
+data/raw/
+data/processed/
+output/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
