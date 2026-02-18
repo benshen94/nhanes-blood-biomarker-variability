@@ -104,7 +104,7 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
   - symmetric trim slider (shared with all tabs)
   - minimum `n` per age bin (bins below threshold are hidden)
 - Visual behavior:
-  - age is stratified into 5-year bins (`20-24` ... `85+`)
+  - age is stratified into 10-year bins (`20-29`, `30-39`, ..., `90+`)
   - each age-bin density is drawn as a stacked ridgeline/waterfall profile
   - profile is segmented into quartiles (`Q1`..`Q4`) using quartile color bands
   - hover shows per-bin `n`, `Q1`, `Median`, and `Q3`

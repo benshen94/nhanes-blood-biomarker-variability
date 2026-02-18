@@ -525,7 +525,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1771438892';
+    const DATA_VERSION = '1771439594';
 
     const selectEl = document.getElementById('biomarker-select');
     const searchEl = document.getElementById('search');
@@ -629,20 +629,14 @@
     };
 
     const WATERFALL_AGE_BINS = [
-      { label: '20-24', lo: 20, hi: 25 },
-      { label: '25-29', lo: 25, hi: 30 },
-      { label: '30-34', lo: 30, hi: 35 },
-      { label: '35-39', lo: 35, hi: 40 },
-      { label: '40-44', lo: 40, hi: 45 },
-      { label: '45-49', lo: 45, hi: 50 },
-      { label: '50-54', lo: 50, hi: 55 },
-      { label: '55-59', lo: 55, hi: 60 },
-      { label: '60-64', lo: 60, hi: 65 },
-      { label: '65-69', lo: 65, hi: 70 },
-      { label: '70-74', lo: 70, hi: 75 },
-      { label: '75-79', lo: 75, hi: 80 },
-      { label: '80-84', lo: 80, hi: 85 },
-      { label: '85+', lo: 85, hi: 200 },
+      { label: '20-29', lo: 20, hi: 30 },
+      { label: '30-39', lo: 30, hi: 40 },
+      { label: '40-49', lo: 40, hi: 50 },
+      { label: '50-59', lo: 50, hi: 60 },
+      { label: '60-69', lo: 60, hi: 70 },
+      { label: '70-79', lo: 70, hi: 80 },
+      { label: '80-89', lo: 80, hi: 90 },
+      { label: '90+', lo: 90, hi: 200 },
     ];
 
     const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
