@@ -96,6 +96,19 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
   - in `Both` cohort mode, female and male histograms are overlaid
   - annotation shows counts of negative/positive rho values so you can quickly see how many biomarkers decrease or increase with age
 
+## Waterfall tab
+- Use `Waterfall` (top tab) to inspect one biomarker’s full value distribution across age strata.
+- Controls:
+  - biomarker search + biomarker selector
+  - cohort: `Pooled`, `Female`, `Male`
+  - symmetric trim slider (shared with all tabs)
+  - minimum `n` per age bin (bins below threshold are hidden)
+- Visual behavior:
+  - age is stratified into 5-year bins (`20-24` ... `85+`)
+  - each age-bin density is drawn as a stacked ridgeline/waterfall profile
+  - profile is segmented into quartiles (`Q1`..`Q4`) using quartile color bands
+  - hover shows per-bin `n`, `Q1`, `Median`, and `Q3`
+
 ## Trend metrics in rankings
 - Spearman is computed between age-bin midpoint and the selected statistic (`CV`, `Mean`, or `Skewness`) after the selected trim mode.
 - `Negative trend` flag is true when:

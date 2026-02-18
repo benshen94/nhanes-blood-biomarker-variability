@@ -196,6 +196,11 @@
     }
     .hist-hint { font-size: 12px; color: var(--muted); }
     #hist-plot { width: 100%; height: 600px; }
+    .waterfall-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .waterfall-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .waterfall-controls select, .waterfall-controls input { margin: 4px 0 0 0; width: 260px; }
+    .waterfall-caption { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    #waterfall-plot { width: 100%; height: 760px; }
 
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
@@ -209,6 +214,7 @@
       #compare-plot { height: 560px; }
       #scatter-plot { height: 560px; }
       #hist-plot { height: 520px; }
+      #waterfall-plot { height: 620px; }
     }
     @media (max-width: 760px) {
       .tab-btn {
@@ -233,6 +239,9 @@
       .hist-controls select,
       .hist-controls input { width: 100%; }
       #hist-category { height: 180px; }
+      .waterfall-controls label { width: 100%; }
+      .waterfall-controls select,
+      .waterfall-controls input { width: 100%; }
     }
     @media (max-width: 520px) {
       .tab-btn { flex: 1 1 100%; }
@@ -242,6 +251,7 @@
       #compare-plot { height: 440px; }
       #scatter-plot { height: 440px; }
       #hist-plot { height: 420px; }
+      #waterfall-plot { height: 500px; }
     }
   </style>
 </head>
@@ -260,6 +270,7 @@
       <button id="tab-compare" class="tab-btn" type="button">Compare Rankings</button>
       <button id="tab-scatter" class="tab-btn" type="button">Scatter Plot</button>
       <button id="tab-hist" class="tab-btn" type="button">Histograms</button>
+      <button id="tab-waterfall" class="tab-btn" type="button">Waterfall</button>
       <button id="tab-info" class="tab-btn" type="button">Info & Methods</button>
     </div>
 
@@ -429,6 +440,36 @@
       </div>
     </div>
 
+    <div id="panel-waterfall" class="panel">
+      <div class="card">
+        <div class="waterfall-controls">
+          <label>Search biomarker
+            <input id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." />
+            <datalist id="waterfall-biomarker-options"></datalist>
+          </label>
+          <label>Biomarker
+            <select id="waterfall-biomarker"></select>
+          </label>
+          <label>Cohort
+            <select id="waterfall-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id="waterfall-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="waterfall-trim-label" class="trim-caption">Using all values (0-100)</div>
+          </label>
+          <label>Min n per age bin
+            <input id="waterfall-min-n" type="number" min="5" max="100" step="5" value="20" />
+            <div class="waterfall-caption">Bins below this n are hidden from waterfall.</div>
+          </label>
+        </div>
+        <div id="waterfall-plot"></div>
+      </div>
+    </div>
+
     <div id="panel-info" class="panel">
       <div class="info-grid">
         <div class="card info-card">
@@ -484,7 +525,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1771431047';
+    const DATA_VERSION = '1771438892';
 
     const selectEl = document.getElementById('biomarker-select');
     const searchEl = document.getElementById('search');
@@ -499,11 +540,13 @@
     const tabCompareBtn = document.getElementById('tab-compare');
     const tabScatterBtn = document.getElementById('tab-scatter');
     const tabHistBtn = document.getElementById('tab-hist');
+    const tabWaterfallBtn = document.getElementById('tab-waterfall');
     const tabInfoBtn = document.getElementById('tab-info');
     const panelDashboard = document.getElementById('panel-dashboard');
     const panelCompare = document.getElementById('panel-compare');
     const panelScatter = document.getElementById('panel-scatter');
     const panelHist = document.getElementById('panel-hist');
+    const panelWaterfall = document.getElementById('panel-waterfall');
     const panelInfo = document.getElementById('panel-info');
     const compareSortEl = document.getElementById('compare-sort');
     const compareStatEl = document.getElementById('compare-stat');
@@ -541,6 +584,13 @@
     const histCatCoreBtn = document.getElementById('hist-cat-core');
     const histCatClearBtn = document.getElementById('hist-cat-clear');
     const histSelectionCountEl = document.getElementById('hist-selection-count');
+    const waterfallSearchEl = document.getElementById('waterfall-search');
+    const waterfallOptionsEl = document.getElementById('waterfall-biomarker-options');
+    const waterfallBiomarkerEl = document.getElementById('waterfall-biomarker');
+    const waterfallCohortEl = document.getElementById('waterfall-cohort');
+    const waterfallTrimSliderEl = document.getElementById('waterfall-trim-slider');
+    const waterfallTrimLabelEl = document.getElementById('waterfall-trim-label');
+    const waterfallMinNEl = document.getElementById('waterfall-min-n');
 
     const CATEGORY_PRIORITY = {
       'Routine - CBC': 1,
@@ -575,7 +625,27 @@
       mode: 'cv',
       currentId: null,
       scatterLabels: false,
+      waterfallId: null,
     };
+
+    const WATERFALL_AGE_BINS = [
+      { label: '20-24', lo: 20, hi: 25 },
+      { label: '25-29', lo: 25, hi: 30 },
+      { label: '30-34', lo: 30, hi: 35 },
+      { label: '35-39', lo: 35, hi: 40 },
+      { label: '40-44', lo: 40, hi: 45 },
+      { label: '45-49', lo: 45, hi: 50 },
+      { label: '50-54', lo: 50, hi: 55 },
+      { label: '55-59', lo: 55, hi: 60 },
+      { label: '60-64', lo: 60, hi: 65 },
+      { label: '65-69', lo: 65, hi: 70 },
+      { label: '70-74', lo: 70, hi: 75 },
+      { label: '75-79', lo: 75, hi: 80 },
+      { label: '80-84', lo: 80, hi: 85 },
+      { label: '85+', lo: 85, hi: 200 },
+    ];
+
+    const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
 
     function formatNum(v, d=4) {
       if (v === null || v === undefined || Number.isNaN(v)) return 'NA';
@@ -624,16 +694,19 @@
       const isCompare = tabName === 'compare';
       const isScatter = tabName === 'scatter';
       const isHist = tabName === 'hist';
+      const isWaterfall = tabName === 'waterfall';
       const isInfo = tabName === 'info';
       tabDashboardBtn.classList.toggle('active', isDash);
       tabCompareBtn.classList.toggle('active', isCompare);
       tabScatterBtn.classList.toggle('active', isScatter);
       tabHistBtn.classList.toggle('active', isHist);
+      tabWaterfallBtn.classList.toggle('active', isWaterfall);
       tabInfoBtn.classList.toggle('active', isInfo);
       panelDashboard.classList.toggle('active', isDash);
       panelCompare.classList.toggle('active', isCompare);
       panelScatter.classList.toggle('active', isScatter);
       panelHist.classList.toggle('active', isHist);
+      panelWaterfall.classList.toggle('active', isWaterfall);
       panelInfo.classList.toggle('active', isInfo);
     }
 
@@ -736,11 +809,13 @@
       compareTrimSliderEl.value = String(pct);
       scatterTrimSliderEl.value = String(pct);
       histTrimSliderEl.value = String(pct);
+      waterfallTrimSliderEl.value = String(pct);
       const txt = trimLabelFromPct(pct);
       trimLabelEl.textContent = txt;
       compareTrimLabelEl.textContent = txt;
       scatterTrimLabelEl.textContent = txt;
       histTrimLabelEl.textContent = txt;
+      waterfallTrimLabelEl.textContent = txt;
       return pct;
     }
 
@@ -833,6 +908,88 @@
       selectEl.value = next;
       state.currentId = next;
       return next;
+    }
+
+    function renderWaterfallOptions() {
+      const opts = state.metadata.slice().sort(
+        (a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || ''))
+      );
+      const prev = state.waterfallId || waterfallBiomarkerEl.value || state.currentId;
+      waterfallBiomarkerEl.innerHTML = '';
+      waterfallOptionsEl.innerHTML = '';
+      for (const o of opts) {
+        const label = `${o.display_name || o.biomarker_name}`;
+        const opt = document.createElement('option');
+        opt.value = o.biomarker_id;
+        opt.textContent = label;
+        waterfallBiomarkerEl.appendChild(opt);
+
+        const dopt = document.createElement('option');
+        dopt.value = label;
+        waterfallOptionsEl.appendChild(dopt);
+      }
+      if (!opts.length) {
+        state.waterfallId = null;
+        return null;
+      }
+      const next = opts.some(o => o.biomarker_id === prev) ? prev : opts[0].biomarker_id;
+      waterfallBiomarkerEl.value = next;
+      state.waterfallId = next;
+      return next;
+    }
+
+    function quantile(values, q) {
+      if (!values || values.length === 0) return NaN;
+      const sorted = values.slice().sort((a, b) => a - b);
+      const pos = (sorted.length - 1) * q;
+      const base = Math.floor(pos);
+      const rest = pos - base;
+      if ((base + 1) < sorted.length) return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+      return sorted[base];
+    }
+
+    function assignAgeBin(age) {
+      const a = Number(age);
+      if (!Number.isFinite(a)) return null;
+      for (let i = 0; i < WATERFALL_AGE_BINS.length; i += 1) {
+        const b = WATERFALL_AGE_BINS[i];
+        if (a >= b.lo && a < b.hi) return b.label;
+      }
+      return null;
+    }
+
+    function gaussianKde(values, xGrid) {
+      const n = values.length;
+      if (n < 2) return xGrid.map(() => 0);
+      const mean = values.reduce((acc, v) => acc + v, 0) / n;
+      const variance = values.reduce((acc, v) => acc + ((v - mean) ** 2), 0) / Math.max(1, n - 1);
+      const sd = Math.sqrt(Math.max(variance, 1e-12));
+      const q25 = quantile(values, 0.25);
+      const q75 = quantile(values, 0.75);
+      const iqr = Number.isFinite(q25) && Number.isFinite(q75) ? (q75 - q25) : sd;
+      let sigma = Math.min(sd, iqr / 1.34);
+      if (!Number.isFinite(sigma) || sigma <= 0) sigma = sd;
+      if (!Number.isFinite(sigma) || sigma <= 0) sigma = Math.max(1e-3, Math.abs(mean) * 0.05);
+      let h = 0.9 * sigma * (n ** -0.2);
+      if (!Number.isFinite(h) || h <= 0) h = Math.max(1e-3, sigma * 0.3);
+      const norm = 1 / (Math.sqrt(2 * Math.PI) * h * n);
+      return xGrid.map((x) => {
+        let sum = 0;
+        for (const v of values) {
+          const z = (x - v) / h;
+          sum += Math.exp(-0.5 * z * z);
+        }
+        return norm * sum;
+      });
+    }
+
+    function rangeMask(xs, lo, hi) {
+      const idx = [];
+      for (let i = 0; i < xs.length; i += 1) {
+        const x = xs[i];
+        if (x >= lo && x <= hi) idx.push(i);
+      }
+      return idx;
     }
 
     function renderMetricRows(title, m, rawTotal, rawCap, statKey) {
@@ -1402,6 +1559,173 @@
       }, { responsive: true, displaylogo: false });
     }
 
+    async function applyWaterfallSearch() {
+      const q = waterfallSearchEl.value.toLowerCase().trim();
+      if (!q) return;
+      const hit = state.metadata.find(
+        m => `${m.display_name || ''} ${m.biomarker_name || ''} ${m.variable_name || ''}`
+          .toLowerCase()
+          .includes(q)
+      );
+      if (!hit) return;
+      waterfallBiomarkerEl.value = hit.biomarker_id;
+      state.waterfallId = hit.biomarker_id;
+      await renderWaterfallPlot(hit.biomarker_id);
+    }
+
+    async function renderWaterfallPlot(biomarkerId = null) {
+      const id = biomarkerId || waterfallBiomarkerEl.value || state.currentId;
+      if (!id) return;
+      const s = await loadSeries(id);
+      if (!s) return;
+      state.waterfallId = id;
+
+      const cohort = waterfallCohortEl.value || 'pooled';
+      const trimPct = normalizeTrimPct(waterfallTrimSliderEl.value);
+      const trimLo = trimPct / 100;
+      const trimHi = 1 - trimLo;
+      const minN = Math.max(5, Math.min(1000, Number(waterfallMinNEl.value || 20)));
+      waterfallMinNEl.value = String(minN);
+
+      let raw = [];
+      if (cohort === 'female' || cohort === 'male') {
+        raw = (s.raw_sample_by_sex && s.raw_sample_by_sex[cohort]) ? s.raw_sample_by_sex[cohort] : [];
+      } else {
+        raw = s.raw_sample || [];
+      }
+
+      const bins = {};
+      for (const b of WATERFALL_AGE_BINS) bins[b.label] = [];
+      for (const p of raw) {
+        const age = Number(p.age_years);
+        const value = Number(p.value);
+        if (!Number.isFinite(age) || !Number.isFinite(value)) continue;
+        const label = assignAgeBin(age);
+        if (!label) continue;
+        bins[label].push(value);
+      }
+
+      const rows = [];
+      for (const b of WATERFALL_AGE_BINS) {
+        const vals = (bins[b.label] || []).slice().sort((a, z) => a - z);
+        if (vals.length < minN) continue;
+        let trimmed = vals;
+        if (trimPct > 0) {
+          const loCut = quantile(vals, trimLo);
+          const hiCut = quantile(vals, trimHi);
+          trimmed = vals.filter(v => v >= loCut && v <= hiCut);
+        }
+        if (trimmed.length < minN) continue;
+        const q1 = quantile(trimmed, 0.25);
+        const q2 = quantile(trimmed, 0.50);
+        const q3 = quantile(trimmed, 0.75);
+        rows.push({ label: b.label, values: trimmed, q1, q2, q3, n: trimmed.length });
+      }
+
+      if (!rows.length) {
+        Plotly.newPlot('waterfall-plot', [], {
+          title: 'No age bins pass minimum n for this biomarker/cohort',
+          xaxis: { title: s.display_name || s.biomarker_name || id },
+          yaxis: { title: 'Age bin' },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
+      let globalMin = Infinity;
+      let globalMax = -Infinity;
+      for (const r of rows) {
+        const lo = Math.min(...r.values);
+        const hi = Math.max(...r.values);
+        if (lo < globalMin) globalMin = lo;
+        if (hi > globalMax) globalMax = hi;
+      }
+      const span = Math.max(1e-6, globalMax - globalMin);
+      const pad = span * 0.08;
+      const xMin = globalMin - pad;
+      const xMax = globalMax + pad;
+      const gridN = 180;
+      const xGrid = Array.from({ length: gridN }, (_, i) => xMin + (i * (xMax - xMin) / (gridN - 1)));
+
+      const withDensity = rows.map(r => ({ ...r, density: gaussianKde(r.values, xGrid) }));
+      let maxD = 0;
+      for (const r of withDensity) {
+        for (const d of r.density) if (d > maxD) maxD = d;
+      }
+      const amp = 0.82;
+
+      const traces = [];
+      const quartNames = ['Q1', 'Q2', 'Q3', 'Q4'];
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+
+      for (let rowIdx = 0; rowIdx < withDensity.length; rowIdx += 1) {
+        const r = withDensity[rowIdx];
+        const yBase = rowIdx;
+        const yCurve = r.density.map(d => yBase + (maxD > 0 ? (d / maxD) * amp : 0));
+        const bounds = [Number.NEGATIVE_INFINITY, r.q1, r.q2, r.q3, Number.POSITIVE_INFINITY];
+
+        for (let q = 0; q < 4; q += 1) {
+          const lo = bounds[q];
+          const hi = bounds[q + 1];
+          const idx = rangeMask(xGrid, lo, hi);
+          if (idx.length < 2) continue;
+          const xs = idx.map(i => xGrid[i]);
+          const ys = idx.map(i => yCurve[i]);
+          traces.push({
+            type: 'scatter',
+            mode: 'lines',
+            x: xs.concat(xs.slice().reverse()),
+            y: ys.concat(xs.map(() => yBase).reverse()),
+            fill: 'toself',
+            fillcolor: WATERFALL_QUARTILE_COLORS[q],
+            line: { color: 'rgba(0,0,0,0)' },
+            name: quartNames[q],
+            legendgroup: quartNames[q],
+            showlegend: rowIdx === 0,
+            opacity: 0.96,
+            hovertemplate: `${r.label}<br>${quartNames[q]}<br>n=${r.n}<br>Q1=${formatNum(r.q1, 4)}<br>Median=${formatNum(r.q2, 4)}<br>Q3=${formatNum(r.q3, 4)}<extra></extra>`,
+          });
+        }
+
+        traces.push({
+          type: 'scatter',
+          mode: 'lines',
+          x: xGrid,
+          y: yCurve,
+          line: { color: '#111827', width: 1.6 },
+          hovertemplate: `${r.label}<br>n=${r.n}<br>Q1=${formatNum(r.q1, 4)}<br>Median=${formatNum(r.q2, 4)}<br>Q3=${formatNum(r.q3, 4)}<extra>density</extra>`,
+          name: `${r.label} density`,
+          showlegend: false,
+        });
+      }
+
+      Plotly.newPlot('waterfall-plot', traces, {
+        title: `${s.display_name || s.biomarker_name} — age-stratified waterfall (${cohort})`,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.1,
+          showarrow: false,
+          text: `Outliers: ${trimLabelFromPct(trimPct)}, min n/bin: ${minN}, bins shown: ${withDensity.length}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: { title: 'Biomarker value', tickfont: { size: mobile ? 10 : 12 } },
+        yaxis: {
+          title: 'Age bin',
+          tickmode: 'array',
+          tickvals: withDensity.map((_, i) => i),
+          ticktext: withDensity.map(r => r.label),
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        legend: { orientation: 'v', title: { text: 'Quartiles' } },
+        margin: mobile ? { t: 72, l: 72, r: 12, b: 52 } : { t: 72, l: 88, r: 16, b: 60 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
+    }
+
     function renderRankTable() {
       const tbl = document.getElementById('rank-table');
       const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
@@ -1534,6 +1858,8 @@
       );
       if (hit) {
         selectEl.value = hit.biomarker_id;
+        waterfallBiomarkerEl.value = hit.biomarker_id;
+        state.waterfallId = hit.biomarker_id;
         renderMetrics(hit.biomarker_id);
         await renderPlot(hit.biomarker_id);
       }
@@ -1575,11 +1901,13 @@
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
       renderScatterCategoryOptions(false);
       renderHistogramCategoryOptions(false);
+      renderWaterfallOptions();
 
       await refreshDashboardFromFilters();
       renderComparePlot();
       renderScatterPlot();
       renderHistogramPlot();
+      await renderWaterfallPlot(state.waterfallId);
 
       statusChip.textContent = `Ready: ${state.metadata.length} biomarkers indexed`;
 
@@ -1596,6 +1924,10 @@
         setTopTab('hist');
         renderHistogramPlot();
       });
+      tabWaterfallBtn.addEventListener('click', async () => {
+        setTopTab('waterfall');
+        await renderWaterfallPlot(state.waterfallId);
+      });
       tabInfoBtn.addEventListener('click', () => setTopTab('info'));
       compareSortEl.addEventListener('change', renderComparePlot);
       compareStatEl.addEventListener('change', renderComparePlot);
@@ -1605,10 +1937,12 @@
         cohortFilterEl.value = compareCohortEl.value;
         scatterCohortEl.value = compareCohortEl.value;
         histCohortEl.value = compareCohortEl.value;
+        if (compareCohortEl.value !== 'both') waterfallCohortEl.value = compareCohortEl.value;
         renderRankTable();
         renderComparePlot();
         renderScatterPlot();
         renderHistogramPlot();
+        if (compareCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
         if (state.currentId) await renderPlot(state.currentId);
       });
       compareTrimSliderEl.addEventListener('input', () => {
@@ -1618,6 +1952,7 @@
         renderComparePlot();
         renderScatterPlot();
         renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
       });
       compareIncludeEnvEl.addEventListener('change', () => {
         renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, compareCategoryEl.value);
@@ -1626,6 +1961,10 @@
       selectEl.addEventListener('change', async () => {
         const id = selectEl.value;
         state.currentId = id;
+        if (Array.from(waterfallBiomarkerEl.options).some(o => o.value === id)) {
+          waterfallBiomarkerEl.value = id;
+          state.waterfallId = id;
+        }
         renderMetrics(id);
         await renderPlot(id);
       });
@@ -1640,10 +1979,12 @@
         compareCohortEl.value = cohortFilterEl.value;
         scatterCohortEl.value = cohortFilterEl.value;
         histCohortEl.value = cohortFilterEl.value;
+        if (cohortFilterEl.value !== 'both') waterfallCohortEl.value = cohortFilterEl.value;
         renderRankTable();
         renderComparePlot();
         renderScatterPlot();
         renderHistogramPlot();
+        if (cohortFilterEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
         if (state.currentId) await renderPlot(state.currentId);
       });
       trimSliderEl.addEventListener('input', async () => {
@@ -1652,6 +1993,7 @@
         renderComparePlot();
         renderScatterPlot();
         renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
         if (state.currentId) await renderPlot(state.currentId);
       });
       showLowNEl.addEventListener('change', async () => {
@@ -1678,9 +2020,11 @@
         cohortFilterEl.value = scatterCohortEl.value;
         compareCohortEl.value = scatterCohortEl.value;
         histCohortEl.value = scatterCohortEl.value;
+        if (scatterCohortEl.value !== 'both') waterfallCohortEl.value = scatterCohortEl.value;
         renderRankTable();
         renderComparePlot();
         renderHistogramPlot();
+        if (scatterCohortEl.value !== 'both') renderWaterfallPlot(state.waterfallId);
         if (state.currentId) renderPlot(state.currentId);
         renderScatterPlot();
       });
@@ -1689,6 +2033,7 @@
         renderRankTable();
         renderComparePlot();
         renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
         if (state.currentId) renderPlot(state.currentId);
         renderScatterPlot();
       });
@@ -1726,10 +2071,12 @@
         cohortFilterEl.value = histCohortEl.value;
         compareCohortEl.value = histCohortEl.value;
         scatterCohortEl.value = histCohortEl.value;
+        if (histCohortEl.value !== 'both') waterfallCohortEl.value = histCohortEl.value;
         renderRankTable();
         renderComparePlot();
         renderScatterPlot();
         renderHistogramPlot();
+        if (histCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
         if (state.currentId) await renderPlot(state.currentId);
       });
       histTrimSliderEl.addEventListener('input', () => {
@@ -1738,6 +2085,7 @@
         renderComparePlot();
         renderScatterPlot();
         renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
         if (state.currentId) renderPlot(state.currentId);
       });
       histIncludeEnvEl.addEventListener('change', () => {
@@ -1765,15 +2113,52 @@
         histSelectionCountEl.textContent = `0/${cats.length} categories selected`;
         renderHistogramPlot();
       });
+      waterfallBiomarkerEl.addEventListener('change', async () => {
+        const id = waterfallBiomarkerEl.value;
+        state.waterfallId = id;
+        if (Array.from(selectEl.options).some(o => o.value === id)) {
+          selectEl.value = id;
+          state.currentId = id;
+        }
+        await renderWaterfallPlot(id);
+      });
+      waterfallSearchEl.addEventListener('change', applyWaterfallSearch);
+      waterfallSearchEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyWaterfallSearch(); });
+      waterfallCohortEl.addEventListener('change', async () => {
+        cohortFilterEl.value = waterfallCohortEl.value;
+        compareCohortEl.value = waterfallCohortEl.value;
+        scatterCohortEl.value = waterfallCohortEl.value;
+        histCohortEl.value = waterfallCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (state.currentId) await renderPlot(state.currentId);
+        await renderWaterfallPlot(state.waterfallId);
+      });
+      waterfallTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(waterfallTrimSliderEl.value);
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (state.currentId) renderPlot(state.currentId);
+        renderWaterfallPlot(state.waterfallId);
+      });
+      waterfallMinNEl.addEventListener('change', () => {
+        renderWaterfallPlot(state.waterfallId);
+      });
       window.addEventListener('resize', () => {
         const plotEl = document.getElementById('plot');
         const compareEl = document.getElementById('compare-plot');
         const scatterEl = document.getElementById('scatter-plot');
         const histEl = document.getElementById('hist-plot');
+        const waterfallEl = document.getElementById('waterfall-plot');
         if (plotEl) Plotly.Plots.resize(plotEl);
         if (compareEl) Plotly.Plots.resize(compareEl);
         if (scatterEl) Plotly.Plots.resize(scatterEl);
         if (histEl) Plotly.Plots.resize(histEl);
+        if (waterfallEl) Plotly.Plots.resize(waterfallEl);
       });
     }
 
