@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.stats import skew as scipy_skew
 from scipy.stats import spearmanr
 
 from nhanes_common import ensure_dir
@@ -211,7 +212,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     @media (max-width: 520px) {
       .tab-btn { flex: 1 1 100%; }
       .mode-buttons { flex-wrap: wrap; }
-      .mode-btn { flex: 1 1 calc(50% - 8px); }
+      .mode-btn { flex: 1 1 calc(33.333% - 8px); }
       #plot { height: 340px; }
       #compare-plot { height: 440px; }
     }
@@ -239,6 +240,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <div class=\"mode-buttons\">
             <button id=\"mode-cv\" class=\"mode-btn active\" type=\"button\">Plot CV</button>
             <button id=\"mode-mean\" class=\"mode-btn\" type=\"button\">Plot Median</button>
+            <button id=\"mode-skew\" class=\"mode-btn\" type=\"button\">Plot Skewness</button>
           </div>
 
           <label for=\"search\">Search Biomarker</label>
@@ -271,7 +273,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         <div class=\"card\">
           <div id=\"plot\"></div>
-          <h3>Biomarkers Ranked by Most Negative Spearman Rho</h3>
+          <h3 id=\"rank-title\">Biomarkers Ranked by Most Negative Spearman Rho (CV vs age)</h3>
           <div class=\"table-wrap\"><table id=\"rank-table\"></table></div>
         </div>
       </div>
@@ -285,6 +287,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               <option value=\"negative\" selected>Most Negative Spearman</option>
               <option value=\"positive\">Most Positive Spearman</option>
               <option value=\"absolute\">Largest Absolute Spearman</option>
+            </select>
+          </label>
+          <label>Statistic
+            <select id=\"compare-stat\">
+              <option value=\"cv\" selected>CV vs age</option>
+              <option value=\"mean\">Mean vs age</option>
+              <option value=\"skewness\">Skewness vs age</option>
             </select>
           </label>
           <label>Category
@@ -343,6 +352,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <ul>
             <li><b>Plot CV</b>: age-binned CV trend.</li>
             <li><b>Plot Median</b>: age-binned median with interquartile band (25th-75th percentile) and raw scatter sample.</li>
+            <li><b>Plot Skewness</b>: age-binned skewness trend (shape/asymmetry of per-bin values).</li>
             <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
             <li>Optional robust mode uses configurable symmetric trimming within each age bin (for example 10-90, 20-80, 25-75) before computing summaries.</li>
             <li>Raw scatter is sampled for performance and readability.</li>
@@ -373,6 +383,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const showLowNEl = document.getElementById('show-low-n');
     const modeCvBtn = document.getElementById('mode-cv');
     const modeMeanBtn = document.getElementById('mode-mean');
+    const modeSkewBtn = document.getElementById('mode-skew');
     const statusChip = document.getElementById('status-chip');
 
     const tabDashboardBtn = document.getElementById('tab-dashboard');
@@ -382,6 +393,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const panelCompare = document.getElementById('panel-compare');
     const panelInfo = document.getElementById('panel-info');
     const compareSortEl = document.getElementById('compare-sort');
+    const compareStatEl = document.getElementById('compare-stat');
     const compareTopNEl = document.getElementById('compare-topn');
     const categoryFilterEl = document.getElementById('category-filter');
     const includeEnvEl = document.getElementById('include-env');
@@ -393,6 +405,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const trimLabelEl = document.getElementById('trim-label');
     const compareTrimSliderEl = document.getElementById('compare-trim-slider');
     const compareTrimLabelEl = document.getElementById('compare-trim-label');
+    const rankTitleEl = document.getElementById('rank-title');
 
     const CATEGORY_PRIORITY = {
       'Routine - CBC': 1,
@@ -456,6 +469,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const p = normalizeTrimPct(pct);
       if (p <= 0) return 'Using all values (0-100)';
       return `${p}% each tail kept out -> using ${p}-${100 - p} percentile band`;
+    }
+
+    function modeToStat(mode) {
+      if (mode === 'mean') return 'mean';
+      if (mode === 'skewness') return 'skewness';
+      return 'cv';
+    }
+
+    function statLabel(statKey) {
+      if (statKey === 'mean') return 'Mean';
+      if (statKey === 'skewness') return 'Skewness';
+      return 'CV';
     }
 
     function setTopTab(tabName) {
@@ -545,6 +570,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             is_core_clinical: Boolean(md.is_core_clinical),
             trends: m.trends || {},
             sex_metrics_by_mode: m.sex_metrics || {},
+            trends_by_stat: m.trends_by_stat || {
+              cv: m.trends || {},
+              mean: m.mean_trends || {},
+              skewness: m.skewness_trends || {},
+            },
+            sex_metrics_by_stat: m.sex_metrics_by_stat || {
+              cv: m.sex_metrics || {},
+              mean: m.sex_mean_metrics || {},
+              skewness: m.sex_skewness_metrics || {},
+            },
           };
         })
         .filter(m => metadataPasses(m, compareCategoryEl.value, compareIncludeEnvEl.checked));
@@ -578,17 +613,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       return next;
     }
 
-    function renderMetricRows(title, m, rawTotal, rawCap) {
+    function renderMetricRows(title, m, rawTotal, rawCap, statKey) {
       if (!m) return `<div class="metric"><b>${title}:</b> no metrics</div>`;
-      const flagCls = m.decline_flag ? 'flag-true' : 'flag-false';
+      const isNegative = Boolean(m.negative_flag ?? m.decline_flag);
+      const flagCls = isNegative ? 'flag-true' : 'flag-false';
+      const stat = statLabel(statKey);
       return `
         <div class="metric"><b>${title} bins:</b> ${m.n_bins ?? 'NA'}</div>
-        <div class="metric"><b>${title} Spearman rho:</b> ${formatNum(m.spearman_rho, 4)}</div>
+        <div class="metric"><b>${title} Spearman rho (${stat} vs age):</b> ${formatNum(m.spearman_rho, 4)}</div>
         <div class="metric"><b>${title} Spearman p:</b> ${formatNum(m.spearman_p, 5)}</div>
-        <div class="metric"><b>${title} Slope CV/year:</b> ${formatNum(m.linear_slope_cv_per_year, 6)}</div>
-        <div class="metric"><b>${title} Slope log(CV)/year:</b> ${formatNum(m.linear_slope_logcv_per_year, 6)}</div>
+        <div class="metric"><b>${title} Slope ${stat}/year:</b> ${formatNum(m.linear_slope_per_year ?? m.linear_slope_cv_per_year, 6)}</div>
+        <div class="metric"><b>${title} Slope log(${stat})/year:</b> ${formatNum(m.linear_slope_log_per_year ?? m.linear_slope_logcv_per_year, 6)}</div>
         <div class="metric"><b>${title} Raw points:</b> up to ${rawCap ?? 'NA'} sampled of ${rawTotal ?? 'NA'} total</div>
-        <div class="metric"><b>${title} Decline flag:</b> <span class="${flagCls}">${m.decline_flag}</span></div>
+        <div class="metric"><b>${title} Negative-trend flag:</b> <span class="${flagCls}">${isNegative}</span></div>
       `;
     }
 
@@ -603,24 +640,37 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       const cohort = cohortFilterEl.value || 'pooled';
       const trimMode = trimPctToMode(trimSliderEl.value);
-      const trendByMode = pooled.trends || {};
+      const statKey = modeToStat(state.mode);
+      const trendsByStat = pooled.trends_by_stat || {
+        cv: pooled.trends || {},
+        mean: pooled.mean_trends || {},
+        skewness: pooled.skewness_trends || {},
+      };
+      const sexByStat = pooled.sex_metrics_by_stat || {
+        cv: pooled.sex_metrics || {},
+        mean: pooled.sex_mean_metrics || {},
+        skewness: pooled.sex_skewness_metrics || {},
+      };
+      const trendByMode = trendsByStat[statKey] || {};
       const pooledMetric = trendByMode[trimMode] || trendByMode.all || null;
-      const sexMetricsByMode = pooled.sex_metrics || {};
+      const sexMetricsByMode = sexByStat[statKey] || {};
       const sexMetrics = sexMetricsByMode[trimMode] || sexMetricsByMode.all || {};
       const rawBySex = (series && series.raw_total_n_by_sex) ? series.raw_total_n_by_sex : {};
       const rawCap = md.raw_sample_cap ?? 'NA';
       const trimLabel = trimLabelFromPct(trimSliderEl.value);
+      const stat = statLabel(statKey);
 
       let html = `<div class="metric"><b>Category:</b> ${md.category || 'Other Clinical'}</div>`;
       html += `<div class="metric"><b>Outlier mode:</b> ${trimLabel}</div>`;
+      html += `<div class="metric"><b>Ranking/stat view:</b> ${stat} vs age</div>`;
       if (cohort === 'both') {
-        html += renderMetricRows('Female', sexMetrics.female || null, rawBySex.female ?? 'NA', rawCap);
-        html += renderMetricRows('Male', sexMetrics.male || null, rawBySex.male ?? 'NA', rawCap);
+        html += renderMetricRows('Female', sexMetrics.female || null, rawBySex.female ?? 'NA', rawCap, statKey);
+        html += renderMetricRows('Male', sexMetrics.male || null, rawBySex.male ?? 'NA', rawCap, statKey);
       } else if (cohort === 'female' || cohort === 'male') {
         const m = sexMetrics[cohort] || null;
-        html += renderMetricRows(cohort === 'female' ? 'Female' : 'Male', m, rawBySex[cohort] ?? 'NA', rawCap);
+        html += renderMetricRows(cohort === 'female' ? 'Female' : 'Male', m, rawBySex[cohort] ?? 'NA', rawCap, statKey);
       } else {
-        html += renderMetricRows('Pooled', pooledMetric, md.raw_total_n ?? 'NA', rawCap);
+        html += renderMetricRows('Pooled', pooledMetric, md.raw_total_n ?? 'NA', rawCap, statKey);
       }
       box.innerHTML = html;
     }
@@ -629,6 +679,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       state.mode = mode;
       modeCvBtn.classList.toggle('active', mode === 'cv');
       modeMeanBtn.classList.toggle('active', mode === 'mean');
+      modeSkewBtn.classList.toggle('active', mode === 'skewness');
     }
 
     function pickPointsByCohort(s, cohort, trimMode) {
@@ -647,11 +698,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       return s.raw_sample || [];
     }
 
-    function lineTrace(points, color, label, modeName) {
+    function lineTrace(points, color, label, valueField, hoverTextFn=null) {
       return {
         x: points.map(p => p.age_mid),
-        y: points.map(p => modeName === 'cv' ? p.cv : p.mean),
-        text: points.map(p => `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}`),
+        y: points.map(p => p[valueField]),
+        text: points.map(p => hoverTextFn ? hoverTextFn(p) : `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}<br>skewness=${formatNum(p.skewness, 4)}`),
         mode: 'lines+markers',
         type: 'scatter',
         marker: { size: points.map(p => p.passes_n_threshold ? 8 : 5), color },
@@ -695,20 +746,39 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       };
       for (const c of selectedCohorts) {
         const pointsRaw = pickPointsByCohort(s, c, trimMode);
-        const points = showLow ? pointsRaw : pointsRaw.filter(p => p.passes_n_threshold);
+        let points = showLow ? pointsRaw : pointsRaw.filter(p => p.passes_n_threshold);
         if (!points || points.length === 0) continue;
 
         if (state.mode === 'cv') {
+          points = points.filter(p => p.cv !== null && p.cv !== undefined && Number.isFinite(Number(p.cv)));
+          if (points.length === 0) continue;
           traces.push(lineTrace(points, COHORT_COLORS[c], `${cohortLabel[c]} CV`, 'cv'));
+          continue;
+        }
+
+        if (state.mode === 'skewness') {
+          points = points.filter(p => p.skewness !== null && p.skewness !== undefined && Number.isFinite(Number(p.skewness)));
+          if (points.length === 0) continue;
+          traces.push(lineTrace(
+            points,
+            COHORT_COLORS[c],
+            `${cohortLabel[c]} Skewness`,
+            'skewness',
+            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>skewness=${formatNum(p.skewness, 4)}<br>median=${formatNum(p.median, 4)}<br>mean=${formatNum(p.mean, 4)}<br>cv=${formatNum(p.cv, 4)}`
+          ));
           continue;
         }
 
         const ci = ciBandTrace(points, band95[c], `${cohortLabel[c]} IQR (25th-75th)`);
         if (ci) traces.push(ci);
         traces.push({
-          ...lineTrace(points, COHORT_COLORS[c], `${cohortLabel[c]} Median (binned)`, 'mean'),
-          y: points.map(p => p.median),
-          text: points.map(p => `age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>q25=${formatNum(p.q25, 4)}<br>q75=${formatNum(p.q75, 4)}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}`),
+          ...lineTrace(
+            points,
+            COHORT_COLORS[c],
+            `${cohortLabel[c]} Median (binned)`,
+            'median',
+            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>q25=${formatNum(p.q25, 4)}<br>q75=${formatNum(p.q75, 4)}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}<br>skewness=${formatNum(p.skewness, 4)}`
+          ),
         });
 
         const raw = pickRawByCohort(s, c);
@@ -730,7 +800,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       Plotly.newPlot('plot', traces, {
         title,
         xaxis: { title: 'Age (years)', tickfont: { size: mobile ? 10 : 12 } },
-        yaxis: { title: state.mode === 'cv' ? 'Coefficient of Variation (CV)' : 'Median Biomarker Value', tickfont: { size: mobile ? 10 : 12 } },
+        yaxis: {
+          title: state.mode === 'cv'
+            ? 'Coefficient of Variation (CV)'
+            : state.mode === 'skewness'
+              ? 'Skewness (binned)'
+              : 'Median Biomarker Value',
+          tickfont: { size: mobile ? 10 : 12 }
+        },
         margin: mobile ? { t: 52, l: 46, r: 10, b: 44 } : { t: 56, l: 64, r: 18, b: 54 },
         paper_bgcolor: '#ffffff',
         plot_bgcolor: '#ffffff',
@@ -743,11 +820,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       }, { responsive: true, displaylogo: false });
     }
 
-    function metricsForView(rows, cohort, trimMode) {
+    function metricsForView(rows, cohort, trimMode, statKey='cv') {
       const out = [];
       for (const rec of rows) {
-        const trends = rec.trends || {};
-        const sexByMode = rec.sex_metrics_by_mode || {};
+        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
+        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+        const trends = trendsByStat[statKey] || {};
+        const sexByMode = sexByStat[statKey] || {};
         const tr = trends[trimMode] || trends.all || null;
         const sexTr = sexByMode[trimMode] || sexByMode.all || {};
 
@@ -763,7 +842,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             rho: (rhoF + rhoM) / 2,
             p: null,
             n_bins: Math.min(Number(fm.n_bins || 0), Number(ml.n_bins || 0)),
-            decline_flag: Boolean(fm.decline_flag && ml.decline_flag),
+            decline_flag: Boolean((fm.negative_flag ?? fm.decline_flag) && (ml.negative_flag ?? ml.decline_flag)),
             female_metric: fm,
             male_metric: ml,
             rho_female: rhoF,
@@ -776,15 +855,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (!m) continue;
         const rho = Number(m.spearman_rho);
         if (!Number.isFinite(rho)) continue;
-        out.push({
-          ...rec,
-          rho,
-          p: m.spearman_p,
-          n_bins: m.n_bins,
-          decline_flag: Boolean(m.decline_flag),
-          metric: m,
-        });
-      }
+          out.push({
+            ...rec,
+            rho,
+            p: m.spearman_p,
+            n_bins: m.n_bins,
+            decline_flag: Boolean(m.negative_flag ?? m.decline_flag),
+            metric: m,
+          });
+        }
       return out;
     }
 
@@ -793,13 +872,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
       const cohort = cohortFilterEl.value || 'pooled';
       const trimMode = trimPctToMode(trimSliderEl.value);
+      const statKey = modeToStat(state.mode);
+      const stat = statLabel(statKey);
+      if (rankTitleEl) rankTitleEl.textContent = `Biomarkers Ranked by Most Negative Spearman Rho (${stat} vs age)`;
       const ranked = metricsForView(
         getCompareMetrics().filter(r => visible.has(r.biomarker_id)),
         cohort,
-        trimMode
+        trimMode,
+        statKey
       ).sort((a, b) => (a.rho ?? 999) - (b.rho ?? 999));
       const top = ranked.slice(0, 200);
-      let html = '<thead><tr><th>Biomarker</th><th>Spearman rho</th><th>p</th><th>Decline</th></tr></thead><tbody>';
+      let html = `<thead><tr><th>Biomarker</th><th>Spearman rho (${stat})</th><th>p</th><th>Negative trend</th></tr></thead><tbody>`;
       for (const r of top) {
         html += `<tr data-id="${r.biomarker_id}"><td>${r.display_name}</td><td>${formatNum(r.rho, 4)}</td><td>${formatNum(r.p, 5)}</td><td>${r.decline_flag}</td></tr>`;
       }
@@ -819,13 +902,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     function renderComparePlot() {
       const mode = compareSortEl.value;
+      const statKey = compareStatEl.value || 'cv';
+      const stat = statLabel(statKey);
       const cohort = compareCohortEl.value || 'pooled';
       const trimMode = trimPctToMode(compareTrimSliderEl.value);
       const topN = Math.max(10, Math.min(200, Number(compareTopNEl.value || 40)));
       const trimLabel = trimLabelFromPct(compareTrimSliderEl.value);
       compareTopNEl.value = String(topN);
 
-      let ranked = metricsForView(getCompareMetrics(), cohort, trimMode).slice();
+      let ranked = metricsForView(getCompareMetrics(), cohort, trimMode, statKey).slice();
       const rankVal = (m) => (mode === 'absolute' ? Math.abs(m.rho) : m.rho);
       if (mode === 'negative') ranked.sort((a, b) => rankVal(a) - rankVal(b));
       if (mode === 'positive') ranked.sort((a, b) => rankVal(b) - rankVal(a));
@@ -835,7 +920,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const y = ranked.map(r => r.display_name).reverse();
       const categoryLabel = compareCategoryEl.options[compareCategoryEl.selectedIndex]?.textContent || 'All';
       let traces = [];
-      let xTitle = 'Spearman rho (Age vs CV)';
+      let xTitle = `Spearman rho (Age vs ${stat})`;
 
       if (cohort === 'both') {
         const xF = ranked.map(r => Number(r.rho_female)).reverse();
@@ -862,7 +947,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             hovertemplate: 'Male rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>id=%{customdata[2]}<br>category=%{customdata[3]}<extra></extra>',
           }
         ];
-        xTitle = 'Spearman rho (female vs male, Age vs CV)';
+        xTitle = `Spearman rho (female vs male, Age vs ${stat})`;
       } else {
         const x = ranked.map(r => Number(r.rho)).reverse();
         const custom = ranked.map(r => {
@@ -876,23 +961,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           x,
           marker: { color: colors },
           customdata: custom,
-          hovertemplate: 'rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>decline=%{customdata[2]}<br>id=%{customdata[3]}<br>category=%{customdata[4]}<extra></extra>',
+          hovertemplate: 'rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>negative_trend=%{customdata[2]}<br>id=%{customdata[3]}<br>category=%{customdata[4]}<extra></extra>',
           name: cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled',
         }];
       }
 
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       Plotly.newPlot('compare-plot', traces, {
-        title: mode === 'negative' ? `Top ${topN} Most Negative Spearman Biomarkers` :
-               mode === 'positive' ? `Top ${topN} Most Positive Spearman Biomarkers` :
-               `Top ${topN} Largest |Spearman| Biomarkers`,
+        title: mode === 'negative' ? `Top ${topN} Most Negative Spearman Biomarkers (${stat} vs age)` :
+               mode === 'positive' ? `Top ${topN} Most Positive Spearman Biomarkers (${stat} vs age)` :
+               `Top ${topN} Largest |Spearman| Biomarkers (${stat} vs age)`,
         annotations: [{
           xref: 'paper',
           yref: 'paper',
           x: 1,
           y: 1.12,
           showarrow: false,
-          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}, outliers: ${trimLabel}`,
+          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}, statistic: ${stat}, outliers: ${trimLabel}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
         barmode: cohort === 'both' ? 'group' : 'relative',
@@ -966,6 +1051,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       });
       tabInfoBtn.addEventListener('click', () => setTopTab('info'));
       compareSortEl.addEventListener('change', renderComparePlot);
+      compareStatEl.addEventListener('change', renderComparePlot);
       compareTopNEl.addEventListener('change', renderComparePlot);
       compareCategoryEl.addEventListener('change', renderComparePlot);
       compareCohortEl.addEventListener('change', renderComparePlot);
@@ -1017,10 +1103,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       });
       modeCvBtn.addEventListener('click', async () => {
         setMode('cv');
+        renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });
       modeMeanBtn.addEventListener('click', async () => {
         setMode('mean');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeSkewBtn.addEventListener('click', async () => {
+        setMode('skewness');
+        renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });
       window.addEventListener('resize', () => {
@@ -1355,20 +1448,26 @@ def compute_binned_long(
             q75=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 75)),
             p10=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 10)),
             p90=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 90)),
+            skewness=lambda s: float(scipy_skew(s.to_numpy(dtype=float), bias=False, nan_policy="omit")),
         )
         .reset_index()
     )
     grouped["cv"] = grouped["std"] / grouped["mean"].abs()
     grouped.loc[grouped["mean"].abs() < 1e-8, "cv"] = np.nan
     grouped["passes_n_threshold"] = grouped["n"] >= 30
-    grouped = grouped.dropna(subset=["cv"]).reset_index(drop=True)
-    return grouped
+    return grouped.reset_index(drop=True)
 
 
-def trend_from_points(points: list[dict]) -> dict:
-    eligible = [p for p in points if bool(p.get("passes_n_threshold")) and p.get("cv") is not None]
+def trend_from_points(points: list[dict], value_key: str) -> dict:
+    eligible = [
+        p
+        for p in points
+        if bool(p.get("passes_n_threshold"))
+        and p.get(value_key) is not None
+        and pd.notna(p.get(value_key))
+    ]
     x = np.asarray([float(p["age_mid"]) for p in eligible], dtype=float)
-    y = np.asarray([float(p["cv"]) for p in eligible], dtype=float)
+    y = np.asarray([float(p[value_key]) for p in eligible], dtype=float)
     rho = np.nan
     pval = np.nan
     if len(y) >= 2:
@@ -1378,18 +1477,22 @@ def trend_from_points(points: list[dict]) -> dict:
         "n_bins": int(len(eligible)),
         "spearman_rho": float(rho) if pd.notna(rho) else None,
         "spearman_p": float(pval) if pd.notna(pval) else None,
-        "linear_slope_cv_per_year": float(slope(x, y)) if len(y) >= 2 else None,
-        "linear_slope_logcv_per_year": float(slope(x[pos], np.log(y[pos]))) if int(pos.sum()) >= 2 else None,
+        "linear_slope_per_year": float(slope(x, y)) if len(y) >= 2 else None,
+        "linear_slope_log_per_year": float(slope(x[pos], np.log(y[pos]))) if int(pos.sum()) >= 2 else None,
     }
-    out["decline_flag"] = bool(
+    out["negative_flag"] = bool(
         out["n_bins"] >= 5
         and out["spearman_rho"] is not None
         and out["spearman_p"] is not None
-        and out["linear_slope_cv_per_year"] is not None
+        and out["linear_slope_per_year"] is not None
         and out["spearman_rho"] < 0
         and out["spearman_p"] < 0.05
-        and out["linear_slope_cv_per_year"] < 0
+        and out["linear_slope_per_year"] < 0
     )
+    if value_key == "cv":
+        out["linear_slope_cv_per_year"] = out["linear_slope_per_year"]
+        out["linear_slope_logcv_per_year"] = out["linear_slope_log_per_year"]
+        out["decline_flag"] = out["negative_flag"]
     return out
 
 
@@ -1421,6 +1524,8 @@ def build_outputs(
                 q75_v = getattr(r, "q75", np.nan)
                 p10_v = getattr(r, "p10", np.nan)
                 p90_v = getattr(r, "p90", np.nan)
+                skew_v = getattr(r, "skewness", np.nan)
+                cv_v = getattr(r, "cv", np.nan)
                 pts.append(
                     {
                         "age_bin": str(getattr(r, "age_bin")),
@@ -1433,7 +1538,8 @@ def build_outputs(
                         "q75": float(q75_v) if pd.notna(q75_v) else None,
                         "p10": float(p10_v) if pd.notna(p10_v) else None,
                         "p90": float(p90_v) if pd.notna(p90_v) else None,
-                        "cv": float(getattr(r, "cv")),
+                        "skewness": float(skew_v) if pd.notna(skew_v) else None,
+                        "cv": float(cv_v) if pd.notna(cv_v) else None,
                         "passes_n_threshold": bool(getattr(r, "passes_n_threshold")),
                     }
                 )
@@ -1454,8 +1560,12 @@ def build_outputs(
     raw_counts_by_sex: dict[str, dict[str, int]] = {}
     pooled_points_by_mode: dict[str, dict[str, list[dict]]] = {}
     sex_points_by_mode: dict[str, dict[str, dict[str, list[dict]]]] = {}
-    pooled_trends_by_mode: dict[str, dict[str, dict]] = {}
-    sex_trends_by_mode: dict[str, dict[str, dict[str, dict]]] = {}
+    pooled_trends_by_mode_cv: dict[str, dict[str, dict]] = {}
+    pooled_trends_by_mode_mean: dict[str, dict[str, dict]] = {}
+    pooled_trends_by_mode_skew: dict[str, dict[str, dict]] = {}
+    sex_trends_by_mode_cv: dict[str, dict[str, dict[str, dict]]] = {}
+    sex_trends_by_mode_mean: dict[str, dict[str, dict[str, dict]]] = {}
+    sex_trends_by_mode_skew: dict[str, dict[str, dict[str, dict]]] = {}
 
     if long_df is not None and not long_df.empty:
         use = long_df[["biomarker_id", "age_years", "value", "sex"]].dropna(subset=["biomarker_id", "age_years", "value"])
@@ -1480,9 +1590,20 @@ def build_outputs(
             sex_pts = grouped_to_sex_points_map(sex_binned)
             pooled_points_by_mode[mode] = pooled_pts
             sex_points_by_mode[mode] = sex_pts
-            pooled_trends_by_mode[mode] = {bid: trend_from_points(pts) for bid, pts in pooled_pts.items()}
-            sex_trends_by_mode[mode] = {
-                bid: {sx: trend_from_points(pts) for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
+            pooled_trends_by_mode_cv[mode] = {bid: trend_from_points(pts, "cv") for bid, pts in pooled_pts.items()}
+            pooled_trends_by_mode_mean[mode] = {bid: trend_from_points(pts, "mean") for bid, pts in pooled_pts.items()}
+            pooled_trends_by_mode_skew[mode] = {
+                bid: trend_from_points(pts, "skewness") for bid, pts in pooled_pts.items()
+            }
+            sex_trends_by_mode_cv[mode] = {
+                bid: {sx: trend_from_points(pts, "cv") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
+            }
+            sex_trends_by_mode_mean[mode] = {
+                bid: {sx: trend_from_points(pts, "mean") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
+            }
+            sex_trends_by_mode_skew[mode] = {
+                bid: {sx: trend_from_points(pts, "skewness") for sx, pts in by_sex.items()}
+                for bid, by_sex in sex_pts.items()
             }
 
         raw_counts = use.groupby("biomarker_id", observed=True).size().astype(int).to_dict()
@@ -1520,12 +1641,24 @@ def build_outputs(
         for col in ["q25", "q75", "p10", "p90"]:
             if col not in base.columns:
                 base[col] = np.nan
+        if "skewness" not in base.columns:
+            base["skewness"] = np.nan
         for pct in TRIM_PCTS:
             mode = trim_mode_key(pct)
             pooled_points_by_mode[mode] = grouped_to_points_map(base)
-            pooled_trends_by_mode[mode] = {bid: trend_from_points(pts) for bid, pts in pooled_points_by_mode[mode].items()}
+            pooled_trends_by_mode_cv[mode] = {
+                bid: trend_from_points(pts, "cv") for bid, pts in pooled_points_by_mode[mode].items()
+            }
+            pooled_trends_by_mode_mean[mode] = {
+                bid: trend_from_points(pts, "mean") for bid, pts in pooled_points_by_mode[mode].items()
+            }
+            pooled_trends_by_mode_skew[mode] = {
+                bid: trend_from_points(pts, "skewness") for bid, pts in pooled_points_by_mode[mode].items()
+            }
             sex_points_by_mode[mode] = {}
-            sex_trends_by_mode[mode] = {}
+            sex_trends_by_mode_cv[mode] = {}
+            sex_trends_by_mode_mean[mode] = {}
+            sex_trends_by_mode_skew[mode] = {}
 
     if catalog_df is not None and not catalog_df.empty:
         need = [
@@ -1573,10 +1706,33 @@ def build_outputs(
     metrics: list[dict] = []
     for r in metadata.itertuples(index=False):
         bid = str(r.biomarker_id)
-        fallback = {"n_bins": 0, "spearman_rho": None, "spearman_p": None, "linear_slope_cv_per_year": None, "linear_slope_logcv_per_year": None, "decline_flag": False}
-        trends = {mode: pooled_trends_by_mode.get(mode, {}).get(bid, fallback) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        sex_metrics = {mode: sex_trends_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        trend_all = trends.get("all", fallback)
+        fallback_cv = {
+            "n_bins": 0,
+            "spearman_rho": None,
+            "spearman_p": None,
+            "linear_slope_per_year": None,
+            "linear_slope_log_per_year": None,
+            "linear_slope_cv_per_year": None,
+            "linear_slope_logcv_per_year": None,
+            "negative_flag": False,
+            "decline_flag": False,
+        }
+        fallback_other = {
+            "n_bins": 0,
+            "spearman_rho": None,
+            "spearman_p": None,
+            "linear_slope_per_year": None,
+            "linear_slope_log_per_year": None,
+            "negative_flag": False,
+        }
+        modes = [trim_mode_key(p) for p in TRIM_PCTS]
+        trends_cv = {mode: pooled_trends_by_mode_cv.get(mode, {}).get(bid, fallback_cv) for mode in modes}
+        trends_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, fallback_other) for mode in modes}
+        trends_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, fallback_other) for mode in modes}
+        sex_metrics_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in modes}
+        sex_metrics_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in modes}
+        sex_metrics_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in modes}
+        trend_all = trends_cv.get("all", fallback_cv)
         metrics.append(
             {
                 "biomarker_id": bid,
@@ -1587,8 +1743,22 @@ def build_outputs(
                 "linear_slope_cv_per_year": trend_all.get("linear_slope_cv_per_year"),
                 "linear_slope_logcv_per_year": trend_all.get("linear_slope_logcv_per_year"),
                 "decline_flag": trend_all.get("decline_flag"),
-                "trends": trends,
-                "sex_metrics": sex_metrics,
+                "trends": trends_cv,
+                "mean_trends": trends_mean,
+                "skewness_trends": trends_skew,
+                "trends_by_stat": {
+                    "cv": trends_cv,
+                    "mean": trends_mean,
+                    "skewness": trends_skew,
+                },
+                "sex_metrics": sex_metrics_cv,
+                "sex_mean_metrics": sex_metrics_mean,
+                "sex_skewness_metrics": sex_metrics_skew,
+                "sex_metrics_by_stat": {
+                    "cv": sex_metrics_cv,
+                    "mean": sex_metrics_mean,
+                    "skewness": sex_metrics_skew,
+                },
             }
         )
 
@@ -1602,8 +1772,12 @@ def build_outputs(
         series_index[bid] = rel_path
         points_by_filter = {mode: pooled_points_by_mode.get(mode, {}).get(bid, []) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_points_by_filter = {mode: sex_points_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        trends_by_filter = {mode: pooled_trends_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        sex_trends_filter = {mode: sex_trends_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        trends_by_filter_cv = {mode: pooled_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        trends_by_filter_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        trends_by_filter_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_trends_filter_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_trends_filter_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_trends_filter_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         all_points = points_by_filter.get("all", [])
         series_payloads[rel_path] = {
             "biomarker_id": bid,
@@ -1626,8 +1800,22 @@ def build_outputs(
             "raw_sample_by_sex": raw_samples_by_sex.get(str(bid), {}),
             "sex_points": sex_points_by_filter.get("all", {}),
             "sex_points_by_filter": sex_points_by_filter,
-            "trends": trends_by_filter,
-            "sex_metrics": sex_trends_filter,
+            "trends": trends_by_filter_cv,
+            "mean_trends": trends_by_filter_mean,
+            "skewness_trends": trends_by_filter_skew,
+            "trends_by_stat": {
+                "cv": trends_by_filter_cv,
+                "mean": trends_by_filter_mean,
+                "skewness": trends_by_filter_skew,
+            },
+            "sex_metrics": sex_trends_filter_cv,
+            "sex_mean_metrics": sex_trends_filter_mean,
+            "sex_skewness_metrics": sex_trends_filter_skew,
+            "sex_metrics_by_stat": {
+                "cv": sex_trends_filter_cv,
+                "mean": sex_trends_filter_mean,
+                "skewness": sex_trends_filter_skew,
+            },
         }
 
     return metadata, metrics, series_index, series_payloads
