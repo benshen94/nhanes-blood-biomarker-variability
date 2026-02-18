@@ -181,6 +181,41 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .compare-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
     .compare-controls select, .compare-controls input { margin: 4px 0 0 0; width: 220px; }
     #compare-plot { width: 100%; height: 640px; }
+    .scatter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .scatter-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .scatter-controls select, .scatter-controls input { margin: 4px 0 0 0; width: 220px; }
+    #scatter-category { height: 160px; }
+    .scatter-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
+    .scatter-actions button {
+      border: 1px solid var(--line);
+      background: #f8f5ef;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .scatter-hint { font-size: 12px; color: var(--muted); }
+    #scatter-plot { width: 100%; height: 640px; }
+    .toggle-btn-active {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border-color: var(--accent) !important;
+    }
+    .hist-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .hist-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .hist-controls select, .hist-controls input { margin: 4px 0 0 0; width: 220px; }
+    #hist-category { height: 160px; }
+    .hist-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
+    .hist-actions button {
+      border: 1px solid var(--line);
+      background: #f8f5ef;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .hist-hint { font-size: 12px; color: var(--muted); }
+    #hist-plot { width: 100%; height: 600px; }
 
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
@@ -192,6 +227,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       h1 { font-size: 28px; }
       .sub { font-size: 15px; }
       #compare-plot { height: 560px; }
+      #scatter-plot { height: 560px; }
+      #hist-plot { height: 520px; }
     }
     @media (max-width: 760px) {
       .tab-btn {
@@ -208,6 +245,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       .compare-controls label { width: 100%; }
       .compare-controls select,
       .compare-controls input { width: 100%; }
+      .scatter-controls label { width: 100%; }
+      .scatter-controls select,
+      .scatter-controls input { width: 100%; }
+      #scatter-category { height: 180px; }
+      .hist-controls label { width: 100%; }
+      .hist-controls select,
+      .hist-controls input { width: 100%; }
+      #hist-category { height: 180px; }
     }
     @media (max-width: 520px) {
       .tab-btn { flex: 1 1 100%; }
@@ -215,6 +260,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       .mode-btn { flex: 1 1 calc(33.333% - 8px); }
       #plot { height: 340px; }
       #compare-plot { height: 440px; }
+      #scatter-plot { height: 440px; }
+      #hist-plot { height: 420px; }
     }
   </style>
 </head>
@@ -231,6 +278,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class=\"top-tabs\">
       <button id=\"tab-dashboard\" class=\"tab-btn active\" type=\"button\">Dashboard</button>
       <button id=\"tab-compare\" class=\"tab-btn\" type=\"button\">Compare Rankings</button>
+      <button id=\"tab-scatter\" class=\"tab-btn\" type=\"button\">Scatter Plot</button>
+      <button id=\"tab-hist\" class=\"tab-btn\" type=\"button\">Histograms</button>
       <button id=\"tab-info\" class=\"tab-btn\" type=\"button\">Info & Methods</button>
     </div>
 
@@ -320,6 +369,86 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
     </div>
 
+    <div id=\"panel-scatter\" class=\"panel\">
+      <div class=\"card\">
+        <div class=\"scatter-controls\">
+          <label>X axis statistic
+            <select id=\"scatter-x-stat\">
+              <option value=\"cv\" selected>CV vs age (Spearman rho)</option>
+              <option value=\"mean\">Mean vs age (Spearman rho)</option>
+              <option value=\"skewness\">Skewness vs age (Spearman rho)</option>
+            </select>
+          </label>
+          <label>Y axis statistic
+            <select id=\"scatter-y-stat\">
+              <option value=\"cv\">CV vs age (Spearman rho)</option>
+              <option value=\"mean\" selected>Mean vs age (Spearman rho)</option>
+              <option value=\"skewness\">Skewness vs age (Spearman rho)</option>
+            </select>
+          </label>
+          <label>Cohort
+            <select id=\"scatter-cohort\">
+              <option value=\"pooled\" selected>Pooled</option>
+              <option value=\"female\">Female</option>
+              <option value=\"male\">Male</option>
+              <option value=\"both\">Both (Female + Male)</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id=\"scatter-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
+            <div id=\"scatter-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+          </label>
+          <label class=\"check-label\"><input id=\"scatter-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
+        </div>
+        <label>Categories (multi-select)</label>
+        <div class=\"scatter-actions\">
+          <button id=\"scatter-cat-all\" type=\"button\">Select all visible</button>
+          <button id=\"scatter-cat-core\" type=\"button\">Clinical/core only</button>
+          <button id=\"scatter-cat-clear\" type=\"button\">Clear</button>
+          <button id=\"scatter-label-toggle\" type=\"button\">Show labels</button>
+          <span id=\"scatter-selection-count\" class=\"scatter-hint\"></span>
+        </div>
+        <select id=\"scatter-category\" multiple></select>
+        <div id=\"scatter-plot\"></div>
+      </div>
+    </div>
+
+    <div id=\"panel-hist\" class=\"panel\">
+      <div class=\"card\">
+        <div class=\"hist-controls\">
+          <label>Statistic
+            <select id=\"hist-stat\">
+              <option value=\"cv\" selected>CV vs age (Spearman rho)</option>
+              <option value=\"mean\">Mean vs age (Spearman rho)</option>
+              <option value=\"skewness\">Skewness vs age (Spearman rho)</option>
+            </select>
+          </label>
+          <label>Cohort
+            <select id=\"hist-cohort\">
+              <option value=\"pooled\" selected>Pooled</option>
+              <option value=\"female\">Female</option>
+              <option value=\"male\">Male</option>
+              <option value=\"both\">Both (Female + Male)</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id=\"hist-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
+            <div id=\"hist-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+          </label>
+          <label class=\"check-label\"><input id=\"hist-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
+        </div>
+        <label>Categories (multi-select)</label>
+        <div class=\"hist-actions\">
+          <button id=\"hist-cat-all\" type=\"button\">Select all visible</button>
+          <button id=\"hist-cat-core\" type=\"button\">Clinical/core only</button>
+          <button id=\"hist-cat-clear\" type=\"button\">Clear</button>
+          <span id=\"hist-selection-count\" class=\"hist-hint\"></span>
+        </div>
+        <select id=\"hist-category\" multiple></select>
+        <div id=\"hist-plot\"></div>
+      </div>
+    </div>
+
     <div id=\"panel-info\" class=\"panel\">
       <div class=\"info-grid\">
         <div class=\"card info-card\">
@@ -388,9 +517,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     const tabDashboardBtn = document.getElementById('tab-dashboard');
     const tabCompareBtn = document.getElementById('tab-compare');
+    const tabScatterBtn = document.getElementById('tab-scatter');
+    const tabHistBtn = document.getElementById('tab-hist');
     const tabInfoBtn = document.getElementById('tab-info');
     const panelDashboard = document.getElementById('panel-dashboard');
     const panelCompare = document.getElementById('panel-compare');
+    const panelScatter = document.getElementById('panel-scatter');
+    const panelHist = document.getElementById('panel-hist');
     const panelInfo = document.getElementById('panel-info');
     const compareSortEl = document.getElementById('compare-sort');
     const compareStatEl = document.getElementById('compare-stat');
@@ -406,6 +539,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const compareTrimSliderEl = document.getElementById('compare-trim-slider');
     const compareTrimLabelEl = document.getElementById('compare-trim-label');
     const rankTitleEl = document.getElementById('rank-title');
+    const scatterXStatEl = document.getElementById('scatter-x-stat');
+    const scatterYStatEl = document.getElementById('scatter-y-stat');
+    const scatterCohortEl = document.getElementById('scatter-cohort');
+    const scatterTrimSliderEl = document.getElementById('scatter-trim-slider');
+    const scatterTrimLabelEl = document.getElementById('scatter-trim-label');
+    const scatterIncludeEnvEl = document.getElementById('scatter-include-env');
+    const scatterCategoryEl = document.getElementById('scatter-category');
+    const scatterCatAllBtn = document.getElementById('scatter-cat-all');
+    const scatterCatCoreBtn = document.getElementById('scatter-cat-core');
+    const scatterCatClearBtn = document.getElementById('scatter-cat-clear');
+    const scatterLabelToggleBtn = document.getElementById('scatter-label-toggle');
+    const scatterSelectionCountEl = document.getElementById('scatter-selection-count');
+    const histStatEl = document.getElementById('hist-stat');
+    const histCohortEl = document.getElementById('hist-cohort');
+    const histTrimSliderEl = document.getElementById('hist-trim-slider');
+    const histTrimLabelEl = document.getElementById('hist-trim-label');
+    const histIncludeEnvEl = document.getElementById('hist-include-env');
+    const histCategoryEl = document.getElementById('hist-category');
+    const histCatAllBtn = document.getElementById('hist-cat-all');
+    const histCatCoreBtn = document.getElementById('hist-cat-core');
+    const histCatClearBtn = document.getElementById('hist-cat-clear');
+    const histSelectionCountEl = document.getElementById('hist-selection-count');
 
     const CATEGORY_PRIORITY = {
       'Routine - CBC': 1,
@@ -439,6 +594,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       cache: new Map(),
       mode: 'cv',
       currentId: null,
+      scatterLabels: false,
     };
 
     function formatNum(v, d=4) {
@@ -486,12 +642,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     function setTopTab(tabName) {
       const isDash = tabName === 'dashboard';
       const isCompare = tabName === 'compare';
+      const isScatter = tabName === 'scatter';
+      const isHist = tabName === 'hist';
       const isInfo = tabName === 'info';
       tabDashboardBtn.classList.toggle('active', isDash);
       tabCompareBtn.classList.toggle('active', isCompare);
+      tabScatterBtn.classList.toggle('active', isScatter);
+      tabHistBtn.classList.toggle('active', isHist);
       tabInfoBtn.classList.toggle('active', isInfo);
       panelDashboard.classList.toggle('active', isDash);
       panelCompare.classList.toggle('active', isCompare);
+      panelScatter.classList.toggle('active', isScatter);
+      panelHist.classList.toggle('active', isHist);
       panelInfo.classList.toggle('active', isInfo);
     }
 
@@ -557,7 +719,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       return state.metadata.filter(m => metadataPasses(m, categoryFilterEl.value, includeEnvEl.checked));
     }
 
-    function getCompareMetrics() {
+    function getAllMetricsEnriched() {
       const byId = state.metadataById;
       return state.metrics
         .map(m => {
@@ -581,8 +743,88 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               skewness: m.sex_skewness_metrics || {},
             },
           };
-        })
-        .filter(m => metadataPasses(m, compareCategoryEl.value, compareIncludeEnvEl.checked));
+        });
+    }
+
+    function getCompareMetrics() {
+      return getAllMetricsEnriched().filter(m => metadataPasses(m, compareCategoryEl.value, compareIncludeEnvEl.checked));
+    }
+
+    function setAllTrimSliders(pctRaw) {
+      const pct = normalizeTrimPct(pctRaw);
+      trimSliderEl.value = String(pct);
+      compareTrimSliderEl.value = String(pct);
+      scatterTrimSliderEl.value = String(pct);
+      histTrimSliderEl.value = String(pct);
+      const txt = trimLabelFromPct(pct);
+      trimLabelEl.textContent = txt;
+      compareTrimLabelEl.textContent = txt;
+      scatterTrimLabelEl.textContent = txt;
+      histTrimLabelEl.textContent = txt;
+      return pct;
+    }
+
+    function setScatterLabelsEnabled(on) {
+      const enabled = Boolean(on);
+      state.scatterLabels = enabled;
+      scatterLabelToggleBtn.classList.toggle('toggle-btn-active', enabled);
+      scatterLabelToggleBtn.textContent = enabled ? 'Hide labels' : 'Show labels';
+    }
+
+    function renderScatterCategoryOptions(selectCore=false) {
+      const cats = sortedCategories(state.metadata, scatterIncludeEnvEl.checked);
+      const prev = new Set(Array.from(scatterCategoryEl.selectedOptions).map(o => o.value));
+      const coreCats = new Set(
+        state.metadata
+          .filter(m => Boolean(m.is_core_clinical) && (scatterIncludeEnvEl.checked || !Boolean(m.is_environmental)))
+          .map(m => m.category || 'Other Clinical')
+      );
+      scatterCategoryEl.innerHTML = '';
+      for (const c of cats) {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        const keep = selectCore ? coreCats.has(c) : (prev.size ? prev.has(c) : true);
+        opt.selected = keep;
+        scatterCategoryEl.appendChild(opt);
+      }
+      if (Array.from(scatterCategoryEl.options).every(o => !o.selected)) {
+        for (const o of Array.from(scatterCategoryEl.options)) o.selected = true;
+      }
+      const selected = Array.from(scatterCategoryEl.selectedOptions).length;
+      scatterSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+    }
+
+    function getScatterSelectedCategories() {
+      return new Set(Array.from(scatterCategoryEl.selectedOptions).map(o => o.value));
+    }
+
+    function renderHistogramCategoryOptions(selectCore=false) {
+      const cats = sortedCategories(state.metadata, histIncludeEnvEl.checked);
+      const prev = new Set(Array.from(histCategoryEl.selectedOptions).map(o => o.value));
+      const coreCats = new Set(
+        state.metadata
+          .filter(m => Boolean(m.is_core_clinical) && (histIncludeEnvEl.checked || !Boolean(m.is_environmental)))
+          .map(m => m.category || 'Other Clinical')
+      );
+      histCategoryEl.innerHTML = '';
+      for (const c of cats) {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        const keep = selectCore ? coreCats.has(c) : (prev.size ? prev.has(c) : true);
+        opt.selected = keep;
+        histCategoryEl.appendChild(opt);
+      }
+      if (Array.from(histCategoryEl.options).every(o => !o.selected)) {
+        for (const o of Array.from(histCategoryEl.options)) o.selected = true;
+      }
+      const selected = Array.from(histCategoryEl.selectedOptions).length;
+      histSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+    }
+
+    function getHistogramSelectedCategories() {
+      return new Set(Array.from(histCategoryEl.selectedOptions).map(o => o.value));
     }
 
     function renderOptions() {
@@ -863,8 +1105,321 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             decline_flag: Boolean(m.negative_flag ?? m.decline_flag),
             metric: m,
           });
-        }
+      }
       return out;
+    }
+
+    function metricForRecord(rec, cohort, trimMode, statKey='cv') {
+      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
+      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+      const trends = trendsByStat[statKey] || {};
+      const sexByMode = sexByStat[statKey] || {};
+      const tr = trends[trimMode] || trends.all || null;
+      const sexTr = sexByMode[trimMode] || sexByMode.all || {};
+      if (cohort === 'both') {
+        return { female: sexTr.female || null, male: sexTr.male || null };
+      }
+      if (cohort === 'female' || cohort === 'male') return sexTr[cohort] || null;
+      return tr;
+    }
+
+    function renderScatterPlot() {
+      const xStat = scatterXStatEl.value || 'cv';
+      const yStat = scatterYStatEl.value || 'mean';
+      const xLabel = statLabel(xStat);
+      const yLabel = statLabel(yStat);
+      const cohort = scatterCohortEl.value || 'pooled';
+      const trimMode = trimPctToMode(scatterTrimSliderEl.value);
+      const trimLabel = trimLabelFromPct(scatterTrimSliderEl.value);
+      const includeEnv = scatterIncludeEnvEl.checked;
+      const showLabels = Boolean(state.scatterLabels);
+      const selectedCats = getScatterSelectedCategories();
+      const rows = getAllMetricsEnriched().filter(r => {
+        if (!includeEnv && r.is_environmental) return false;
+        return selectedCats.has(r.category || 'Other Clinical');
+      });
+
+      const points = [];
+      if (cohort === 'both') {
+        for (const r of rows) {
+          const mx = metricForRecord(r, 'both', trimMode, xStat);
+          const my = metricForRecord(r, 'both', trimMode, yStat);
+          for (const sx of ['female', 'male']) {
+            const vx = mx ? mx[sx] : null;
+            const vy = my ? my[sx] : null;
+            const xv = Number(vx?.spearman_rho);
+            const yv = Number(vy?.spearman_rho);
+            if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
+            points.push({
+              biomarker_id: r.biomarker_id,
+              display_name: r.display_name,
+              category: r.category || 'Other Clinical',
+              sex: sx,
+              x: xv,
+              y: yv,
+              n_bins_x: Number(vx?.n_bins || 0),
+              n_bins_y: Number(vy?.n_bins || 0),
+              p_x: vx?.spearman_p,
+              p_y: vy?.spearman_p,
+            });
+          }
+        }
+      } else {
+        for (const r of rows) {
+          const vx = metricForRecord(r, cohort, trimMode, xStat);
+          const vy = metricForRecord(r, cohort, trimMode, yStat);
+          const xv = Number(vx?.spearman_rho);
+          const yv = Number(vy?.spearman_rho);
+          if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
+          points.push({
+            biomarker_id: r.biomarker_id,
+            display_name: r.display_name,
+            category: r.category || 'Other Clinical',
+            sex: cohort,
+            x: xv,
+            y: yv,
+            n_bins_x: Number(vx?.n_bins || 0),
+            n_bins_y: Number(vy?.n_bins || 0),
+            p_x: vx?.spearman_p,
+            p_y: vy?.spearman_p,
+          });
+        }
+      }
+
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      const scatterDiv = document.getElementById('scatter-plot');
+      if (!points.length) {
+        Plotly.newPlot('scatter-plot', [], {
+          title: 'No biomarkers match current scatter filters',
+          xaxis: { title: `Spearman rho (Age vs ${xLabel})` },
+          yaxis: { title: `Spearman rho (Age vs ${yLabel})` },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
+      let traces = [];
+      const baseType = showLabels ? 'scatter' : 'scattergl';
+      const baseMode = showLabels ? 'markers+text' : 'markers';
+      if (cohort === 'both') {
+        const femalePts = points.filter(p => p.sex === 'female');
+        const malePts = points.filter(p => p.sex === 'male');
+        traces = [
+          {
+            type: baseType,
+            mode: baseMode,
+            name: 'Female',
+            marker: { color: COHORT_COLORS.female, size: 8, opacity: 0.74, symbol: 'circle' },
+            x: femalePts.map(p => p.x),
+            y: femalePts.map(p => p.y),
+            text: showLabels ? femalePts.map(p => p.display_name) : undefined,
+            textposition: showLabels ? 'top center' : undefined,
+            textfont: showLabels ? { size: mobile ? 8 : 9, color: '#9f1239' } : undefined,
+            customdata: femalePts.map(p => [p.biomarker_id, p.display_name, p.category, p.n_bins_x, p.n_bins_y, p.p_x, p.p_y]),
+            hovertemplate: '%{customdata[1]}<br>sex=female<br>category=%{customdata[2]}<br>x rho=%{x:.4f} (n_bins=%{customdata[3]}, p=%{customdata[5]:.5f})<br>y rho=%{y:.4f} (n_bins=%{customdata[4]}, p=%{customdata[6]:.5f})<br>id=%{customdata[0]}<extra></extra>',
+          },
+          {
+            type: baseType,
+            mode: baseMode,
+            name: 'Male',
+            marker: { color: COHORT_COLORS.male, size: 8, opacity: 0.74, symbol: 'square' },
+            x: malePts.map(p => p.x),
+            y: malePts.map(p => p.y),
+            text: showLabels ? malePts.map(p => p.display_name) : undefined,
+            textposition: showLabels ? 'top center' : undefined,
+            textfont: showLabels ? { size: mobile ? 8 : 9, color: '#1d4ed8' } : undefined,
+            customdata: malePts.map(p => [p.biomarker_id, p.display_name, p.category, p.n_bins_x, p.n_bins_y, p.p_x, p.p_y]),
+            hovertemplate: '%{customdata[1]}<br>sex=male<br>category=%{customdata[2]}<br>x rho=%{x:.4f} (n_bins=%{customdata[3]}, p=%{customdata[5]:.5f})<br>y rho=%{y:.4f} (n_bins=%{customdata[4]}, p=%{customdata[6]:.5f})<br>id=%{customdata[0]}<extra></extra>',
+          }
+        ];
+      } else {
+        traces = [{
+          type: baseType,
+          mode: baseMode,
+          name: cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male'),
+          marker: { color: COHORT_COLORS[cohort] || '#0f766e', size: 8, opacity: 0.72 },
+          x: points.map(p => p.x),
+          y: points.map(p => p.y),
+          text: showLabels ? points.map(p => p.display_name) : undefined,
+          textposition: showLabels ? 'top center' : undefined,
+          textfont: showLabels ? { size: mobile ? 8 : 9, color: '#134e4a' } : undefined,
+          customdata: points.map(p => [p.biomarker_id, p.display_name, p.category, p.n_bins_x, p.n_bins_y, p.p_x, p.p_y]),
+          hovertemplate: '%{customdata[1]}<br>category=%{customdata[2]}<br>x rho=%{x:.4f} (n_bins=%{customdata[3]}, p=%{customdata[5]:.5f})<br>y rho=%{y:.4f} (n_bins=%{customdata[4]}, p=%{customdata[6]:.5f})<br>id=%{customdata[0]}<extra></extra>',
+        }];
+      }
+
+      Plotly.newPlot('scatter-plot', traces, {
+        title: `Biomarker Scatter: ${xLabel} vs ${yLabel} Spearman`,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.12,
+          showarrow: false,
+          text: `Cohort: ${cohort}, outliers: ${trimLabel}, categories: ${selectedCats.size}, n_points: ${points.length}, labels: ${showLabels ? 'on' : 'off'}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: {
+          title: `Spearman rho (Age vs ${xLabel})`,
+          zeroline: true,
+          zerolinecolor: '#c2c8d0',
+          range: [-1, 1],
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        yaxis: {
+          title: `Spearman rho (Age vs ${yLabel})`,
+          zeroline: true,
+          zerolinecolor: '#c2c8d0',
+          range: [-1, 1],
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        margin: mobile ? { t: 62, l: 52, r: 10, b: 52 } : { t: 64, l: 70, r: 14, b: 60 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
+
+      if (scatterDiv && scatterDiv.removeAllListeners) {
+        scatterDiv.removeAllListeners('plotly_click');
+      }
+      if (scatterDiv && scatterDiv.on) {
+        scatterDiv.on('plotly_click', async (evt) => {
+          const pt = evt?.points?.[0];
+          const id = pt?.customdata?.[0];
+          if (!id) return;
+          selectEl.value = id;
+          state.currentId = id;
+          setTopTab('dashboard');
+          renderMetrics(id);
+          await renderPlot(id);
+        });
+      }
+    }
+
+    function histogramSummary(values) {
+      let negative = 0;
+      let positive = 0;
+      let zeroish = 0;
+      for (const v of values) {
+        if (!Number.isFinite(v)) continue;
+        if (v < 0) negative += 1;
+        else if (v > 0) positive += 1;
+        else zeroish += 1;
+      }
+      return { negative, positive, zeroish, total: negative + positive + zeroish };
+    }
+
+    function renderHistogramPlot() {
+      const statKey = histStatEl.value || 'cv';
+      const stat = statLabel(statKey);
+      const cohort = histCohortEl.value || 'pooled';
+      const trimMode = trimPctToMode(histTrimSliderEl.value);
+      const trimLabel = trimLabelFromPct(histTrimSliderEl.value);
+      const includeEnv = histIncludeEnvEl.checked;
+      const selectedCats = getHistogramSelectedCategories();
+      const rows = getAllMetricsEnriched().filter(r => {
+        if (!includeEnv && r.is_environmental) return false;
+        return selectedCats.has(r.category || 'Other Clinical');
+      });
+
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      const xbins = { start: -1, end: 1, size: 0.05 };
+      let traces = [];
+      let annoText = '';
+
+      if (cohort === 'both') {
+        const femaleVals = [];
+        const maleVals = [];
+        for (const r of rows) {
+          const fx = metricForRecord(r, 'female', trimMode, statKey);
+          const mx = metricForRecord(r, 'male', trimMode, statKey);
+          const fr = Number(fx?.spearman_rho);
+          const mr = Number(mx?.spearman_rho);
+          if (Number.isFinite(fr)) femaleVals.push(fr);
+          if (Number.isFinite(mr)) maleVals.push(mr);
+        }
+        const sf = histogramSummary(femaleVals);
+        const sm = histogramSummary(maleVals);
+        annoText = `Cohort: both, outliers: ${trimLabel}, categories: ${selectedCats.size}, female n=${sf.total} (neg=${sf.negative}, pos=${sf.positive}), male n=${sm.total} (neg=${sm.negative}, pos=${sm.positive})`;
+        traces = [
+          {
+            type: 'histogram',
+            name: 'Female',
+            x: femaleVals,
+            xbins,
+            marker: { color: COHORT_COLORS.female },
+            opacity: 0.62,
+          },
+          {
+            type: 'histogram',
+            name: 'Male',
+            x: maleVals,
+            xbins,
+            marker: { color: COHORT_COLORS.male },
+            opacity: 0.62,
+          },
+        ];
+      } else {
+        const values = [];
+        for (const r of rows) {
+          const m = metricForRecord(r, cohort, trimMode, statKey);
+          const rho = Number(m?.spearman_rho);
+          if (Number.isFinite(rho)) values.push(rho);
+        }
+        const s = histogramSummary(values);
+        annoText = `Cohort: ${cohort}, outliers: ${trimLabel}, categories: ${selectedCats.size}, n=${s.total} (neg=${s.negative}, pos=${s.positive}, zero=${s.zeroish})`;
+        traces = [
+          {
+            type: 'histogram',
+            name: cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male'),
+            x: values,
+            xbins,
+            marker: { color: COHORT_COLORS[cohort] || '#0f766e' },
+            opacity: 0.78,
+          },
+        ];
+      }
+
+      const noData = traces.every(t => !t.x || t.x.length === 0);
+      if (noData) {
+        Plotly.newPlot('hist-plot', [], {
+          title: 'No biomarkers match current histogram filters',
+          xaxis: { title: `Spearman rho (Age vs ${stat})`, range: [-1, 1] },
+          yaxis: { title: 'Count of biomarkers' },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
+      Plotly.newPlot('hist-plot', traces, {
+        title: `Histogram of Spearman rho: ${stat} vs age`,
+        barmode: cohort === 'both' ? 'overlay' : 'relative',
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.12,
+          showarrow: false,
+          text: annoText,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: {
+          title: `Spearman rho (Age vs ${stat})`,
+          range: [-1, 1],
+          tickfont: { size: mobile ? 10 : 12 },
+          zeroline: true,
+          zerolinecolor: '#c2c8d0',
+        },
+        yaxis: {
+          title: 'Count of biomarkers',
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        legend: { orientation: 'h' },
+        margin: mobile ? { t: 66, l: 52, r: 10, b: 52 } : { t: 68, l: 70, r: 14, b: 60 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
     }
 
     function renderRankTable() {
@@ -1032,15 +1587,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       showLowNEl.checked = true;
       includeEnvEl.checked = false;
       compareIncludeEnvEl.checked = false;
-      trimSliderEl.value = '0';
-      compareTrimSliderEl.value = '0';
-      trimLabelEl.textContent = trimLabelFromPct(trimSliderEl.value);
-      compareTrimLabelEl.textContent = trimLabelFromPct(compareTrimSliderEl.value);
+      scatterIncludeEnvEl.checked = false;
+      histIncludeEnvEl.checked = false;
+      setScatterLabelsEnabled(false);
+      setAllTrimSliders(0);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
+      renderScatterCategoryOptions(false);
+      renderHistogramCategoryOptions(false);
 
       await refreshDashboardFromFilters();
       renderComparePlot();
+      renderScatterPlot();
+      renderHistogramPlot();
 
       statusChip.textContent = `Ready: ${state.metadata.length} biomarkers indexed`;
 
@@ -1049,21 +1608,36 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         setTopTab('compare');
         renderComparePlot();
       });
+      tabScatterBtn.addEventListener('click', () => {
+        setTopTab('scatter');
+        renderScatterPlot();
+      });
+      tabHistBtn.addEventListener('click', () => {
+        setTopTab('hist');
+        renderHistogramPlot();
+      });
       tabInfoBtn.addEventListener('click', () => setTopTab('info'));
       compareSortEl.addEventListener('change', renderComparePlot);
       compareStatEl.addEventListener('change', renderComparePlot);
       compareTopNEl.addEventListener('change', renderComparePlot);
       compareCategoryEl.addEventListener('change', renderComparePlot);
-      compareCohortEl.addEventListener('change', renderComparePlot);
+      compareCohortEl.addEventListener('change', async () => {
+        cohortFilterEl.value = compareCohortEl.value;
+        scatterCohortEl.value = compareCohortEl.value;
+        histCohortEl.value = compareCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
       compareTrimSliderEl.addEventListener('input', () => {
-        const pct = normalizeTrimPct(compareTrimSliderEl.value);
-        compareTrimSliderEl.value = String(pct);
-        trimSliderEl.value = String(pct);
-        compareTrimLabelEl.textContent = trimLabelFromPct(pct);
-        trimLabelEl.textContent = trimLabelFromPct(pct);
+        setAllTrimSliders(compareTrimSliderEl.value);
         renderRankTable();
         if (state.currentId) renderPlot(state.currentId);
         renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
       });
       compareIncludeEnvEl.addEventListener('change', () => {
         renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, compareCategoryEl.value);
@@ -1084,18 +1658,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       });
       cohortFilterEl.addEventListener('change', async () => {
         compareCohortEl.value = cohortFilterEl.value;
+        scatterCohortEl.value = cohortFilterEl.value;
+        histCohortEl.value = cohortFilterEl.value;
         renderRankTable();
         renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
         if (state.currentId) await renderPlot(state.currentId);
       });
       trimSliderEl.addEventListener('input', async () => {
-        const pct = normalizeTrimPct(trimSliderEl.value);
-        trimSliderEl.value = String(pct);
-        compareTrimSliderEl.value = String(pct);
-        trimLabelEl.textContent = trimLabelFromPct(pct);
-        compareTrimLabelEl.textContent = trimLabelFromPct(pct);
+        setAllTrimSliders(trimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
         if (state.currentId) await renderPlot(state.currentId);
       });
       showLowNEl.addEventListener('change', async () => {
@@ -1116,11 +1692,108 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });
+      scatterXStatEl.addEventListener('change', renderScatterPlot);
+      scatterYStatEl.addEventListener('change', renderScatterPlot);
+      scatterCohortEl.addEventListener('change', () => {
+        cohortFilterEl.value = scatterCohortEl.value;
+        compareCohortEl.value = scatterCohortEl.value;
+        histCohortEl.value = scatterCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderHistogramPlot();
+        if (state.currentId) renderPlot(state.currentId);
+        renderScatterPlot();
+      });
+      scatterTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(scatterTrimSliderEl.value);
+        renderRankTable();
+        renderComparePlot();
+        renderHistogramPlot();
+        if (state.currentId) renderPlot(state.currentId);
+        renderScatterPlot();
+      });
+      scatterIncludeEnvEl.addEventListener('change', () => {
+        renderScatterCategoryOptions(false);
+        renderScatterPlot();
+      });
+      scatterCategoryEl.addEventListener('change', () => {
+        const cats = sortedCategories(state.metadata, scatterIncludeEnvEl.checked);
+        const selected = Array.from(scatterCategoryEl.selectedOptions).length;
+        scatterSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+        renderScatterPlot();
+      });
+      scatterCatAllBtn.addEventListener('click', () => {
+        for (const o of Array.from(scatterCategoryEl.options)) o.selected = true;
+        renderScatterCategoryOptions(false);
+        renderScatterPlot();
+      });
+      scatterCatCoreBtn.addEventListener('click', () => {
+        renderScatterCategoryOptions(true);
+        renderScatterPlot();
+      });
+      scatterCatClearBtn.addEventListener('click', () => {
+        for (const o of Array.from(scatterCategoryEl.options)) o.selected = false;
+        const cats = sortedCategories(state.metadata, scatterIncludeEnvEl.checked);
+        scatterSelectionCountEl.textContent = `0/${cats.length} categories selected`;
+        renderScatterPlot();
+      });
+      scatterLabelToggleBtn.addEventListener('click', () => {
+        setScatterLabelsEnabled(!state.scatterLabels);
+        renderScatterPlot();
+      });
+      histStatEl.addEventListener('change', renderHistogramPlot);
+      histCohortEl.addEventListener('change', async () => {
+        cohortFilterEl.value = histCohortEl.value;
+        compareCohortEl.value = histCohortEl.value;
+        scatterCohortEl.value = histCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      histTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(histTrimSliderEl.value);
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (state.currentId) renderPlot(state.currentId);
+      });
+      histIncludeEnvEl.addEventListener('change', () => {
+        renderHistogramCategoryOptions(false);
+        renderHistogramPlot();
+      });
+      histCategoryEl.addEventListener('change', () => {
+        const cats = sortedCategories(state.metadata, histIncludeEnvEl.checked);
+        const selected = Array.from(histCategoryEl.selectedOptions).length;
+        histSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+        renderHistogramPlot();
+      });
+      histCatAllBtn.addEventListener('click', () => {
+        for (const o of Array.from(histCategoryEl.options)) o.selected = true;
+        renderHistogramCategoryOptions(false);
+        renderHistogramPlot();
+      });
+      histCatCoreBtn.addEventListener('click', () => {
+        renderHistogramCategoryOptions(true);
+        renderHistogramPlot();
+      });
+      histCatClearBtn.addEventListener('click', () => {
+        for (const o of Array.from(histCategoryEl.options)) o.selected = false;
+        const cats = sortedCategories(state.metadata, histIncludeEnvEl.checked);
+        histSelectionCountEl.textContent = `0/${cats.length} categories selected`;
+        renderHistogramPlot();
+      });
       window.addEventListener('resize', () => {
         const plotEl = document.getElementById('plot');
         const compareEl = document.getElementById('compare-plot');
+        const scatterEl = document.getElementById('scatter-plot');
+        const histEl = document.getElementById('hist-plot');
         if (plotEl) Plotly.Plots.resize(plotEl);
         if (compareEl) Plotly.Plots.resize(compareEl);
+        if (scatterEl) Plotly.Plots.resize(scatterEl);
+        if (histEl) Plotly.Plots.resize(histEl);
       });
     }
 

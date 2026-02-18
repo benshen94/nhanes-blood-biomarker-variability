@@ -66,6 +66,36 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
   - horizontal bar chart with hover details (`rho`, `p`, `n_bins`, negative-trend flag, biomarker id)
   - in `Both` cohort mode, female and male bars are shown side-by-side on the same biomarker list
 
+## Scatter tab
+- Use `Scatter Plot` (top tab) to compare biomarkers in 2D across trend metrics.
+- Axes:
+  - choose X and Y independently from `CV vs age`, `Mean vs age`, `Skewness vs age` (each axis uses Spearman rho of age vs selected statistic)
+- Controls:
+  - cohort: `Pooled`, `Female`, `Male`, `Both (Female + Male)`
+  - symmetric trim slider (shared with Dashboard/Compare)
+  - include/exclude environmental-toxicant assays
+  - category multi-select with combinations (for example `Routine - CBC` + `Specialized - Inflammatory`)
+  - quick category actions: select all, core-only preset, clear
+  - `Show labels` toggle button to annotate each dot with biomarker name directly on the chart
+- Visual behavior:
+  - each point is one biomarker
+  - in `Both` cohort mode, female and male are separate point layers (red/blue)
+  - clicking a point opens that biomarker in the main Dashboard tab
+
+## Histograms tab
+- Use `Histograms` (top tab) to see the distribution of Spearman rho values across biomarkers.
+- Metric:
+  - choose one metric at a time: `CV vs age`, `Mean vs age`, or `Skewness vs age`
+- Controls:
+  - cohort: `Pooled`, `Female`, `Male`, `Both (Female + Male)`
+  - symmetric trim slider (shared with Dashboard/Compare/Scatter)
+  - include/exclude environmental-toxicant assays
+  - category multi-select with combinations and quick actions (all/core/clear)
+- Visual behavior:
+  - histogram x-axis is fixed to Spearman range `[-1, 1]`
+  - in `Both` cohort mode, female and male histograms are overlaid
+  - annotation shows counts of negative/positive rho values so you can quickly see how many biomarkers decrease or increase with age
+
 ## Trend metrics in rankings
 - Spearman is computed between age-bin midpoint and the selected statistic (`CV`, `Mean`, or `Skewness`) after the selected trim mode.
 - `Negative trend` flag is true when:
