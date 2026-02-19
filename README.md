@@ -12,7 +12,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_dashboard.py` builds static interactive HTML dashboard.
-- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (kidney/liver disease vs full cohort) using linked mortality files.
+- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (diabetes/kidney/liver disease vs full cohort) using linked mortality files.
 
 ## Run Order
 ```bash

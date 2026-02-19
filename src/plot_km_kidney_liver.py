@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kaplan-Meier survival curves for kidney/liver disease vs full NHANES cohort.
+"""Kaplan-Meier survival curves for kidney/liver/diabetes vs full NHANES cohort.
 
 Uses NHANES linked mortality public-use files (2019 linkage release) and the
 processed participant health flags table.
@@ -77,7 +77,7 @@ def main() -> None:
     args = ap.parse_args()
 
     part = pd.read_parquet(args.participants)
-    required = {"seqn", "cycle_start_year", "age_years", "kidney", "liver"}
+    required = {"seqn", "cycle_start_year", "age_years", "kidney", "liver", "diabetes"}
     missing = required.difference(set(part.columns))
     if missing:
         raise RuntimeError(f"participant file missing required columns: {sorted(missing)}")
@@ -97,6 +97,7 @@ def main() -> None:
 
     cohorts = [
         ("Full cohort (age>=20, eligstat=1)", pd.Series(True, index=df.index), "#334155"),
+        ("Diabetes (DIQ010=1)", df["diabetes"] == True, "#7c3aed"),  # noqa: E712
         ("Kidney disease (KIQ022=1)", df["kidney"] == True, "#1d4ed8"),  # noqa: E712
         ("Liver disease (MCQ160L/MCQ500/MCQ510*=1)", df["liver"] == True, "#b91c1c"),  # noqa: E712
     ]
@@ -122,7 +123,7 @@ def main() -> None:
             }
         )
 
-    ax.set_title("NHANES Kaplan-Meier Survival: Kidney/Liver Disease vs Full Cohort")
+    ax.set_title("NHANES Kaplan-Meier Survival: Diabetes/Kidney/Liver vs Full Cohort")
     ax.set_xlabel("Follow-up time (months, from interview)")
     ax.set_ylabel("Survival probability")
     ax.set_ylim(0, 1.0)
@@ -141,4 +142,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
