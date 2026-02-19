@@ -12,7 +12,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_dashboard.py` builds static interactive HTML dashboard.
-- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (diabetes/kidney/liver disease vs full cohort) using linked mortality files, in both follow-up-time and age-timescale modes.
+- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (diabetes/kidney/liver disease vs full cohort, plus asthma vs full) using linked mortality files, in both follow-up-time and age-timescale modes.
 
 ## Run Order
 ```bash
@@ -21,7 +21,7 @@ python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.p
 python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed
 python3 src/compute_cv_metrics.py --in data/processed/biomarker_long.parquet --out data/processed
 python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all data/processed/cv_by_age_all.parquet --metrics data/processed/cv_trend_metrics.parquet --out dashboard/index.html --json-out dashboard/dashboard_data.json
-python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png
+python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png --png-asthma-age-out output/km_asthma_vs_full_by_age.png --csv-asthma-age-out output/km_asthma_counts_by_age.csv
 ```
 
 ## Kaplan-Meier outputs
@@ -43,6 +43,10 @@ python3 src/plot_km_kidney_liver.py --participants data/processed/participant_he
   - x-axis: cohort median lifespan divided by full-cohort median lifespan
   - y-axis: cohort steepness divided by full-cohort steepness
   - includes dashed reference lines at `(1,1)`
+- Asthma (separate age-timescale curve):
+  - `output/km_asthma_vs_full_by_age.png`
+  - `output/km_asthma_counts_by_age.csv`
+  - compares asthma (`MCQ010==1`) vs full cohort on age timeline
 
 ## Open the dashboard
 - Local:
@@ -85,6 +89,7 @@ python3 src/plot_km_kidney_liver.py --participants data/processed/participant_he
   - cancer history (`MCQ220 == 1`)
   - weak/failing kidneys (`KIQ022 == 1`)
   - liver disease history (`MCQ160L == 1`, or newer liver variables `MCQ500/MCQ510A-F == 1`)
+- Asthma (`MCQ010`) is tracked in `participant_health_flags.parquet` for survival analyses, but is **not** used as a healthy-cohort exclusion in biomarker dashboard analyses.
 
 ## Compare tab
 - Use `Compare Rankings` (top tab) to compare biomarkers by Spearman trend quickly.

@@ -115,6 +115,7 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
             return sorted(set(cols))
 
         diabetes_cols = pick_cols(["DIQ010"])
+        asthma_cols = pick_cols(["MCQ010"])
         cancer_cols = pick_cols(["MCQ220"])
         kidney_cols = pick_cols(["KIQ022"])
         liver_cols = pick_cols(["MCQ160L", "MCQ500", "MCQ510A", "MCQ510B", "MCQ510C", "MCQ510D", "MCQ510E", "MCQ510F"])
@@ -134,6 +135,8 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
         tmp = pd.DataFrame({"seqn": normalize_seqn(df), "cycle_start_year": cycle_year})
         if diabetes_cols:
             tmp["diabetes"] = detect_any_yes(df, diabetes_cols)
+        if asthma_cols:
+            tmp["asthma"] = detect_any_yes(df, asthma_cols)
         if cancer_cols:
             tmp["cancer"] = detect_any_yes(df, cancer_cols)
         if kidney_cols:
@@ -149,6 +152,7 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
                 "cycle_start_year": cycle_year,
                 "file": p.name,
                 "diabetes_cols": "|".join(diabetes_cols),
+                "asthma_cols": "|".join(asthma_cols),
                 "cvd_cols": "|".join(cvd_cols),
                 "cancer_cols": "|".join(cancer_cols),
                 "kidney_cols": "|".join(kidney_cols),
@@ -157,13 +161,17 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
         )
 
     if not per_cycle:
-        empty = pd.DataFrame(columns=["seqn", "cycle_start_year", "diabetes", "cvd", "cancer", "kidney", "liver"])
+        empty = pd.DataFrame(columns=["seqn", "cycle_start_year", "diabetes", "asthma", "cvd", "cancer", "kidney", "liver"])
         return empty, pd.DataFrame(avail_rows)
 
     flags = pd.concat(per_cycle, ignore_index=True)
+    for c in ["diabetes", "asthma", "cvd", "cancer", "kidney", "liver"]:
+        if c not in flags.columns:
+            flags[c] = pd.Series([pd.NA] * len(flags), dtype="boolean")
     agg = flags.groupby(["seqn", "cycle_start_year"], as_index=False).agg(
         {
             "diabetes": "max",
+            "asthma": "max",
             "cvd": "max",
             "cancer": "max",
             "kidney": "max",

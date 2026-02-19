@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kaplan-Meier survival curves for kidney/liver/diabetes vs full NHANES cohort.
+"""Kaplan-Meier survival curves for chronic-condition cohorts vs full NHANES cohort.
 
 Uses NHANES linked mortality public-use files (2019 linkage release) and the
 processed participant health flags table.
@@ -38,6 +38,7 @@ COHORT_COLORS = {
     "diabetes": "#ea580c",
     "kidney": "#2563eb",
     "liver": "#dc2626",
+    "asthma": "#059669",
 }
 
 
@@ -102,6 +103,8 @@ def main() -> None:
     ap.add_argument("--csv-out", default="output/km_kidney_liver_counts.csv")
     ap.add_argument("--png-age-out", default="output/km_kidney_liver_vs_full_by_age.png")
     ap.add_argument("--csv-age-out", default="output/km_kidney_liver_counts_by_age.csv")
+    ap.add_argument("--png-asthma-age-out", default="output/km_asthma_vs_full_by_age.png")
+    ap.add_argument("--csv-asthma-age-out", default="output/km_asthma_counts_by_age.csv")
     ap.add_argument("--age-summary-csv-out", default="output/km_kidney_liver_age_summary.csv")
     ap.add_argument("--steepness-png-out", default="output/steepness_longevity_disease.png")
     args = ap.parse_args()
@@ -111,6 +114,8 @@ def main() -> None:
     missing = required.difference(set(part.columns))
     if missing:
         raise RuntimeError(f"participant file missing required columns: {sorted(missing)}")
+    if "asthma" not in part.columns:
+        part["asthma"] = False
 
     part = part.copy()
     part = part[part["age_years"] >= 20].copy()
@@ -292,6 +297,52 @@ def main() -> None:
     print(f"Wrote age-timescale cohort counts: {args.csv_age_out}")
     print(f"Wrote age-timescale summary: {args.age_summary_csv_out}")
     print(f"Wrote steepness/longevity scatter: {args.steepness_png_out}")
+
+    # Separate asthma-vs-full age-timescale KM.
+    cohorts_asthma_age = [
+        ("full", "Full cohort (age>=20, eligstat=1)", pd.Series(True, index=df_age.index), COHORT_COLORS["full"]),
+        ("asthma", "Asthma (MCQ010=1)", df_age["asthma"] == True, COHORT_COLORS["asthma"]),  # noqa: E712
+    ]
+    ensure_dir(Path(args.png_asthma_age_out).parent)
+    fig_a, ax_a = plt.subplots(figsize=(10, 7), dpi=150)
+    kmf_a = KaplanMeierFitter()
+    asthma_rows = []
+    for _, label, mask, color in cohorts_asthma_age:
+        sub = df_age.loc[mask].copy()
+        if sub.empty:
+            continue
+        kmf_a.fit(
+            durations=sub["end_age"],
+            event_observed=sub["event"],
+            entry=sub["entry_age"],
+            label=label,
+        )
+        kmf_a.plot_survival_function(ax=ax_a, ci_show=True, color=color, linewidth=2.2)
+        asthma_rows.append(
+            {
+                "cohort": label,
+                "n": int(len(sub)),
+                "deaths": int(sub["event"].sum()),
+                "censored": int((sub["event"] == 0).sum()),
+                "min_entry_age_years": float(sub["entry_age"].min()),
+                "max_entry_age_years": float(sub["entry_age"].max()),
+                "max_end_age_years": float(sub["end_age"].max()),
+            }
+        )
+    ax_a.set_title("NHANES Kaplan-Meier Survival by Age: Asthma vs Full Cohort")
+    ax_a.set_xlabel("Age (years)")
+    ax_a.set_ylabel("Survival probability")
+    ax_a.set_ylim(0, 1.0)
+    ax_a.grid(alpha=0.25)
+    ax_a.legend(loc="best", frameon=False)
+    fig_a.tight_layout()
+    fig_a.savefig(args.png_asthma_age_out)
+    plt.close(fig_a)
+
+    ensure_dir(Path(args.csv_asthma_age_out).parent)
+    pd.DataFrame(asthma_rows).to_csv(args.csv_asthma_age_out, index=False)
+    print(f"Wrote asthma age-timescale KM plot: {args.png_asthma_age_out}")
+    print(f"Wrote asthma age-timescale cohort counts: {args.csv_asthma_age_out}")
 
 
 if __name__ == "__main__":
