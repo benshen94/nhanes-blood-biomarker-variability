@@ -21,7 +21,7 @@ python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.p
 python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed
 python3 src/compute_cv_metrics.py --in data/processed/biomarker_long.parquet --out data/processed
 python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all data/processed/cv_by_age_all.parquet --metrics data/processed/cv_trend_metrics.parquet --out dashboard/index.html --json-out dashboard/dashboard_data.json
-python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv
+python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png
 ```
 
 ## Kaplan-Meier outputs
@@ -35,6 +35,14 @@ python3 src/plot_km_kidney_liver.py --participants data/processed/participant_he
   - x-axis: age in years
   - entry age: interview age
   - exit age: interview age + mortality/censor follow-up
+- Age-shape summary:
+  - `output/km_kidney_liver_age_summary.csv`
+  - per cohort: median lifespan, Q1/Q3 lifespan, IQR lifespan, steepness (`median / IQR`)
+- Relative disease scatter:
+  - `output/steepness_longevity_disease.png`
+  - x-axis: cohort median lifespan divided by full-cohort median lifespan
+  - y-axis: cohort steepness divided by full-cohort steepness
+  - includes dashed reference lines at `(1,1)`
 
 ## Open the dashboard
 - Local:
