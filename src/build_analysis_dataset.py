@@ -117,6 +117,7 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
         diabetes_cols = pick_cols(["DIQ010"])
         cancer_cols = pick_cols(["MCQ220"])
         kidney_cols = pick_cols(["KIQ022"])
+        liver_cols = pick_cols(["MCQ160L", "MCQ500", "MCQ510A", "MCQ510B", "MCQ510C", "MCQ510D", "MCQ510E", "MCQ510F"])
         cvd_cols = pick_cols([
             "MCQ160B",
             "MCQ160C",
@@ -137,6 +138,8 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
             tmp["cancer"] = detect_any_yes(df, cancer_cols)
         if kidney_cols:
             tmp["kidney"] = detect_any_yes(df, kidney_cols)
+        if liver_cols:
+            tmp["liver"] = detect_any_yes(df, liver_cols)
         if cvd_cols:
             tmp["cvd"] = detect_any_yes(df, cvd_cols)
 
@@ -149,11 +152,12 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
                 "cvd_cols": "|".join(cvd_cols),
                 "cancer_cols": "|".join(cancer_cols),
                 "kidney_cols": "|".join(kidney_cols),
+                "liver_cols": "|".join(liver_cols),
             }
         )
 
     if not per_cycle:
-        empty = pd.DataFrame(columns=["seqn", "cycle_start_year", "diabetes", "cvd", "cancer", "kidney"])
+        empty = pd.DataFrame(columns=["seqn", "cycle_start_year", "diabetes", "cvd", "cancer", "kidney", "liver"])
         return empty, pd.DataFrame(avail_rows)
 
     flags = pd.concat(per_cycle, ignore_index=True)
@@ -163,6 +167,7 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
             "cvd": "max",
             "cancer": "max",
             "kidney": "max",
+            "liver": "max",
         }
     )
 
@@ -191,6 +196,8 @@ def build_participant_table(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
             reasons.append("cancer")
         if is_yes(r.get("kidney", False)):
             reasons.append("kidney")
+        if is_yes(r.get("liver", False)):
+            reasons.append("liver")
         return "|".join(reasons)
 
     p["exclusion_reason"] = p.apply(row_reason, axis=1)

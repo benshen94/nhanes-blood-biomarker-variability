@@ -12,6 +12,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_dashboard.py` builds static interactive HTML dashboard.
+- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (kidney/liver disease vs full cohort) using linked mortality files.
 
 ## Run Order
 ```bash
@@ -20,6 +21,7 @@ python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.p
 python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed
 python3 src/compute_cv_metrics.py --in data/processed/biomarker_long.parquet --out data/processed
 python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all data/processed/cv_by_age_all.parquet --metrics data/processed/cv_trend_metrics.parquet --out dashboard/index.html --json-out dashboard/dashboard_data.json
+python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv
 ```
 
 ## Open the dashboard
@@ -53,6 +55,16 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
   - healthy cohort definition
   - decline flag criteria
   - interpretation notes for CV and median views
+
+## Healthy Exclusion Rules
+- Adults only (`age >= 20`).
+- Excluded if any of:
+  - pregnancy (`RIDEXPRG == 1`)
+  - diagnosed diabetes (`DIQ010 == 1`)
+  - diagnosed CVD (`MCQ160B/C/D/E/F == 1`)
+  - cancer history (`MCQ220 == 1`)
+  - weak/failing kidneys (`KIQ022 == 1`)
+  - liver disease history (`MCQ160L == 1`, or newer liver variables `MCQ500/MCQ510A-F == 1`)
 
 ## Compare tab
 - Use `Compare Rankings` (top tab) to compare biomarkers by Spearman trend quickly.
