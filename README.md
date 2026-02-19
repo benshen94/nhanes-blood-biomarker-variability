@@ -12,7 +12,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_dashboard.py` builds static interactive HTML dashboard.
-- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (diabetes/kidney/liver disease vs full cohort) using linked mortality files.
+- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (diabetes/kidney/liver disease vs full cohort) using linked mortality files, in both follow-up-time and age-timescale modes.
 
 ## Run Order
 ```bash
@@ -21,8 +21,20 @@ python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.p
 python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed
 python3 src/compute_cv_metrics.py --in data/processed/biomarker_long.parquet --out data/processed
 python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all data/processed/cv_by_age_all.parquet --metrics data/processed/cv_trend_metrics.parquet --out dashboard/index.html --json-out dashboard/dashboard_data.json
-python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv
+python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv
 ```
+
+## Kaplan-Meier outputs
+- Follow-up timeline:
+  - `output/km_kidney_liver_vs_full.png`
+  - `output/km_kidney_liver_counts.csv`
+  - x-axis: months since interview (`permth_int`/`permth_exm`)
+- Age timeline (delayed entry / left truncation):
+  - `output/km_kidney_liver_vs_full_by_age.png`
+  - `output/km_kidney_liver_counts_by_age.csv`
+  - x-axis: age in years
+  - entry age: interview age
+  - exit age: interview age + mortality/censor follow-up
 
 ## Open the dashboard
 - Local:

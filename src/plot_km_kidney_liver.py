@@ -74,6 +74,8 @@ def main() -> None:
     ap.add_argument("--mortality-dir", default="data/raw/mortality")
     ap.add_argument("--png-out", default="output/km_kidney_liver_vs_full.png")
     ap.add_argument("--csv-out", default="output/km_kidney_liver_counts.csv")
+    ap.add_argument("--png-age-out", default="output/km_kidney_liver_vs_full_by_age.png")
+    ap.add_argument("--csv-age-out", default="output/km_kidney_liver_counts_by_age.csv")
     args = ap.parse_args()
 
     part = pd.read_parquet(args.participants)
@@ -136,8 +138,66 @@ def main() -> None:
     ensure_dir(Path(args.csv_out).parent)
     pd.DataFrame(count_rows).to_csv(args.csv_out, index=False)
 
+    # Age-timescale KM (delayed entry / left truncation): each participant enters
+    # the risk set at interview age and exits at age-at-death or age-at-censoring.
+    df_age = df[df["age_years"].notna()].copy()
+    df_age["entry_age"] = pd.to_numeric(df_age["age_years"], errors="coerce")
+    df_age["end_age"] = df_age["entry_age"] + (pd.to_numeric(df_age["time_months"], errors="coerce") / 12.0)
+    df_age = df_age[df_age["entry_age"].notna() & df_age["end_age"].notna()].copy()
+    df_age = df_age[df_age["end_age"] > df_age["entry_age"]].copy()
+
+    cohorts_age = [
+        ("Full cohort (age>=20, eligstat=1)", pd.Series(True, index=df_age.index), "#334155"),
+        ("Diabetes (DIQ010=1)", df_age["diabetes"] == True, "#7c3aed"),  # noqa: E712
+        ("Kidney disease (KIQ022=1)", df_age["kidney"] == True, "#1d4ed8"),  # noqa: E712
+        ("Liver disease (MCQ160L/MCQ500/MCQ510*=1)", df_age["liver"] == True, "#b91c1c"),  # noqa: E712
+    ]
+
+    ensure_dir(Path(args.png_age_out).parent)
+    fig_age, ax_age = plt.subplots(figsize=(10, 7), dpi=150)
+    kmf_age = KaplanMeierFitter()
+    count_rows_age = []
+
+    for label, mask, color in cohorts_age:
+        sub = df_age.loc[mask].copy()
+        if sub.empty:
+            continue
+        kmf_age.fit(
+            durations=sub["end_age"],
+            event_observed=sub["event"],
+            entry=sub["entry_age"],
+            label=label,
+        )
+        kmf_age.plot_survival_function(ax=ax_age, ci_show=True, color=color, linewidth=2)
+        count_rows_age.append(
+            {
+                "cohort": label,
+                "n": int(len(sub)),
+                "deaths": int(sub["event"].sum()),
+                "censored": int((sub["event"] == 0).sum()),
+                "min_entry_age_years": float(sub["entry_age"].min()),
+                "max_entry_age_years": float(sub["entry_age"].max()),
+                "max_end_age_years": float(sub["end_age"].max()),
+            }
+        )
+
+    ax_age.set_title("NHANES Kaplan-Meier Survival by Age: Diabetes/Kidney/Liver vs Full Cohort")
+    ax_age.set_xlabel("Age (years)")
+    ax_age.set_ylabel("Survival probability")
+    ax_age.set_ylim(0, 1.0)
+    ax_age.grid(alpha=0.25)
+    ax_age.legend(loc="best", frameon=False)
+    fig_age.tight_layout()
+    fig_age.savefig(args.png_age_out)
+    plt.close(fig_age)
+
+    ensure_dir(Path(args.csv_age_out).parent)
+    pd.DataFrame(count_rows_age).to_csv(args.csv_age_out, index=False)
+
     print(f"Wrote KM plot: {args.png_out}")
     print(f"Wrote cohort counts: {args.csv_out}")
+    print(f"Wrote age-timescale KM plot: {args.png_age_out}")
+    print(f"Wrote age-timescale cohort counts: {args.csv_age_out}")
 
 
 if __name__ == "__main__":
