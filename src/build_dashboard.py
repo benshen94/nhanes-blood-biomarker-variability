@@ -1675,9 +1675,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const quartNames = ['Q1', 'Q2', 'Q3', 'Q4'];
       const mobile = window.matchMedia('(max-width: 760px)').matches;
 
+      const yPos = withDensity.map((_, idx) => withDensity.length - 1 - idx);
       for (let rowIdx = 0; rowIdx < withDensity.length; rowIdx += 1) {
         const r = withDensity[rowIdx];
-        const yBase = rowIdx;
+        const yBase = yPos[rowIdx];
         const yCurve = r.density.map(d => yBase + (maxD > 0 ? (d / maxD) * amp : 0));
         const bounds = [Number.NEGATIVE_INFINITY, r.q1, r.q2, r.q3, Number.POSITIVE_INFINITY];
 
@@ -1731,7 +1732,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         yaxis: {
           title: 'Age bin',
           tickmode: 'array',
-          tickvals: withDensity.map((_, i) => i),
+          tickvals: yPos,
           ticktext: withDensity.map(r => r.label),
           tickfont: { size: mobile ? 10 : 12 },
         },
