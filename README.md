@@ -107,6 +107,7 @@ python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all da
   - age is stratified into 10-year bins (`20-29`, `30-39`, ..., `90+`)
   - each age-bin density is drawn as a stacked ridgeline/waterfall profile
   - profile is segmented into quartiles (`Q1`..`Q4`) using quartile color bands
+  - for biomarkers with nonnegative observed values, the waterfall x-axis is floored at `0` (prevents KDE tails from visually extending below zero)
   - hover shows per-bin `n`, `Q1`, `Median`, and `Q3`
 
 ## Trend metrics in rankings

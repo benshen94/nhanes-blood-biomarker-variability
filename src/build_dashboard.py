@@ -1649,15 +1649,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       let globalMin = Infinity;
       let globalMax = -Infinity;
+      let allNonNegative = true;
       for (const r of rows) {
         const lo = Math.min(...r.values);
         const hi = Math.max(...r.values);
+        if (lo < 0) allNonNegative = false;
         if (lo < globalMin) globalMin = lo;
         if (hi > globalMax) globalMax = hi;
       }
       const span = Math.max(1e-6, globalMax - globalMin);
       const pad = span * 0.08;
-      const xMin = globalMin - pad;
+      const xMin = allNonNegative ? 0 : (globalMin - pad);
       const xMax = globalMax + pad;
       const gridN = 180;
       const xGrid = Array.from({ length: gridN }, (_, i) => xMin + (i * (xMax - xMin) / (gridN - 1)));
