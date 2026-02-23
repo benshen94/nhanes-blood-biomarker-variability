@@ -1215,26 +1215,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           }
 
           if (state.mode === 'skewness') {
-            points = points.filter(p => Number.isFinite(p.skewness));
-            if (points.length === 0) continue;
-            traces.push({
-              x: points.map(p => p.age_mid),
-              y: points.map(p => p.skewness),
-              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>skewness=${formatNum(p.skewness, 4)}<br>mean=${formatNum(p.mean, 4)}`),
-              mode: 'lines+markers',
-              type: 'scatter',
-              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
-              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
-              hovertemplate: '%{text}<extra></extra>',
-              name: `Clalit ${cohortLabel[c]} Skewness`
-            });
+            // Clalit data provides log_skewness, which causes sign inversion issues when compared to raw skewness. We skip it.
             continue;
           }
+
+          const clalitBandColors = {
+            pooled: 'rgba(15,118,110,0.16)',
+            female: 'rgba(209,73,91,0.18)',
+            male: 'rgba(37,99,235,0.18)',
+          };
+
+          const clalitCi = ciBandTrace(points, clalitBandColors[c], `Clalit ${cohortLabel[c]} IQR (25th-75th)`);
+          if (clalitCi) traces.push(clalitCi);
 
           traces.push({
             x: points.map(p => p.age_mid),
             y: points.map(p => p.median),
-            text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+            text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>q25=${formatNum(p.q25, 4)}<br>q75=${formatNum(p.q75, 4)}<br>mean=${formatNum(p.mean, 4)}`),
             mode: 'lines+markers',
             type: 'scatter',
             marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
@@ -2642,7 +2639,8 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
             std_v = float(np.sqrt(var_v)) if var_v > 0 else 0.0
             cv_v = std_v / abs(mean_v) if abs(mean_v) > 1e-8 else np.nan
             median_v = float(np.average(g_age['median'], weights=g_age['n']))
-            skew_v = float(np.average(g_age['log_skewness'].fillna(0), weights=g_age['n']))
+            q25_v = float(np.average(g_age['q25'], weights=g_age['n'])) if 'q25' in g_age.columns else None
+            q75_v = float(np.average(g_age['q75'], weights=g_age['n'])) if 'q75' in g_age.columns else None
             
             p = {
                 "age_bin": str(age_bin),
@@ -2651,7 +2649,8 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
                 "mean": mean_v,
                 "std": std_v,
                 "median": median_v,
-                "skewness": skew_v,
+                "q25": q25_v,
+                "q75": q75_v,
                 "cv": float(cv_v),
                 "passes_n_threshold": True
             }
@@ -2671,7 +2670,8 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
             std_v = float(np.sqrt(var_v)) if var_v > 0 else 0.0
             cv_v = std_v / abs(mean_v) if abs(mean_v) > 1e-8 else np.nan
             median_v = float(np.average(g_age['median'], weights=g_age['n']))
-            skew_v = float(np.average(g_age['log_skewness'].fillna(0), weights=g_age['n']))
+            q25_v = float(np.average(g_age['q25'], weights=g_age['n'])) if 'q25' in g_age.columns else None
+            q75_v = float(np.average(g_age['q75'], weights=g_age['n'])) if 'q75' in g_age.columns else None
             
             p = {
                 "age_bin": str(age_bin),
@@ -2680,12 +2680,13 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
                 "mean": mean_v,
                 "std": std_v,
                 "median": median_v,
-                "skewness": skew_v,
+                "q25": q25_v,
+                "q75": q75_v,
                 "cv": float(cv_v),
                 "passes_n_threshold": True
             }
             pooled.append(p)
-        clalit_payload[bid]['both'] = pooled
+        clalit_payload.setdefault(bid, {})['pooled'] = pooled
         
     return clalit_payload
 

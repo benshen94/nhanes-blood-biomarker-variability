@@ -1,22 +1,22 @@
 Test Name (Clalit),Test Name (NHANES),Clalit ID,NHANES ID,In Clalit,In NHANES,Mapping Status
-Creatine kinase,,lab.22500.no_meds,,V,,Unmapped
-Phosphatase alkaline,Alkaline phosphatase (U/L),lab.21800.no_meds,alkaline phosphatase,V,V,Auto-Mapped
-PTH,,lab.103500.no_meds,,V,,Unmapped
-Phosphorus,Phosphorus (mg/dL),lab.20900.no_meds,phosphorus__mg/dl,V,V,Auto-Mapped
+Creatine kinase,Creatine Phosphokinase (CPK) (IU/L),lab.22500.no_meds,creatine phosphokinase cpk,V,V,Mapped (Existing)
+Phosphatase alkaline,Alkaline phosphatase (U/L),lab.21800.no_meds,alkaline phosphatase,V,V,Mapped (Existing)
+PTH,Parathyroid Hormone(Elecys method) pg/mL,lab.103500.no_meds,parathyroid hormone elecys method pg/ml,V,V,Mapped (Existing)
+Phosphorus,Phosphorus (mg/dL),lab.20900.no_meds,phosphorus__mg/dl,V,V,Mapped (Existing)
 LDH,LDH (U/L),lab.22300.no_meds,ldh,V,V,Mapped (Existing)
-Vitamin D3 25OH,,lab.27300.no_meds,,V,,Unmapped
+Vitamin D3 25OH,25-hydroxyvitamin D3 (nmol/L),lab.27300.no_meds,25-hydroxyvitamin d3,V,V,Mapped (Existing)
 height,,marker.height.no_meds,,V,,Unmapped
 weight,Total dust weight (mg),marker.weight.no_meds,total dust weight,V,V,Auto-Mapped
 BMI,,marker.BMI.no_meds,,V,,Unmapped
-Estradiol,Estradiol (pg/mL),lab.100500.no_meds,estradiol__pg/ml,V,V,Auto-Mapped
-Testosterone_T,Testosterone (ng/mL),lab.101100.no_meds,testosterone,V,V,Auto-Mapped
-Progesterone,Progesterone (ng/dL),lab.100600.no_meds,progesterone__ng/dl,V,V,Auto-Mapped
-Prolactin,,lab.101000.no_meds,,V,,Unmapped
-LH,Luteinizing hormone (IU/L),lab.100800.no_meds,luteinizing hormone,V,V,Auto-Mapped
-FSH,Follicle stimulating hormone (IU/L),lab.100900.no_meds,follicle stimulating hormone,V,V,Auto-Mapped
-DHEA-S,,lab.101500.no_meds,,V,,Unmapped
-Androstenedione,Androstenedione (ng/dL),lab.101300.no_meds,androstenedione__ng/dl,V,V,Auto-Mapped
-17α-OHP,,lab.100700.no_meds,,V,,Unmapped
+Estradiol,Estradiol (pg/mL),lab.100500.no_meds,estradiol__pg/ml,V,V,Mapped (Existing)
+Testosterone_T,Testosterone (ng/mL),lab.101100.no_meds,testosterone,V,V,Mapped (Existing)
+Progesterone,Progesterone (ng/dL),lab.100600.no_meds,progesterone__ng/dl,V,V,Mapped (Existing)
+Prolactin,prolactin__ng/ml,lab.101000.no_meds,prolactin__ng/ml,V,V,Mapped (Existing)
+LH,Luteinizing hormone (IU/L),lab.100800.no_meds,luteinizing hormone,V,V,Mapped (Existing)
+FSH,Follicle stimulating hormone (IU/L),lab.100900.no_meds,follicle stimulating hormone,V,V,Mapped (Existing)
+DHEA-S,dhea-sulfate,lab.101500.no_meds,dhea-sulfate,V,V,Mapped (Existing)
+Androstenedione,Androstenedione (ng/dL),lab.101300.no_meds,androstenedione__ng/dl,V,V,Mapped (Existing)
+17α-OHP,17α-hydroxyprogesterone (ng/dL),lab.100700.no_meds,17a-hydroxyprogesterone__ng/dl,V,V,Mapped (Existing)
 TSH,Thyroid stimulating hormone,lab.102100.no_meds,thyroid stimulating hormone__raw_,V,V,Mapped (Existing)
 Free T4,Free T3,lab.102500.no_meds,free t3,V,V,Mapped (Existing)
 Free T3,Free T3,lab.102300.no_meds,free t3,V,V,Mapped (Existing)
@@ -28,43 +28,43 @@ Cortisol urine free samp,,lab.101702.no_meds,,V,,Unmapped
 ACTH,,lab.104400.no_meds,,V,,Unmapped
 Aldosterone,,lab.103200.no_meds,,V,,Unmapped
 11-Deoxycortisol,,lab.104300.no_meds,,V,,Unmapped
-Growth Hormone,Luteinizing hormone (IU/L),lab.101900.no_meds,luteinizing hormone,V,V,Auto-Mapped
+Growth Hormone,Luteinizing hormone (IU/L),lab.101900.no_meds,luteinizing hormone,V,V,Mapped (Existing)
 IGF-1,,lab.102800.no_meds,,V,,Unmapped
 ACE,,lab.103000.no_meds,,V,,Unmapped
 Albumin,Albumin,lab.21100.no_meds,albumin__raw_,V,V,Mapped (Existing)
-Bilirubin direct,Total bilirubin (mg/dL),lab.23400.no_meds,total bilirubin,V,V,Auto-Mapped
-Bilirubin indirect,Total bilirubin (mg/dL),lab.36200.no_meds,total bilirubin,V,V,Auto-Mapped
-Bilirubin total,Total bilirubin (mg/dL),lab.23300.no_meds,total bilirubin,V,V,Auto-Mapped
-GGT,Gamma glutamyl transferase (U/L),lab.22200.no_meds,gamma glutamyl transferase,V,V,Auto-Mapped
+Bilirubin direct,Total bilirubin (mg/dL),lab.23400.no_meds,total bilirubin,V,V,Mapped (Existing)
+Bilirubin indirect,Total bilirubin (mg/dL),lab.36200.no_meds,total bilirubin,V,V,Mapped (Existing)
+Bilirubin total,Total bilirubin (mg/dL),lab.23300.no_meds,total bilirubin,V,V,Mapped (Existing)
+GGT,Gamma glutamyl transferase (U/L),lab.22200.no_meds,gamma glutamyl transferase,V,V,Mapped (Existing)
 Globulin,Globulin (g/L),lab.36400.no_meds,globulin,V,V,Mapped (Existing)
 Total Protein,Total_Protein,lab.21000.no_meds,total protein__raw_,V,V,Mapped (Existing)
-AST (GOT),,lab.22000.no_meds,,V,,Unmapped
-ALT (GPT),,lab.22100.no_meds,,V,,Unmapped
+AST (GOT),Aspartate aminotransferase AST (U/L),lab.22000.no_meds,aspartate aminotransferase ast,V,V,Mapped (Existing)
+ALT (GPT),Alanine aminotransferase ALT (U/L),lab.22100.no_meds,alanine aminotransferase alt,V,V,Mapped (Existing)
 Amylase,,lab.23000.no_meds,,V,,Unmapped
 Cholesterol,lab.58.no_meds,lab.21200.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
 HDL,lab.58.no_meds,lab.21400.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
 HDL ratio,lab.58.no_meds,lab.33300.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
 LDL,lab.58.no_meds,lab.21500.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
-Glucose,Plasma glucose (mg/dL),lab.20100.no_meds,plasma glucose,V,V,Auto-Mapped
+Glucose,Plasma glucose (mg/dL),lab.20100.no_meds,plasma glucose,V,V,Mapped (Existing)
 HbA1c,lab.10.no_meds,lab.25203.no_meds,lab.10.no_meds,V,V,Mapped (Existing)
-Insulin,Insulin: SI (pmol/L),lab.101800.no_meds,insulin si,V,V,Auto-Mapped
+Insulin,Insulin: SI (pmol/L),lab.101800.no_meds,insulin si,V,V,Mapped (Existing)
 Non-HDL Cholesterol,lab.58.no_meds,lab.520706.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
-Triglycerides,Triglycerides (mg/dL),lab.21300.no_meds,triglycerides__mg/dl,V,V,Auto-Mapped
+Triglycerides,Triglycerides (mg/dL),lab.21300.no_meds,triglycerides__mg/dl,V,V,Mapped (Existing)
 APTT-R,,lab.17703.no_meds,,V,,Unmapped
 APTT-sec,,lab.17702.no_meds,,V,,Unmapped
-MPV,,lab.110.no_meds,,V,,Unmapped
+MPV,Mean platelet volume (fL),lab.110.no_meds,mean platelet volume,V,V,Mapped (Existing)
 PDW,,lab.112.no_meds,,V,,Unmapped
-Platelets,,lab.105.no_meds,,V,,Unmapped
+Platelets,Platelet count (1000 cells/uL),lab.105.no_meds,platelet count,V,V,Mapped (Existing)
 PT INR,,lab.17601.no_meds,,V,,Unmapped
 PT %,,lab.17603.no_meds,,V,,Unmapped
 PT sec,,lab.17602.no_meds,,V,,Unmapped
-PT control,TB Mitogen control result,lab.20008.no_meds,tb mitogen control result,V,V,Auto-Mapped
-WBC,,lab.101.no_meds,,V,,Unmapped
-Basophiles,,lab.148.no_meds,,V,,Unmapped
-Eosinophils ABS,,lab.146.no_meds,,V,,Unmapped
-Lymphocytes,,lab.140.no_meds,,V,,Unmapped
-Monocytes,,lab.144.no_meds,,V,,Unmapped
-Neutrophils,,lab.142.no_meds,,V,,Unmapped
+PT control,TB Mitogen control result,lab.20008.no_meds,tb mitogen control result,V,V,Mapped (Existing)
+WBC,White blood cell count (1000 cells/uL),lab.101.no_meds,white blood cell count,V,V,Mapped (Existing)
+Basophiles,Basophils percent (%),lab.148.no_meds,basophils percent,V,V,Mapped (Existing)
+Eosinophils ABS,Eosinophils number (1000 cells/uL),lab.146.no_meds,eosinophils number,V,V,Mapped (Existing)
+Lymphocytes,Lymphocyte percent (%),lab.140.no_meds,lymphocyte percent,V,V,Mapped (Existing)
+Monocytes,Monocyte percent (%),lab.144.no_meds,monocyte percent,V,V,Mapped (Existing)
+Neutrophils,Segmented neutrophils percent (%),lab.142.no_meds,segmented neutrophils percent,V,V,Mapped (Existing)
 Large unstained cells,,lab.123.no_meds,,V,,Unmapped
 Basophils %,,lab.149.no_meds,,V,,Unmapped
 Eosinophils %,,lab.147.no_meds,,V,,Unmapped
@@ -76,12 +76,12 @@ Neutrophils %,,lab.202.no_meds,,V,,Unmapped
 Atypical lymphocytes %,,lab.158.no_meds,,V,,Unmapped
 Large unstained cells %,,lab.122.no_meds,,V,,Unmapped
 MPXI,,lab.124.no_meds,,V,,Unmapped
-CRP,High-Sensitivity C-Reactive Protein (hs-CRP) (mg/L),lab.60200.no_meds,high-sensitivity c-reactive protein hs-crp,V,V,Auto-Mapped
+CRP,High-Sensitivity C-Reactive Protein (hs-CRP) (mg/L),lab.60200.no_meds,high-sensitivity c-reactive protein hs-crp,V,V,Mapped (Existing)
 Sedimentation rate,,lab.400.no_meds,,V,,Unmapped
-Procalcitonin,,lab.111.no_meds,,V,,Unmapped
-Calcium,Total calcium (mg/dL),lab.20800.no_meds,total calcium__mg/dl,V,V,Auto-Mapped
+Procalcitonin,Red blood cell count (million cells/uL),lab.111.no_meds,red blood cell count,V,V,Mapped (Existing)
+Calcium,Total calcium (mg/dL),lab.20800.no_meds,total calcium__mg/dl,V,V,Mapped (Existing)
 Chloride,Chloride (mmol/L),lab.25403.no_meds,chloride,V,V,Mapped (Existing)
-Creatinine (blood),Creatinine (mg/dL),lab.20300.no_meds,creatinine__mg/dl,V,V,Auto-Mapped
+Creatinine (blood),Creatinine (mg/dL),lab.20300.no_meds,creatinine__mg/dl,V,V,Mapped (Existing)
 Creatinine (urine),,lab.41500.no_meds,,V,,Unmapped
 Microalbumin/Creatinine ,,lab.35000.no_meds,,V,,Unmapped
 Magnesium,,lab.24500.no_meds,,V,,Unmapped
@@ -89,19 +89,19 @@ Microalbumin urine 24h,,lab.46700.no_meds,,V,,Unmapped
 Sodium,Sodium (mmol/L),lab.25401.no_meds,sodium,V,V,Mapped (Existing)
 Urine pH,,lab.9911.no_meds,,V,,Unmapped
 Specific gravity,,lab.9904.no_meds,,V,,Unmapped
-Uric acid,Uric acid (mg/dL),lab.20400.no_meds,uric acid__mg/dl,V,V,Auto-Mapped
-Potassium Blood,Potassium (mmol/L),lab.20600.no_meds,potassium,V,V,Auto-Mapped
+Uric acid,Uric acid (mg/dL),lab.20400.no_meds,uric acid__mg/dl,V,V,Mapped (Existing)
+Potassium Blood,Potassium (mmol/L),lab.20600.no_meds,potassium,V,V,Mapped (Existing)
 Leucocytes (urine strip),,lab.9907.no_meds,,V,,Unmapped
 Erythrocytes (urine strip),,lab.9909.no_meds,,V,,Unmapped
-RBC,"Folate, RBC (ng/mL RBC)",lab.102.no_meds,folate rbc__ng/mlrbc,V,V,Auto-Mapped
+RBC,"Folate, RBC (ng/mL RBC)",lab.102.no_meds,folate rbc__ng/mlrbc,V,V,Mapped (Existing)
 Hemoglobin,Hemoglobin (g/dL),lab.103.no_meds,hemoglobin,V,V,Mapped (Existing)
 Hematocrit,Hematocrit (%),lab.104.no_meds,hematocrit,V,V,Mapped (Existing)
 Hct/Hgb,,lab.150.no_meds,,V,,Unmapped
 CH,,lab.166.no_meds,,V,,Unmapped
 HDW,,lab.117.no_meds,,V,,Unmapped
-MCH,,lab.107.no_meds,,V,,Unmapped
+MCH,Mean cell hemoglobin (pg),lab.107.no_meds,mean cell hemoglobin,V,V,Mapped (Existing)
 MCHC,,lab.108.no_meds,,V,,Unmapped
-MCV,,lab.106.no_meds,,V,,Unmapped
+MCV,Mean cell volume (fL),lab.106.no_meds,mean cell volume,V,V,Mapped (Existing)
 RDW,,lab.109.no_meds,,V,,Unmapped
 RDW,,lab.152.no_meds,,V,,Unmapped
 RDW SD,,lab.151.no_meds,,V,,Unmapped
@@ -111,27 +111,17 @@ Hyperchromic %,,lab.128.no_meds,,V,,Unmapped
 Hypochromic %,,lab.129.no_meds,,V,,Unmapped
 Microcytic/Hypochromic,,lab.172.no_meds,,V,,Unmapped
 Ferritin,Ferritin (ng/mL),lab.91200.no_meds,ferritin,V,V,Mapped (Existing)
-Iron,Total iron binding capacity (ug/dL),lab.23100.no_meds,total iron binding capacity,V,V,Auto-Mapped
-Transferrin,Serum transferrin receptor (mg/l),lab.23200.no_meds,serum transferrin receptor,V,V,Auto-Mapped
+Iron,Total iron binding capacity (ug/dL),lab.23100.no_meds,total iron binding capacity,V,V,Mapped (Existing)
+Transferrin,Serum transferrin receptor (mg/l),lab.23200.no_meds,serum transferrin receptor,V,V,Mapped (Existing)
 Folic acid,Folic acid (nmol/L),lab.31400.no_meds,folic acid,V,V,Mapped (Existing)
-Vitamin B12,Vitamin B12 (pg/mL),lab.27100.no_meds,vitamin b12__pg/ml,V,V,Auto-Mapped
+Vitamin B12,Vitamin B12 (pg/mL),lab.27100.no_meds,vitamin b12__pg/ml,V,V,Mapped (Existing)
 Sodium,Sodium (mmol/L),lab.20500.no_meds,sodium,V,V,Mapped (Existing)
-Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,V,Auto-Mapped
-,Basophils percent (%),,basophils percent,,V,NHANES Only
-,Eosinophils number (1000 cells/uL),,eosinophils number,,V,NHANES Only
+Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,V,Mapped (Existing)
 ,Eosinophils percent (%),,eosinophils percent,,V,NHANES Only
 ,Lymphocyte number (1000 cells/uL),,lymphocyte number,,V,NHANES Only
-,Lymphocyte percent (%),,lymphocyte percent,,V,NHANES Only
-,Mean cell hemoglobin (pg),,mean cell hemoglobin,,V,NHANES Only
 ,Mean cell hemoglobin concentration (g/dL),,mean cell hemoglobin concentration,,V,NHANES Only
-,Mean platelet volume (fL),,mean platelet volume,,V,NHANES Only
 ,Monocyte number (1000 cells/uL),,monocyte number,,V,NHANES Only
-,Monocyte percent (%),,monocyte percent,,V,NHANES Only
-,Platelet count (1000 cells/uL),,platelet count,,V,NHANES Only
-,Red blood cell count (million cells/uL),,red blood cell count,,V,NHANES Only
 ,Segmented neutrophils num (1000 cell/uL),,segmented neutrophils num,,V,NHANES Only
-,Segmented neutrophils percent (%),,segmented neutrophils percent,,V,NHANES Only
-,White blood cell count (1000 cells/uL),,white blood cell count,,V,NHANES Only
 ,Bicarbonate (mmol/L),,bicarbonate,,V,NHANES Only
 ,Osmolality (mmol/Kg),,osmolality,,V,NHANES Only
 ,Phosphorus (mmol/L),,phosphorus__mmol/l,,V,NHANES Only
@@ -162,7 +152,6 @@ Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,
 ,Insulin (pmol/L),,insulin__pmol/l,,V,NHANES Only
 ,Insulin (uU/mL),,insulin__uu/ml,,V,NHANES Only
 ,Plasma glucose: SI (mmol/L),,plasma glucose si,,V,NHANES Only
-,Parathyroid Hormone(Elecys method) pg/mL,,parathyroid hormone elecys method pg/ml,,V,NHANES Only
 ,Thyroglobulin (ug/L),,thyroglobulin__ug/l,,V,NHANES Only
 ,Thyroglobulin antibodies (IU/mL),,thyroglobulin antibodies,,V,NHANES Only
 ,Thyroglobulin antibody,,thyroglobulin antibody,,V,NHANES Only
@@ -184,9 +173,7 @@ Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,
 ,Cystatin C mg/L,,cystatin c mg/l,,V,NHANES Only
 ,Lauric acid (C12:0) (umol/L),,lauric acid c12 0,,V,NHANES Only
 ,Uric acid (umol/L),,uric acid__umol/l,,V,NHANES Only
-,Alanine aminotransferase ALT (U/L),,alanine aminotransferase alt,,V,NHANES Only
 ,Albumin (g/L),,albumin__g/l,,V,NHANES Only
-,Aspartate aminotransferase AST (U/L),,aspartate aminotransferase ast,,V,NHANES Only
 ,"Beta 2 Microglobulin, mg/L",,beta 2 microglobulin mg/l,,V,NHANES Only
 ,"Bilirubin, total (mg/dL)",,bilirubin total__mg/dl,,V,NHANES Only
 ,"Bilirubin, total (umol/L)",,bilirubin total__umol/l,,V,NHANES Only
@@ -199,7 +186,6 @@ Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,
 ,Fibrinogen (g/L),,fibrinogen,,V,NHANES Only
 ,25-hydroxyvitamin D2 (nmol/L),,25-hydroxyvitamin d2,,V,NHANES Only
 ,25-hydroxyvitamin D2 + D3,,25-hydroxyvitamin d2 + d3,,V,NHANES Only
-,25-hydroxyvitamin D3 (nmol/L),,25-hydroxyvitamin d3,,V,NHANES Only
 ,4-pyridoxic acid (nmol/L),,4-pyridoxic acid,,V,NHANES Only
 ,5-Formyl-tetrahydrofolate (nmol/L),,5-formyl-tetrahydrofolate,,V,NHANES Only
 ,5-Methyl-tetrahydrofolate (nmol/L),,5-methyl-tetrahydrofolate,,V,NHANES Only
@@ -268,7 +254,6 @@ Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,
 ,trans-b-carotene (umol/L),,trans-b-carotene__umol/l,,V,NHANES Only
 ,Alpha-1-Acid Glycoprotein (g/L),,alpha-1-acid glycoprotein,,V,NHANES Only
 ,C-reactive protein (mg/dL),,c-reactive protein,,V,NHANES Only
-,17α-hydroxyprogesterone (ng/dL),,17a-hydroxyprogesterone__ng/dl,,V,NHANES Only
 ,17α-hydroxyprogesterone (nmol/L),,17a-hydroxyprogesterone__nmol/l,,V,NHANES Only
 ,Androstenedione (nmol/L),,androstenedione__nmol/l,,V,NHANES Only
 ,Anti-Mullerian Hormone (ng/ml),,anti-mullerian hormone__ng/ml,,V,NHANES Only
@@ -385,7 +370,6 @@ Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,
 ,Chromium (ug/L),,chromium__ug/l,,V,NHANES Only
 ,Cobalt (nmol/L),,cobalt__nmol/l,,V,NHANES Only
 ,Cobalt (ug/L),,cobalt__ug/l,,V,NHANES Only
-,Creatine Phosphokinase (CPK) (IU/L),,creatine phosphokinase cpk,,V,NHANES Only
 ,Days between the 1st and 2nd exams,,days between the 1st and 2nd exams,,V,NHANES Only
 ,Dense fine speckled EIS unit,,dense fine speckled eis unit,,V,NHANES Only
 ,Docosahexaenoic acid (22:6n-3) (umol/L),,docosahexaenoic acid 22 6n-3,,V,NHANES Only
@@ -462,7 +446,6 @@ Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,
 ,Mean Ab for GII.4 Farmington Hills ag,,mean ab for gii 4 farmington hills ag,,V,NHANES Only
 ,Mean OD for GII.4 Farmington Hills ag,,mean od for gii 4 farmington hills ag,,V,NHANES Only
 ,Mean OD for GII.4 New Orleans ag,,mean od for gii 4 new orleans ag,,V,NHANES Only
-,Mean cell volume (fL),,mean cell volume,,V,NHANES Only
 ,Mean optical density for GI.4 ag,,mean optical density for gi 4 ag,,V,NHANES Only
 ,Mean optical density for GII.3 ag,,mean optical density for gii 3 ag,,V,NHANES Only
 ,Mefox oxidation product (nmol/L),,mefox oxidation product,,V,NHANES Only
