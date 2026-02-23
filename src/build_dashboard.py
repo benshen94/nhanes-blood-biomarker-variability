@@ -181,6 +181,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .compare-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
     .compare-controls select, .compare-controls input { margin: 4px 0 0 0; width: 220px; }
     #compare-plot { width: 100%; height: 640px; }
+    #compare-clalit-plot { width: 100%; height: 480px; }
     .scatter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
     .scatter-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
     .scatter-controls select, .scatter-controls input { margin: 4px 0 0 0; width: 220px; }
@@ -232,6 +233,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       h1 { font-size: 28px; }
       .sub { font-size: 15px; }
       #compare-plot { height: 560px; }
+      #compare-clalit-plot { height: 480px; }
       #scatter-plot { height: 560px; }
       #hist-plot { height: 520px; }
       #waterfall-plot { height: 620px; }
@@ -248,6 +250,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       table { font-size: 12px; min-width: 560px; }
       #plot { height: 380px; }
       #compare-plot { height: 500px; }
+      #compare-clalit-plot { height: 440px; }
       .compare-controls label { width: 100%; }
       .compare-controls select,
       .compare-controls input { width: 100%; }
@@ -269,6 +272,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       .mode-btn { flex: 1 1 calc(33.333% - 8px); }
       #plot { height: 340px; }
       #compare-plot { height: 440px; }
+      #compare-clalit-plot { height: 440px; }
       #scatter-plot { height: 440px; }
       #hist-plot { height: 420px; }
       #waterfall-plot { height: 500px; }
@@ -377,7 +381,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <input id=\"compare-topn\" type=\"number\" min=\"10\" max=\"200\" step=\"5\" value=\"40\" />
           </label>
         </div>
-        <div id=\"compare-plot\"></div>
+        <div id="compare-plot"></div>
+        <h3 style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
+        <div id="compare-clalit-plot"></div>
       </div>
     </div>
 
@@ -1564,12 +1570,53 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             opacity: 0.62,
           },
         ];
+        const clalitF = [];
+        const clalitM = [];
+        for (const r of rows) {
+          const fc = Number(r.clalit_trends?.[statKey]?.female?.spearman_rho);
+          const mc = Number(r.clalit_trends?.[statKey]?.male?.spearman_rho);
+          if (Number.isFinite(fc)) clalitF.push(fc);
+          if (Number.isFinite(mc)) clalitM.push(mc);
+        }
+        if (clalitF.length || clalitM.length) {
+          traces.push({
+            type: 'histogram',
+            name: 'Clalit Female',
+            x: clalitF,
+            xbins,
+            marker: { color: COHORT_COLORS.female, line: { width: 1, color: '#ffffff' } },
+            opacity: 0.8,
+            histnorm: '',
+          }, {
+            type: 'histogram',
+            name: 'Clalit Male',
+            x: clalitM,
+            xbins,
+            marker: { color: COHORT_COLORS.male, line: { width: 1, color: '#ffffff' } },
+            opacity: 0.8,
+          });
+        }
       } else {
         const values = [];
         for (const r of rows) {
           const m = metricForRecord(r, cohort, trimMode, statKey);
           const rho = Number(m?.spearman_rho);
           if (Number.isFinite(rho)) values.push(rho);
+        }
+        const clalitVals = [];
+        for (const r of rows) {
+          const cr = Number(r.clalit_trends?.[statKey]?.[cohort]?.spearman_rho);
+          if (Number.isFinite(cr)) clalitVals.push(cr);
+        }
+        if (clalitVals.length) {
+          traces.push({
+            type: 'histogram',
+            name: `Clalit ${cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male')}`,
+            x: clalitVals,
+            xbins,
+            marker: { color: '#fb923c', line: { width: 1, color: '#ffffff' } },
+            opacity: 0.9,
+          });
         }
         const s = histogramSummary(values);
         annoText = `Cohort: ${cohort}, outliers: ${trimLabel}, categories: ${selectedCats.size}, n=${s.total} (neg=${s.negative}, pos=${s.positive}, zero=${s.zeroish})`;
@@ -1599,7 +1646,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       Plotly.newPlot('hist-plot', traces, {
         title: `Histogram of Spearman rho: ${stat} vs age`,
-        barmode: cohort === 'both' ? 'overlay' : 'relative',
+        barmode: 'overlay',
         annotations: [{
           xref: 'paper',
           yref: 'paper',
@@ -1916,6 +1963,73 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         margin: mobile ? { t: 64, l: 150, r: 10, b: 44 } : { t: 56, l: 260, r: 16, b: 54 },
         paper_bgcolor: '#ffffff',
         plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
+
+      let cTraces = [];
+      if (cohort === 'both') {
+        const bothRanked = ranked.filter(r => r.clalit_trends && r.clalit_trends[statKey] && r.clalit_trends[statKey].female && r.clalit_trends[statKey].male);
+        cTraces = [
+          {
+            type: 'scatter',
+            mode: 'markers+text',
+            name: 'Female',
+            marker: { color: COHORT_COLORS.female, size: 8, symbol: 'circle' },
+            x: bothRanked.map(r => Number(r.rho_female)),
+            y: bothRanked.map(r => Number(r.clalit_trends[statKey].female.spearman_rho)),
+            text: bothRanked.map(r => r.display_name),
+            textposition: 'top center',
+            textfont: { size: mobile ? 8 : 9, color: '#9f1239' },
+            customdata: bothRanked.map(r => [r.biomarker_id, r.category]),
+            hovertemplate: '%{text}<br>sex=female<br>category=%{customdata[1]}<br>NHANES rho=%{x:.4f}<br>Clalit rho=%{y:.4f}<extra></extra>',
+          },
+          {
+            type: 'scatter',
+            mode: 'markers+text',
+            name: 'Male',
+            marker: { color: COHORT_COLORS.male, size: 8, symbol: 'square' },
+            x: bothRanked.map(r => Number(r.rho_male)),
+            y: bothRanked.map(r => Number(r.clalit_trends[statKey].male.spearman_rho)),
+            text: bothRanked.map(r => r.display_name),
+            textposition: 'top center',
+            textfont: { size: mobile ? 8 : 9, color: '#1d4ed8' },
+            customdata: bothRanked.map(r => [r.biomarker_id, r.category]),
+            hovertemplate: '%{text}<br>sex=male<br>category=%{customdata[1]}<br>NHANES rho=%{x:.4f}<br>Clalit rho=%{y:.4f}<extra></extra>',
+          }
+        ];
+      } else {
+        const rankedC = ranked.filter(r => r.clalit_trends && r.clalit_trends[statKey] && r.clalit_trends[statKey][cohort]);
+        cTraces = [{
+          type: 'scatter',
+          mode: 'markers+text',
+          name: cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male'),
+          marker: { color: COHORT_COLORS[cohort] || '#0f766e', size: 8 },
+          x: rankedC.map(r => Number(r.rho)),
+          y: rankedC.map(r => Number(r.clalit_trends[statKey][cohort].spearman_rho)),
+          text: rankedC.map(r => r.display_name),
+          textposition: 'top center',
+          textfont: { size: mobile ? 8 : 9, color: '#134e4a' },
+          customdata: rankedC.map(r => [r.biomarker_id, r.category]),
+          hovertemplate: '%{text}<br>category=%{customdata[1]}<br>NHANES rho=%{x:.4f}<br>Clalit rho=%{y:.4f}<extra></extra>',
+        }];
+      }
+      
+      cTraces.push({
+        x: [-1, 1],
+        y: [-1, 1],
+        mode: 'lines',
+        name: 'Agreement Diagonal',
+        line: { color: 'rgba(0,0,0,0.2)', dash: 'dash' },
+        hoverinfo: 'none'
+      });
+
+      Plotly.newPlot('compare-clalit-plot', cTraces, {
+        title: `Clalit vs NHANES Spearman rho (${stat} vs age)`,
+        xaxis: { title: `NHANES Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
+        yaxis: { title: `Clalit Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
+        margin: mobile ? { t: 40, l: 52, r: 10, b: 44 } : { t: 40, l: 60, r: 16, b: 54 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        showlegend: false,
       }, { responsive: true, displaylogo: false });
     }
 
@@ -2901,6 +3015,8 @@ def build_outputs(
     metadata["category_rank"] = metadata["category"].map(CATEGORY_ORDER).fillna(999).astype(int)
     metadata = metadata.sort_values(["category_rank", "display_name", "biomarker_id"]).reset_index(drop=True)
 
+    clalit_data_map = process_clalit_data(clalit_f_df, clalit_m_df, clalit_map)
+
     metrics: list[dict] = []
     for r in metadata.itertuples(index=False):
         bid = str(r.biomarker_id)
@@ -2931,6 +3047,15 @@ def build_outputs(
         sex_metrics_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in modes}
         sex_metrics_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in modes}
         trend_all = trends_cv.get("all", fallback_cv)
+
+        c_trends = {"cv": {}, "mean": {}, "skewness": {}}
+        for c_sex, pts in clalit_data_map.get(bid, {}).items():
+            if not pts:
+                continue
+            c_trends["cv"][c_sex] = trend_from_points(pts, "cv")
+            c_trends["mean"][c_sex] = trend_from_points(pts, "mean")
+            c_trends["skewness"][c_sex] = trend_from_points(pts, "skewness")
+
         metrics.append(
             {
                 "biomarker_id": bid,
@@ -2957,10 +3082,9 @@ def build_outputs(
                     "mean": sex_metrics_mean,
                     "skewness": sex_metrics_skew,
                 },
+                "clalit_trends": c_trends,
             }
         )
-
-    clalit_data_map = process_clalit_data(clalit_f_df, clalit_m_df, clalit_map)
 
     series_index: dict[str, str] = {}
     series_payloads: dict[str, dict] = {}
