@@ -239,3 +239,9 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
+
+## Clalit Data Integration
+- We map Israeli Clalit clinical data to NHANES biomarkers to allow direct visual overlay of age-trajectory statistics on the dashboard.
+- Overall availability and mapped linkage between tests are tracked in `data/data_availability.csv`.
+- Mapping scripts (using Jaccard string similarity filtering) live in `scripts/match_clalit_nhanes.py` and manual overrides loop is in `scripts/match_clalit_nhanes_round2.py`.
+- The final JSON index connecting Clalit test keys to NHANES IDs is read from `data/clalit_mapping.json`.

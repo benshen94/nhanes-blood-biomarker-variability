@@ -1,0 +1,762 @@
+Test Name (Clalit),Test Name (NHANES),Clalit ID,NHANES ID,In Clalit,In NHANES,Mapping Status
+Creatine kinase,,lab.22500.no_meds,,V,,Unmapped
+Phosphatase alkaline,Alkaline phosphatase (U/L),lab.21800.no_meds,alkaline phosphatase,V,V,Auto-Mapped
+PTH,,lab.103500.no_meds,,V,,Unmapped
+Phosphorus,Phosphorus (mg/dL),lab.20900.no_meds,phosphorus__mg/dl,V,V,Auto-Mapped
+LDH,LDH (U/L),lab.22300.no_meds,ldh,V,V,Mapped (Existing)
+Vitamin D3 25OH,,lab.27300.no_meds,,V,,Unmapped
+height,,marker.height.no_meds,,V,,Unmapped
+weight,Total dust weight (mg),marker.weight.no_meds,total dust weight,V,V,Auto-Mapped
+BMI,,marker.BMI.no_meds,,V,,Unmapped
+Estradiol,Estradiol (pg/mL),lab.100500.no_meds,estradiol__pg/ml,V,V,Auto-Mapped
+Testosterone_T,Testosterone (ng/mL),lab.101100.no_meds,testosterone,V,V,Auto-Mapped
+Progesterone,Progesterone (ng/dL),lab.100600.no_meds,progesterone__ng/dl,V,V,Auto-Mapped
+Prolactin,,lab.101000.no_meds,,V,,Unmapped
+LH,Luteinizing hormone (IU/L),lab.100800.no_meds,luteinizing hormone,V,V,Auto-Mapped
+FSH,Follicle stimulating hormone (IU/L),lab.100900.no_meds,follicle stimulating hormone,V,V,Auto-Mapped
+DHEA-S,,lab.101500.no_meds,,V,,Unmapped
+Androstenedione,Androstenedione (ng/dL),lab.101300.no_meds,androstenedione__ng/dl,V,V,Auto-Mapped
+17α-OHP,,lab.100700.no_meds,,V,,Unmapped
+TSH,Thyroid stimulating hormone,lab.102100.no_meds,thyroid stimulating hormone__raw_,V,V,Mapped (Existing)
+Free T4,Free T3,lab.102500.no_meds,free t3,V,V,Mapped (Existing)
+Free T3,Free T3,lab.102300.no_meds,free t3,V,V,Mapped (Existing)
+Total T3,Total T3,lab.102200.no_meds,total t3,V,V,Mapped (Existing)
+Thyroglobulin,Thyroglobulin,lab.102600.no_meds,thyroglobulin__raw_,V,V,Mapped (Existing)
+Cortisol,,lab.101600.no_meds,,V,,Unmapped
+Cortisol urine 24 h,,lab.101701.no_meds,,V,,Unmapped
+Cortisol urine free samp,,lab.101702.no_meds,,V,,Unmapped
+ACTH,,lab.104400.no_meds,,V,,Unmapped
+Aldosterone,,lab.103200.no_meds,,V,,Unmapped
+11-Deoxycortisol,,lab.104300.no_meds,,V,,Unmapped
+Growth Hormone,Luteinizing hormone (IU/L),lab.101900.no_meds,luteinizing hormone,V,V,Auto-Mapped
+IGF-1,,lab.102800.no_meds,,V,,Unmapped
+ACE,,lab.103000.no_meds,,V,,Unmapped
+Albumin,Albumin,lab.21100.no_meds,albumin__raw_,V,V,Mapped (Existing)
+Bilirubin direct,Total bilirubin (mg/dL),lab.23400.no_meds,total bilirubin,V,V,Auto-Mapped
+Bilirubin indirect,Total bilirubin (mg/dL),lab.36200.no_meds,total bilirubin,V,V,Auto-Mapped
+Bilirubin total,Total bilirubin (mg/dL),lab.23300.no_meds,total bilirubin,V,V,Auto-Mapped
+GGT,Gamma glutamyl transferase (U/L),lab.22200.no_meds,gamma glutamyl transferase,V,V,Auto-Mapped
+Globulin,Globulin (g/L),lab.36400.no_meds,globulin,V,V,Mapped (Existing)
+Total Protein,Total_Protein,lab.21000.no_meds,total protein__raw_,V,V,Mapped (Existing)
+AST (GOT),,lab.22000.no_meds,,V,,Unmapped
+ALT (GPT),,lab.22100.no_meds,,V,,Unmapped
+Amylase,,lab.23000.no_meds,,V,,Unmapped
+Cholesterol,lab.58.no_meds,lab.21200.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
+HDL,lab.58.no_meds,lab.21400.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
+HDL ratio,lab.58.no_meds,lab.33300.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
+LDL,lab.58.no_meds,lab.21500.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
+Glucose,Plasma glucose (mg/dL),lab.20100.no_meds,plasma glucose,V,V,Auto-Mapped
+HbA1c,lab.10.no_meds,lab.25203.no_meds,lab.10.no_meds,V,V,Mapped (Existing)
+Insulin,Insulin: SI (pmol/L),lab.101800.no_meds,insulin si,V,V,Auto-Mapped
+Non-HDL Cholesterol,lab.58.no_meds,lab.520706.no_meds,lab.58.no_meds,V,V,Mapped (Existing)
+Triglycerides,Triglycerides (mg/dL),lab.21300.no_meds,triglycerides__mg/dl,V,V,Auto-Mapped
+APTT-R,,lab.17703.no_meds,,V,,Unmapped
+APTT-sec,,lab.17702.no_meds,,V,,Unmapped
+MPV,,lab.110.no_meds,,V,,Unmapped
+PDW,,lab.112.no_meds,,V,,Unmapped
+Platelets,,lab.105.no_meds,,V,,Unmapped
+PT INR,,lab.17601.no_meds,,V,,Unmapped
+PT %,,lab.17603.no_meds,,V,,Unmapped
+PT sec,,lab.17602.no_meds,,V,,Unmapped
+PT control,TB Mitogen control result,lab.20008.no_meds,tb mitogen control result,V,V,Auto-Mapped
+WBC,,lab.101.no_meds,,V,,Unmapped
+Basophiles,,lab.148.no_meds,,V,,Unmapped
+Eosinophils ABS,,lab.146.no_meds,,V,,Unmapped
+Lymphocytes,,lab.140.no_meds,,V,,Unmapped
+Monocytes,,lab.144.no_meds,,V,,Unmapped
+Neutrophils,,lab.142.no_meds,,V,,Unmapped
+Large unstained cells,,lab.123.no_meds,,V,,Unmapped
+Basophils %,,lab.149.no_meds,,V,,Unmapped
+Eosinophils %,,lab.147.no_meds,,V,,Unmapped
+Lymphocytes %,,lab.141.no_meds,,V,,Unmapped
+Monocytes %,,lab.145.no_meds,,V,,Unmapped
+Monocytes %,,lab.203.no_meds,,V,,Unmapped
+Neutrophils %,,lab.143.no_meds,,V,,Unmapped
+Neutrophils %,,lab.202.no_meds,,V,,Unmapped
+Atypical lymphocytes %,,lab.158.no_meds,,V,,Unmapped
+Large unstained cells %,,lab.122.no_meds,,V,,Unmapped
+MPXI,,lab.124.no_meds,,V,,Unmapped
+CRP,High-Sensitivity C-Reactive Protein (hs-CRP) (mg/L),lab.60200.no_meds,high-sensitivity c-reactive protein hs-crp,V,V,Auto-Mapped
+Sedimentation rate,,lab.400.no_meds,,V,,Unmapped
+Procalcitonin,,lab.111.no_meds,,V,,Unmapped
+Calcium,Total calcium (mg/dL),lab.20800.no_meds,total calcium__mg/dl,V,V,Auto-Mapped
+Chloride,Chloride (mmol/L),lab.25403.no_meds,chloride,V,V,Mapped (Existing)
+Creatinine (blood),Creatinine (mg/dL),lab.20300.no_meds,creatinine__mg/dl,V,V,Auto-Mapped
+Creatinine (urine),,lab.41500.no_meds,,V,,Unmapped
+Microalbumin/Creatinine ,,lab.35000.no_meds,,V,,Unmapped
+Magnesium,,lab.24500.no_meds,,V,,Unmapped
+Microalbumin urine 24h,,lab.46700.no_meds,,V,,Unmapped
+Sodium,Sodium (mmol/L),lab.25401.no_meds,sodium,V,V,Mapped (Existing)
+Urine pH,,lab.9911.no_meds,,V,,Unmapped
+Specific gravity,,lab.9904.no_meds,,V,,Unmapped
+Uric acid,Uric acid (mg/dL),lab.20400.no_meds,uric acid__mg/dl,V,V,Auto-Mapped
+Potassium Blood,Potassium (mmol/L),lab.20600.no_meds,potassium,V,V,Auto-Mapped
+Leucocytes (urine strip),,lab.9907.no_meds,,V,,Unmapped
+Erythrocytes (urine strip),,lab.9909.no_meds,,V,,Unmapped
+RBC,"Folate, RBC (ng/mL RBC)",lab.102.no_meds,folate rbc__ng/mlrbc,V,V,Auto-Mapped
+Hemoglobin,Hemoglobin (g/dL),lab.103.no_meds,hemoglobin,V,V,Mapped (Existing)
+Hematocrit,Hematocrit (%),lab.104.no_meds,hematocrit,V,V,Mapped (Existing)
+Hct/Hgb,,lab.150.no_meds,,V,,Unmapped
+CH,,lab.166.no_meds,,V,,Unmapped
+HDW,,lab.117.no_meds,,V,,Unmapped
+MCH,,lab.107.no_meds,,V,,Unmapped
+MCHC,,lab.108.no_meds,,V,,Unmapped
+MCV,,lab.106.no_meds,,V,,Unmapped
+RDW,,lab.109.no_meds,,V,,Unmapped
+RDW,,lab.152.no_meds,,V,,Unmapped
+RDW SD,,lab.151.no_meds,,V,,Unmapped
+Macrocytic %,,lab.126.no_meds,,V,,Unmapped
+Microcytic %,,lab.127.no_meds,,V,,Unmapped
+Hyperchromic %,,lab.128.no_meds,,V,,Unmapped
+Hypochromic %,,lab.129.no_meds,,V,,Unmapped
+Microcytic/Hypochromic,,lab.172.no_meds,,V,,Unmapped
+Ferritin,Ferritin (ng/mL),lab.91200.no_meds,ferritin,V,V,Mapped (Existing)
+Iron,Total iron binding capacity (ug/dL),lab.23100.no_meds,total iron binding capacity,V,V,Auto-Mapped
+Transferrin,Serum transferrin receptor (mg/l),lab.23200.no_meds,serum transferrin receptor,V,V,Auto-Mapped
+Folic acid,Folic acid (nmol/L),lab.31400.no_meds,folic acid,V,V,Mapped (Existing)
+Vitamin B12,Vitamin B12 (pg/mL),lab.27100.no_meds,vitamin b12__pg/ml,V,V,Auto-Mapped
+Sodium,Sodium (mmol/L),lab.20500.no_meds,sodium,V,V,Mapped (Existing)
+Urea,Blood urea nitrogen (mg/dL),lab.20200.no_meds,blood urea nitrogen__mg/dl,V,V,Auto-Mapped
+,Basophils percent (%),,basophils percent,,V,NHANES Only
+,Eosinophils number (1000 cells/uL),,eosinophils number,,V,NHANES Only
+,Eosinophils percent (%),,eosinophils percent,,V,NHANES Only
+,Lymphocyte number (1000 cells/uL),,lymphocyte number,,V,NHANES Only
+,Lymphocyte percent (%),,lymphocyte percent,,V,NHANES Only
+,Mean cell hemoglobin (pg),,mean cell hemoglobin,,V,NHANES Only
+,Mean cell hemoglobin concentration (g/dL),,mean cell hemoglobin concentration,,V,NHANES Only
+,Mean platelet volume (fL),,mean platelet volume,,V,NHANES Only
+,Monocyte number (1000 cells/uL),,monocyte number,,V,NHANES Only
+,Monocyte percent (%),,monocyte percent,,V,NHANES Only
+,Platelet count (1000 cells/uL),,platelet count,,V,NHANES Only
+,Red blood cell count (million cells/uL),,red blood cell count,,V,NHANES Only
+,Segmented neutrophils num (1000 cell/uL),,segmented neutrophils num,,V,NHANES Only
+,Segmented neutrophils percent (%),,segmented neutrophils percent,,V,NHANES Only
+,White blood cell count (1000 cells/uL),,white blood cell count,,V,NHANES Only
+,Bicarbonate (mmol/L),,bicarbonate,,V,NHANES Only
+,Osmolality (mmol/Kg),,osmolality,,V,NHANES Only
+,Phosphorus (mmol/L),,phosphorus__mmol/l,,V,NHANES Only
+,Total calcium (mmol/L),,total calcium__mmol/l,,V,NHANES Only
+,Apolipoprotein (B) (g/L),,apolipoprotein b,,V,NHANES Only
+,Cholesterol (mg/dL),,cholesterol__mg/dl,,V,NHANES Only
+,Cholesterol (mmol/L),,cholesterol__mmol/l,,V,NHANES Only
+,Direct HDL-Cholesterol (mg/dL),,direct hdl-cholesterol__mg/dl,,V,NHANES Only
+,Direct HDL-Cholesterol (mmol/L),,direct hdl-cholesterol__mmol/l,,V,NHANES Only
+,"LBDLDLN = (LBXTC/0.948 – LBDHDD/0.971 – (LBXTR/8.56 + (LBXTR * (LBXTC – LBDHDD))/2140 – LBXTR^2/16100) – 9.44), round 0 decimal places) for LBXTR less than 800 mg/dL, and missing for LBXTR GE 800 mg/dL. ^2 stands for power=2, or squared. LBDHDD from public release file HDL_J",,lbdldln lbxtc/0 948 - lbdhdd/0 971 - lbxtr/8 56 + lbxtr lbxtc - lbdhdd /2140 - lbxtr 2/16100 - 9 44 round 0 decimal places for lbxtr less than 800 mg/dl and missing for lbxtr ge 800 mg/dl 2 stands for power 2 or squared lbdhdd from public release file hdl j,,V,NHANES Only
+,"LDL-Cholesterol, Martin-Hopkins equation (mg/dL). LBDLDLM = (LBXTC-(LBDHDD + LBXTR/Adjustable Factor), round to 0 decimal places) for LBXTR less than 400 mg/dL, and missing for LBXTR greater than 400 mg/dL. LBDHDD from public release file HDL_J",,ldl-cholesterol martin-hopkins equation mg/dl lbdldlm lbxtc- lbdhdd + lbxtr/adjustable factor round to 0 decimal places for lbxtr less than 400 mg/dl and missing for lbxtr greater than 400 mg/dl lbdhdd from public release file hdl j,,V,NHANES Only
+,"LDL-Cholesterol, Martin-Hopkins equation (mmol/L)",,ldl-cholesterol martin-hopkins equation,,V,NHANES Only
+,"LDL-Cholesterol, NIH equation 2 (mmol/L)",,ldl-cholesterol nih equation 2,,V,NHANES Only
+,LDL-cholesterol (mg/dL),,ldl-cholesterol__mg/dl,,V,NHANES Only
+,LDL-cholesterol (mmol/L),,ldl-cholesterol__mmol/l,,V,NHANES Only
+,Total Cholesterol (mg/dL),,total cholesterol__mg/dl,,V,NHANES Only
+,Total Cholesterol (mmol/L),,total cholesterol__mmol/l,,V,NHANES Only
+,Triglyceride (mg/dL),,triglyceride__mg/dl,,V,NHANES Only
+,Triglyceride (mmol/L),,triglyceride__mmol/l,,V,NHANES Only
+,Triglycerides (mmol/L),,triglycerides__mmol/l,,V,NHANES Only
+,C-peptide (nmol/L) in SI units,,c-peptide nmol/l in si units,,V,NHANES Only
+,C-peptide: pmol/mL,,c-peptide pmol/ml,,V,NHANES Only
+,Fasting Glucose (mg/dL),,fasting glucose__mg/dl,,V,NHANES Only
+,Fasting Glucose (mmol/L),,fasting glucose__mmol/l,,V,NHANES Only
+,"Glucose, serum (mg/dL)",,glucose serum__mg/dl,,V,NHANES Only
+,"Glucose, serum (mmol/L)",,glucose serum__mmol/l,,V,NHANES Only
+,Glycohemoglobin (%),,glycohemoglobin,,V,NHANES Only
+,Insulin (pmol/L),,insulin__pmol/l,,V,NHANES Only
+,Insulin (uU/mL),,insulin__uu/ml,,V,NHANES Only
+,Plasma glucose: SI (mmol/L),,plasma glucose si,,V,NHANES Only
+,Parathyroid Hormone(Elecys method) pg/mL,,parathyroid hormone elecys method pg/ml,,V,NHANES Only
+,Thyroglobulin (ug/L),,thyroglobulin__ug/l,,V,NHANES Only
+,Thyroglobulin antibodies (IU/mL),,thyroglobulin antibodies,,V,NHANES Only
+,Thyroglobulin antibody,,thyroglobulin antibody,,V,NHANES Only
+,Thyroid perioxidase antibodies (IU/mL),,thyroid perioxidase antibodies,,V,NHANES Only
+,Thyroid stimulating hormone (TSH) (uIU/mL),,thyroid stimulating hormone tsh,,V,NHANES Only
+,Thyroid stimulating hormone (mIU/L),,thyroid stimulating hormone__miu/l,,V,NHANES Only
+,Thyroxine (T4) (nmol/L),,thyroxine t4__nmol/l,,V,NHANES Only
+,Thyroxine (T4) (ug/dL),,thyroxine t4__ug/dl,,V,NHANES Only
+,"Thyroxine, free (ng/dL)",,thyroxine free__ng/dl,,V,NHANES Only
+,"Thyroxine, free (pmol/L)",,thyroxine free__pmol/l,,V,NHANES Only
+,"Thyroxine, total (T4) (ug/dL)",,thyroxine total t4,,V,NHANES Only
+,Total T4,,total t4,,V,NHANES Only
+,"Triiodothyronine (T3), free (pg/mL)",,triiodothyronine t3 free,,V,NHANES Only
+,"Triiodothyronine (T3), total (ng/dL)",,triiodothyronine t3 total__ng/dl,,V,NHANES Only
+,"Triiodothyronine (T3), total (nmol/L)",,triiodothyronine t3 total__nmol/l,,V,NHANES Only
+,Blood urea nitrogen (mmol/L),,blood urea nitrogen__mmol/l,,V,NHANES Only
+,Creatinine (umol/L),,creatinine__umol/l,,V,NHANES Only
+,Cystatin C (mg/L),,cystatin c,,V,NHANES Only
+,Cystatin C mg/L,,cystatin c mg/l,,V,NHANES Only
+,Lauric acid (C12:0) (umol/L),,lauric acid c12 0,,V,NHANES Only
+,Uric acid (umol/L),,uric acid__umol/l,,V,NHANES Only
+,Alanine aminotransferase ALT (U/L),,alanine aminotransferase alt,,V,NHANES Only
+,Albumin (g/L),,albumin__g/l,,V,NHANES Only
+,Aspartate aminotransferase AST (U/L),,aspartate aminotransferase ast,,V,NHANES Only
+,"Beta 2 Microglobulin, mg/L",,beta 2 microglobulin mg/l,,V,NHANES Only
+,"Bilirubin, total (mg/dL)",,bilirubin total__mg/dl,,V,NHANES Only
+,"Bilirubin, total (umol/L)",,bilirubin total__umol/l,,V,NHANES Only
+,Glycated Albumin g/dL,,glycated albumin g/dl,,V,NHANES Only
+,Lactate dehydrogenase (U/L),,lactate dehydrogenase,,V,NHANES Only
+,Percent glycated albumin%,,percent glycated albumin%,,V,NHANES Only
+,"Sex Hormone Binding Globulin (SHBG, nmol/L)",,"sex hormone binding globulin__shbg,nmol/l",,V,NHANES Only
+,Sex Hormone Binding Globulin (nmol/L),,sex hormone binding globulin__nmol/l,,V,NHANES Only
+,Total protein (g/L),,total protein__g/l,,V,NHANES Only
+,Fibrinogen (g/L),,fibrinogen,,V,NHANES Only
+,25-hydroxyvitamin D2 (nmol/L),,25-hydroxyvitamin d2,,V,NHANES Only
+,25-hydroxyvitamin D2 + D3,,25-hydroxyvitamin d2 + d3,,V,NHANES Only
+,25-hydroxyvitamin D3 (nmol/L),,25-hydroxyvitamin d3,,V,NHANES Only
+,4-pyridoxic acid (nmol/L),,4-pyridoxic acid,,V,NHANES Only
+,5-Formyl-tetrahydrofolate (nmol/L),,5-formyl-tetrahydrofolate,,V,NHANES Only
+,5-Methyl-tetrahydrofolate (nmol/L),,5-methyl-tetrahydrofolate,,V,NHANES Only
+,Alpha-carotene (ug/dL),,alpha-carotene__ug/dl,,V,NHANES Only
+,Alpha-carotene (umol/L),,alpha-carotene__umol/l,,V,NHANES Only
+,Blood selenium (ug/L),,blood selenium__ug/l,,V,NHANES Only
+,Blood selenium (umol/L),,blood selenium__umol/l,,V,NHANES Only
+,"Folate, RBC (nmol/L RBC)",,folate rbc__nmol/lrbc,,V,NHANES Only
+,"Folate, serum (ng/mL)",,folate serum__ng/ml,,V,NHANES Only
+,"Folate, serum (nmol/L)",,folate serum__nmol/l,,V,NHANES Only
+,"Iron frozen, Serum (ug/dL)",,iron frozen serum__ug/dl,,V,NHANES Only
+,"Iron frozen, Serum (umol/L)",,iron frozen serum__umol/l,,V,NHANES Only
+,"Iron, refigerated (ug/dL)",,iron refigerated__ug/dl,,V,NHANES Only
+,"Iron, refigerated (umol/L)",,iron refigerated__umol/l,,V,NHANES Only
+,Methenyl-tetrahydrofolate (nmol/L),,5 10-methenyl-tetrahydrofolate,,V,NHANES Only
+,Methyltetrahydrofolate ng/ml,,methyltetrahydrofolate ng/ml,,V,NHANES Only
+,Methyltetrahydrofolate pmol/ml,,methyltetrahydrofolate pmol/ml,,V,NHANES Only
+,Pyridoxal 5'-phosphate (nmol/L),,pyridoxal 5 -phosphate,,V,NHANES Only
+,RBC folate (ng/mL),,rbc folate__ng/ml,,V,NHANES Only
+,RBC folate (nmol/L),,rbc folate__nmol/l,,V,NHANES Only
+,Retinol (ug/dL),,retinol__ug/dl,,V,NHANES Only
+,Retinol (umol/L),,retinol__umol/l,,V,NHANES Only
+,Selenium (ng/mL),,selenium__ng/ml,,V,NHANES Only
+,Selenium (umol/L),,selenium__umol/l,,V,NHANES Only
+,Serum Copper (ug/dL),,serum copper__ug/dl,,V,NHANES Only
+,Serum Copper (umol/L),,serum copper__umol/l,,V,NHANES Only
+,Serum Selenium (ug/L),,serum selenium__ug/l,,V,NHANES Only
+,Serum Selenium (umol/L),,serum selenium__umol/l,,V,NHANES Only
+,Serum Zinc (ug/dL),,serum zinc__ug/dl,,V,NHANES Only
+,Serum Zinc (umol/L),,serum zinc__umol/l,,V,NHANES Only
+,Serum ferritin (ng/ml),,serum ferritin,,V,NHANES Only
+,Serum folate (ng/mL),,serum folate__ng/ml,,V,NHANES Only
+,Serum folate (nmol/L),,serum folate__nmol/l,,V,NHANES Only
+,Serum total folate (ng/mL),,serum total folate__ng/ml,,V,NHANES Only
+,Serum total folate (nmol/L),,serum total folate__nmol/l,,V,NHANES Only
+,Tetrahydrofolate (nmol/L),,tetrahydrofolate,,V,NHANES Only
+,Total Folate ng/ml,,total folate ng/ml,,V,NHANES Only
+,Total Folate pmol/ml,,total folate pmol/ml,,V,NHANES Only
+,Total Iron Binding Capacity (TIBC) (umol/L),,total iron binding capacity tibc__umol/l,,V,NHANES Only
+,Total Iron Binding Capacity TIBC (ug/dL),,total iron binding capacity tibc__ug/dl,,V,NHANES Only
+,Transferrin receptor (mg/L),,transferrin receptor__mg/l,,V,NHANES Only
+,Transferrin receptor (nmol/L),,transferrin receptor__nmol/l,,V,NHANES Only
+,Transferrin saturation (%),,transferrin saturation,,V,NHANES Only
+,"Unsaturated Iron Binding Capacity (UIBC), Serum (ug/dL)",,unsaturated iron binding capacity uibc serum__ug/dl,,V,NHANES Only
+,"Unsaturated Iron Binding Capacity (UIBC), Serum (umol/L)",,unsaturated iron binding capacity uibc serum__umol/l,,V,NHANES Only
+,Vitamin B12 (pmol/L),,vitamin b12__pmol/l,,V,NHANES Only
+,"Vitamin B12, serum (pg/mL)",,vitamin b12 serum__pg/ml,,V,NHANES Only
+,"Vitamin B12, serum (pmol/L)",,vitamin b12 serum__pmol/l,,V,NHANES Only
+,Vitamin B6 (Pyridoxal 5'-phosphate) test results (nmol/L).,,vitamin b6 pyridoxal 5 -phosphate test results nmol/l,,V,NHANES Only
+,Vitamin C (mg/dL),,vitamin c__mg/dl,,V,NHANES Only
+,Vitamin C (umol/L),,vitamin c__umol/l,,V,NHANES Only
+,Vitamin E (ug/dL),,vitamin e__ug/dl,,V,NHANES Only
+,Vitamin E (umol/L),,vitamin e__umol/l,,V,NHANES Only
+,a-Tocopherol (ug/dL),,a-tocopherol__ug/dl,,V,NHANES Only
+,a-Tocopherol (umol/L),,a-tocopherol__umol/l,,V,NHANES Only
+,cis-b-carotene (ug/dL),,cis-b-carotene__ug/dl,,V,NHANES Only
+,cis-b-carotene (umol/L),,cis-b-carotene__umol/l,,V,NHANES Only
+,d-Tocopherol (ug/dL),,d-tocopherol__ug/dl,,V,NHANES Only
+,d-Tocopherol (umol/L),,d-tocopherol__umol/l,,V,NHANES Only
+,epi-25-hydroxyvitamin D3 (nmol/L),,epi-25-hydroxyvitamin d3,,V,NHANES Only
+,g-tocopherol (ug/dL),,g-tocopherol__ug/dl,,V,NHANES Only
+,g-tocopherol (umol/L),,g-tocopherol__umol/l,,V,NHANES Only
+,total b-Carotene (ug/dL),,total b-carotene__ug/dl,,V,NHANES Only
+,total b-Carotene (umol/L),,total b-carotene__umol/l,,V,NHANES Only
+,trans-b-carotene (ug/dL),,trans-b-carotene__ug/dl,,V,NHANES Only
+,trans-b-carotene (umol/L),,trans-b-carotene__umol/l,,V,NHANES Only
+,Alpha-1-Acid Glycoprotein (g/L),,alpha-1-acid glycoprotein,,V,NHANES Only
+,C-reactive protein (mg/dL),,c-reactive protein,,V,NHANES Only
+,17α-hydroxyprogesterone (ng/dL),,17a-hydroxyprogesterone__ng/dl,,V,NHANES Only
+,17α-hydroxyprogesterone (nmol/L),,17a-hydroxyprogesterone__nmol/l,,V,NHANES Only
+,Androstenedione (nmol/L),,androstenedione__nmol/l,,V,NHANES Only
+,Anti-Mullerian Hormone (ng/ml),,anti-mullerian hormone__ng/ml,,V,NHANES Only
+,Anti-Mullerian hormone (pmol/L),,anti-mullerian hormone__pmol/l,,V,NHANES Only
+,Estradiol (pmol/L),,estradiol__pmol/l,,V,NHANES Only
+,Inhibin B (pg/ml),,inhibin b,,V,NHANES Only
+,Progesterone (nmol/L),,progesterone__nmol/l,,V,NHANES Only
+,"Testosterone, total (ng/dL)",,testosterone total__ng/dl,,V,NHANES Only
+,Antibody against wild type polio virus 1,,antibody against wild type polio virus 1,,V,NHANES Only
+,Antibody against wild type polio virus 2,,antibody against wild type polio virus 2,,V,NHANES Only
+,Antibody against wild type polio virus 3,,antibody against wild type polio virus 3,,V,NHANES Only
+,Cancer antigen 125 (U/mL),,cancer antigen 125,,V,NHANES Only
+,Cancer antigen 125 IgG index,,cancer antigen 125 igg index,,V,NHANES Only
+,Cancer antigen 125 IgG luminescent units,,cancer antigen 125 igg luminescent units,,V,NHANES Only
+,Cancer antigen 15.3 (mU/mL),,cancer antigen 15 3,,V,NHANES Only
+,Cancer antigen 15.3 IgG index,,cancer antigen 15 3 igg index,,V,NHANES Only
+,Cancer antigen15.3 IgG luminescent unit,,cancer antigen15 3 igg luminescent unit,,V,NHANES Only
+,Chlamydia Pgp3 EIA Optical Density,,chlamydia pgp3 eia optical density,,V,NHANES Only
+,Chlamydia Ppg3 MBA medium fluorescence intensity,,chlamydia ppg3 mba medium fluorescence intensity,,V,NHANES Only
+,Complexed prostate specific antigen (ng/mL),,complexed prostate specific antigen,,V,NHANES Only
+,Free prostate specific antigen (ng/mL),,free prostate specific antigen,,V,NHANES Only
+,HE4 IgG index,,he4 igg index,,V,NHANES Only
+,HE4 IgG luminescent units,,he4 igg luminescent units,,V,NHANES Only
+,Mean OD for GII.4 US95/96 antigen,,mean od for gii 4 us95/96 antigen,,V,NHANES Only
+,Mean OD for GIV.1 antigen,,mean od for giv 1 antigen,,V,NHANES Only
+,Mean optical density for GI.1 antigen,,mean optical density for gi 1 antigen,,V,NHANES Only
+,Measles,,measles,,V,NHANES Only
+,Measles IgG Antibody Multiplex Bead Assay Quantitative Result (mIU/mL),,measles igg antibody multiplex bead assay quantitative result,,V,NHANES Only
+,Measles antibody (IgG),,measles antibody,,V,NHANES Only
+,Mumps IgG Antibody Multiplex Bead Assay Quantitative Result (AU/mL),,mumps igg antibody multiplex bead assay quantitative result,,V,NHANES Only
+,Mumps antibody (IgG),,mumps antibody,,V,NHANES Only
+,Pertactin antibody IU/mL,,pertactin antibody iu/ml,,V,NHANES Only
+,Pertussis Filamentous hemagglutinin antibody IU/mL,,pertussis filamentous hemagglutinin antibody iu/ml,,V,NHANES Only
+,Pertussis Fimbriae antibody IU/mL,,pertussis fimbriae antibody iu/ml,,V,NHANES Only
+,Pertussis toxin antibody IU/mL,,pertussis toxin antibody iu/ml,,V,NHANES Only
+,Prostate specific antigen ratio (%),,prostate specific antigen ratio,,V,NHANES Only
+,Rubella IgG Antibody Multiplex Bead Assay Quantitative Result (IU/mL),,rubella igg antibody multiplex bead assay quantitative result,,V,NHANES Only
+,Rubella antibody (IgG),,rubella antibody,,V,NHANES Only
+,Rubella units,,rubella units,,V,NHANES Only
+,"Serum IgE antibody to Alternaria Alternata, result (kU/L)",,serum ige antibody to alternaria alternata result,,V,NHANES Only
+,"Serum IgE antibody to Aspergillus Fumigatus, result (kU/L)",,serum ige antibody to aspergillus fumigatus result,,V,NHANES Only
+,"Serum IgE antibody to Bermuda Grass, result (kU/L)",,serum ige antibody to bermuda grass result,,V,NHANES Only
+,"Serum IgE antibody to Birch Tree, result (kU/L)",,serum ige antibody to birch tree result,,V,NHANES Only
+,"Serum IgE antibody to Cat Epithelium and Dander, result (kU/L)",,serum ige antibody to cat epithelium and dander result,,V,NHANES Only
+,"Serum IgE antibody to Common Ragweed, result (kU/L)",,serum ige antibody to common ragweed result,,V,NHANES Only
+,"Serum IgE antibody to Dermatophagoides Farinae, result (kU/L)",,serum ige antibody to dermatophagoides farinae result,,V,NHANES Only
+,"Serum IgE antibody to Dermatophagoides Pteronyssinus, result (kU/L)",,serum ige antibody to dermatophagoides pteronyssinus result,,V,NHANES Only
+,"Serum IgE antibody to Dog Dander, result (kU/L)",,serum ige antibody to dog dander result,,V,NHANES Only
+,"Serum IgE antibody to Egg , result (kU/L)",,serum ige antibody to egg result,,V,NHANES Only
+,"Serum IgE antibody to German Cockroach, result (kU/L)",,serum ige antibody to german cockroach result,,V,NHANES Only
+,"Serum IgE antibody to Peanut, result (kU/L)",,serum ige antibody to peanut result,,V,NHANES Only
+,"Serum IgE antibody to Russian Thistle, result (kU/L)",,serum ige antibody to russian thistle result,,V,NHANES Only
+,"Serum IgE antibody to Rye Grass, result (kU/L)",,serum ige antibody to rye grass result,,V,NHANES Only
+,"Serum IgE antibody to Shrimp, result (kU/L)",,serum ige antibody to shrimp result,,V,NHANES Only
+,"Serum IgE antibody to White Oak, result (kU/L)",,serum ige antibody to white oak result,,V,NHANES Only
+,"Serum Total IgE antibody, result (kU/L)",,serum total ige antibody result,,V,NHANES Only
+,TB Antigen result,,tb antigen result,,V,NHANES Only
+,TB Nil control result,,tb nil control result,,V,NHANES Only
+,Tetanus toxin antibody IU/mL,,tetanus toxin antibody iu/ml,,V,NHANES Only
+,Thyroperoxidase antibody,,thyroperoxidase antibody,,V,NHANES Only
+,Total prostate specific antigen (ng/mL),,total prostate specific antigen,,V,NHANES Only
+,Toxoplasma (Avidity) IgG,,toxoplasma avidity igg,,V,NHANES Only
+,Toxoplasma (IgG),,toxoplasma__igg,,V,NHANES Only
+,Toxoplasma (IgM),,toxoplasma__igm,,V,NHANES Only
+,Toxoplasmosis IgG Avidity (IU/ml),,toxoplasmosis igg avidity,,V,NHANES Only
+,Toxoplasmosis IgG antibodies (IU/ml),,toxoplasmosis igg antibodies,,V,NHANES Only
+,Toxoplasmosis IgM antibodies,,toxoplasmosis igm antibodies,,V,NHANES Only
+,Varicella,,varicella,,V,NHANES Only
+,Varicella IgG Antibody Multiplex Bead Assay Quantitative Result (mIU/mL),,varicella igg antibody multiplex bead assay quantitative result,,V,NHANES Only
+,2-(N-Ethyl-perfluorooctane sulfonamido) acetic acid,,2- n-ethyl-perfluorooctane sulfonamido acetic acid,,V,NHANES Only
+,2-(N-Methyl-perfluorooctane sulfonamido) acetic acid,,2- n-methyl-perfluorooctane sulfonamido acetic acid,,V,NHANES Only
+,3-chlorotyrosine (Cl-Tyr) (ng/mL),,3-chlorotyrosine cl-tyr,,V,NHANES Only
+,9-chlorohexadecafluoro-3-oxanonane-1-sulfonate (ng/mL),,9-chlorohexadecafluoro-3-oxanonane-1-sulfonate,,V,NHANES Only
+,Alkaline phosphotase (U/L),,alkaline phosphotase,,V,NHANES Only
+,Alpha1,,alpha1,,V,NHANES Only
+,Alpha2,,alpha2,,V,NHANES Only
+,Arachidic acid (20:0) (umol/L),,arachidic acid 20 0,,V,NHANES Only
+,Arachidic acid (micromol/L),,arachidic acid,,V,NHANES Only
+,Arachidonic acid (20:4n-6) (umol/L),,arachidonic acid 20 4n-6,,V,NHANES Only
+,Arachidonic acid (micromol/L),,arachidonic acid,,V,NHANES Only
+,Benzaldehyde (ng/mL),,benzaldehyde,,V,NHANES Only
+,Beta,,beta,,V,NHANES Only
+,Beta-hexachloro-cyclohexane (ng/g),,beta-hexachloro-cyclohexane,,V,NHANES Only
+,Beta-hexachlorocyclohexane Lipid Adjusted,,beta-hexachlorocyclohexane lipid adjusted,,V,NHANES Only
+,"Blood 2,5-Dimethylfuran (ng/mL)",,blood 2 5-dimethylfuran,,V,NHANES Only
+,Blood Benzonitrile (ng/mL),,blood benzonitrile,,V,NHANES Only
+,Blood Bromodichloromethane (ng/mL),,blood bromodichloromethane,,V,NHANES Only
+,Blood Cyclohexane (ng/mL),,blood cyclohexane,,V,NHANES Only
+,Blood Dibromochloromethane (ng/mL),,blood dibromochloromethane,,V,NHANES Only
+,Blood Ethyl Acetate (ng/mL),,blood ethyl acetate,,V,NHANES Only
+,Blood Furan (ng/mL),,blood furan,,V,NHANES Only
+,Blood Heptane (ng/mL),,blood heptane,,V,NHANES Only
+,Blood Hexane (ng/mL),,blood hexane,,V,NHANES Only
+,Blood Isobutyronitrile (ng/mL),,blood isobutyronitrile,,V,NHANES Only
+,Blood Isopropylbenzene (ng/mL),,blood isopropylbenzene,,V,NHANES Only
+,Blood Methyl Isobutyl Ketone (ng/mL),,blood methyl isobutyl ketone,,V,NHANES Only
+,Blood Methylcyclopentane (ng/mL),,blood methylcyclopentane,,V,NHANES Only
+,Blood Nitromethane (pg/mL),,blood nitromethane,,V,NHANES Only
+,Blood Octane (ng/mL),,blood octane,,V,NHANES Only
+,Blood Tetrahydrofuran (ng/mL),,blood tetrahydrofuran,,V,NHANES Only
+,Blood manganese (nmol/L),,blood manganese__nmol/l,,V,NHANES Only
+,Blood manganese (ug/L),,blood manganese__ug/l,,V,NHANES Only
+,Bone alkaline phosphotase (ug/L),,bone alkaline phosphotase,,V,NHANES Only
+,Butyraldehyde (ng/mL),,butyraldehyde,,V,NHANES Only
+,CD4 counts (cells/mm3),,cd4 counts,,V,NHANES Only
+,CD8 counts (cells/mm3),,cd8 counts,,V,NHANES Only
+,CMV optical density from ELISA,,cmv optical density from elisa,,V,NHANES Only
+,Capric acid (C10:0) (umol/L),,capric acid c10 0,,V,NHANES Only
+,"Cardiac hs-Troponin I (Abbott), ng/L",,cardiac hs-troponin i abbott ng/l,,V,NHANES Only
+,"Cardiac hs-Troponin I (Ortho), ng/L",,cardiac hs-troponin i ortho ng/l,,V,NHANES Only
+,"Cardiac hs-Troponin I (Siemens), ng/L",,cardiac hs-troponin i siemens ng/l,,V,NHANES Only
+,"Cardiac hs-Troponin T, ng/L",,cardiac hs-troponin t ng/l,,V,NHANES Only
+,Chromium (nmol/L),,chromium__nmol/l,,V,NHANES Only
+,Chromium (ug/L),,chromium__ug/l,,V,NHANES Only
+,Cobalt (nmol/L),,cobalt__nmol/l,,V,NHANES Only
+,Cobalt (ug/L),,cobalt__ug/l,,V,NHANES Only
+,Creatine Phosphokinase (CPK) (IU/L),,creatine phosphokinase cpk,,V,NHANES Only
+,Days between the 1st and 2nd exams,,days between the 1st and 2nd exams,,V,NHANES Only
+,Dense fine speckled EIS unit,,dense fine speckled eis unit,,V,NHANES Only
+,Docosahexaenoic acid (22:6n-3) (umol/L),,docosahexaenoic acid 22 6n-3,,V,NHANES Only
+,Docosahexaenoic acid (micromol/L),,docosahexaenoic acid,,V,NHANES Only
+,Docosanoic acid (22:0) (umol/L),,docosanoic acid 22 0,,V,NHANES Only
+,Docosanoic acid (micromol/L),,docosanoic acid,,V,NHANES Only
+,Docosapentaenoic acid (22:5n-3) (umol/L),,docosapentaenoic acid 22 5n-3,,V,NHANES Only
+,Docosapentaenoic acid (22:5n-6) (umol/L),,docosapentaenoic acid 22 5n-6,,V,NHANES Only
+,Docosapentaenoic-3 acid (micromol/L),,docosapentaenoic-3 acid,,V,NHANES Only
+,Docosapentaenoic-6 acid (micromol/L),,docosapentaenoic-6 acid,,V,NHANES Only
+,Docosatetraenoic acid (22:4n-6) (umol/L),,docosatetraenoic acid 22 4n-6,,V,NHANES Only
+,Docosatetraenoic acid (micromol/L),,docosatetraenoic acid,,V,NHANES Only
+,Docosenoic acid (micromol/L),,docosenoic acid,,V,NHANES Only
+,Eicosadienoic acid (20:2n-6) (umol/L),,eicosadienoic acid 20 2n-6,,V,NHANES Only
+,Eicosadienoic acid (micromol/L),,eicosadienoic acid,,V,NHANES Only
+,Eicosapentaenoic acid (20:5n-3) (umol/L),,eicosapentaenoic acid 20 5n-3,,V,NHANES Only
+,Eicosapentaenoic acid (micromol/L),,eicosapentaenoic acid,,V,NHANES Only
+,Eicosatrienoic acid (C20:3n-9) (umol/L),,eicosatrienoic acid c20 3n-9,,V,NHANES Only
+,Eicosenoic acid (20:1n-9) (umol/L),,eicosenoic acid 20 1n-9,,V,NHANES Only
+,Eicosenoic acid (micromol/L),,eicosenoic acid,,V,NHANES Only
+,Estrone (ng/dL),,estrone__ng/dl,,V,NHANES Only
+,Estrone (pmol/L),,estrone__pmol/l,,V,NHANES Only
+,Estrone Sulfate (pg/mL),,estrone sulfate__pg/ml,,V,NHANES Only
+,Estrone Sulfate (pmol/L),,estrone sulfate__pmol/l,,V,NHANES Only
+,Ethylene Oxide (pmol/g Hb),,ethylene oxide,,V,NHANES Only
+,Folic Acid ng/ml,,folic acid ng/ml,,V,NHANES Only
+,Folic Acid pmol/ml,,folic acid pmol/ml,,V,NHANES Only
+,Formaldehyde (nmol/g HB),,formaldehyde,,V,NHANES Only
+,Gamma,,gamma,,V,NHANES Only
+,Gamma-hexachloro-cyclohexane (ng/g),,gamma-hexachloro-cyclohexane,,V,NHANES Only
+,Gamma-hexachlorocyclohexane Lipid Adjusted,,gamma-hexachlorocyclohexane lipid adjusted,,V,NHANES Only
+,Helicobacter pylori (ISR),,helicobacter pylori,,V,NHANES Only
+,Heptachlorodibenzofuran (Hpcdf) (fg/g),,1 2 3 4 7 8 9-heptachlorodibenzofuran hpcdf__fg/g,,V,NHANES Only
+,Heptachlorodibenzofuran (Hpcdf) Lipid Adjusted,,1 2 3 4 7 8 9-heptachlorodibenzofuran hpcdf lipid adjusted__raw_,,V,NHANES Only
+,Heptachlorodibenzofuran (fg/g),,1 2 3 4 6 7 8-heptachlorodibenzofuran hpcdf__fg/g,,V,NHANES Only
+,Heptachlorodibenzofuran Lipid Adjusted,,1 2 3 4 6 7 8-heptachlorodibenzofuran hpcdf lipid adjusted__raw_,,V,NHANES Only
+,Heptanaldehyde (ng/mL),,heptanaldehyde,,V,NHANES Only
+,Hexachlorobenzene (ng/g),,hexachlorobenzene,,V,NHANES Only
+,Hexachlorobenzene Lipid Adjusted,,hexachlorobenzene lipid adjusted,,V,NHANES Only
+,Hexachlorodibenzofuran (fg/g),,1 2 3 4 7 8-hexachlorodibenzofuran hxcdf,,V,NHANES Only
+,Hexachlorodibenzofuran (fg/g),,1 2 3 6 7 8-hexachlorodibenzofuran hxcdf__fg/g,,V,NHANES Only
+,Hexachlorodibenzofuran (fg/g),,1 2 3 7 8 9-hexachlorodibenzofuran hxcdf__fg/g,,V,NHANES Only
+,Hexachlorodibenzofuran Lipid Adjusted,,1 2 3 4 7 8-hexachlorodibenzofuran hxcdf lipid adjusted,,V,NHANES Only
+,Hexachlorodibenzofuran Lipid Adjusted,,1 2 3 6 7 8-hexachlorodibenzofuran hxcdf lipid adjusted__raw_,,V,NHANES Only
+,Hexachlorodibenzofuran Lipid Adjusted,,1 2 3 7 8 9-hexachlorodibenzofuran hxcdf lipid adjusted__raw_,,V,NHANES Only
+,Hexanaldehyde (ng/mL),,hexanaldehyde,,V,NHANES Only
+,Hexchlorodibenzofuran (fg/g),,2 3 4 6 7 8 -hexchlorodibenzofuran hxcdf,,V,NHANES Only
+,Hexchlorodibenzofuran Lipid Adjusted,,2 3 4 6 7 8 -hexchlorodibenzofuran hxcdf lipid adjusted,,V,NHANES Only
+,Homocysteine (umol/L),,homocysteine,,V,NHANES Only
+,"How long ago, in hours, did {you/she/he} pump gas into a car?",,how long ago in hours did you/she/he pump gas into a car,,V,NHANES Only
+,"How long ago, in hours, has it been since you breathed fumes from diesel fuel or kerosene?",,how long ago in hours has it been since you breathed fumes from diesel fuel or kerosene,,V,NHANES Only
+,"How long ago, in hours, has it been since you breathed fumes from freshly painted indoor surfaces, paints, paint thinner, or varnish?",,how long ago in hours has it been since you breathed fumes from freshly painted indoor surfaces paints paint thinner or varnish,,V,NHANES Only
+,"How long ago, in hours, has it been since you smoked or spent 10 or more minutes near a person who was smoking a cigarette, cigar, or pipe?",,how long ago in hours has it been since you smoked or spent 10 or more minutes near a person who was smoking a cigarette cigar or pipe,,V,NHANES Only
+,"How long ago, in hours, has it been since your last shower or hot bath?",,how long ago in hours has it been since your last shower or hot bath,,V,NHANES Only
+,"How long ago, in hours, has it been since {you/she/he} spent time in a swimming pool, in a hot tub, or in a steam room?",,how long ago in hours has it been since you/she/he spent time in a swimming pool in a hot tub or in a steam room,,V,NHANES Only
+,"How long ago, in hours, has it been since {your/SP's} last shower or hot bath?",,how long ago in hours has it been since your/sp s last shower or hot bath,,V,NHANES Only
+,Human epididymal. secretory protein pM,,human epididymal secretory protein pm,,V,NHANES Only
+,"Iodide, water (ng/mL)",,iodide water,,V,NHANES Only
+,Isopentanaldehyde (ng/mL),,isopentanaldehyde,,V,NHANES Only
+,Klotho (pg/ml),,klotho,,V,NHANES Only
+,Latex (IU/mL),,latex,,V,NHANES Only
+,Levofloxacin 1,,levofloxacin 1,,V,NHANES Only
+,Lignoceric acid (24:0) (umol/L),,lignoceric acid 24 0,,V,NHANES Only
+,Lignoceric acid (micromol/L),,lignoceric acid,,V,NHANES Only
+,Linear perfluorooctane sulfonate (ug/L),,linear perfluorooctane sulfonate,,V,NHANES Only
+,Linear perfluorooctanoate (ng/mL),,linear perfluorooctanoate,,V,NHANES Only
+,Linoleic acid (18:2n-6) (umol/L),,linoleic acid 18 2n-6,,V,NHANES Only
+,Linoleic acid (micromol/L),,linoleic acid,,V,NHANES Only
+,Lutein (ug/dL),,lutein__ug/dl,,V,NHANES Only
+,Lutein (umol/L),,lutein__umol/l,,V,NHANES Only
+,Lutein and zeaxanthin (ug/dL),,lutein and zeaxanthin__ug/dl,,V,NHANES Only
+,Lutein and zeaxanthin (umol/L),,lutein and zeaxanthin__umol/l,,V,NHANES Only
+,Margaric acid (C17:0) (umol/L),,margaric acid c17 0,,V,NHANES Only
+,Mean Ab for GII.4 Farmington Hills ag,,mean ab for gii 4 farmington hills ag,,V,NHANES Only
+,Mean OD for GII.4 Farmington Hills ag,,mean od for gii 4 farmington hills ag,,V,NHANES Only
+,Mean OD for GII.4 New Orleans ag,,mean od for gii 4 new orleans ag,,V,NHANES Only
+,Mean cell volume (fL),,mean cell volume,,V,NHANES Only
+,Mean optical density for GI.4 ag,,mean optical density for gi 4 ag,,V,NHANES Only
+,Mean optical density for GII.3 ag,,mean optical density for gii 3 ag,,V,NHANES Only
+,Mefox oxidation product (nmol/L),,mefox oxidation product,,V,NHANES Only
+,Methylmalonic acid (umol/L),,methylmalonic acid,,V,NHANES Only
+,Myristic acid (14:0) (umol/L),,myristic acid 14 0,,V,NHANES Only
+,Myristic acid (micromol/L),,myristic acid,,V,NHANES Only
+,Myristoleic acid (micromol/L),,myristoleic acid,,V,NHANES Only
+,NT-proBNP pg/ml,,nt-probnp pg/ml,,V,NHANES Only
+,Nervonic acid (24:1n-9) (umol/L),,nervonic acid 24 1n-9,,V,NHANES Only
+,Nervonic acid (micromol/L),,nervonic acid,,V,NHANES Only
+,"Nitrate, water (ng/mL)",,nitrate water,,V,NHANES Only
+,Octachlorodibenzofuran (fg/g),,1 2 3 4 6 7 8 9-octachlorodibenzofuran ocdf,,V,NHANES Only
+,Octachlorodibenzofuran Lipid Adjusted,,1 2 3 4 6 7 8 9-octachlorodibenzofuran ocdf lipid adjusted,,V,NHANES Only
+,Octanaldehyde (ng/mL),,octanaldehyde,,V,NHANES Only
+,Oleic acid (18:1n-9) (umol/L),,oleic acid 18 1n-9,,V,NHANES Only
+,Oleic acid (micromol/L),,oleic acid,,V,NHANES Only
+,Oxychlordane (ng/g),,oxychlordane,,V,NHANES Only
+,Oxychlordane Lipid Adjusted,,oxychlordane lipid adjusted,,V,NHANES Only
+,Palmitic acid (16:0) (umol/L),,palmitic acid 16 0,,V,NHANES Only
+,Palmitic acid (micromol/L),,palmitic acid,,V,NHANES Only
+,Palmitoleic acid (16:1n-7) (umol/L),,palmitoleic acid 16 1n-7__umol/l,,V,NHANES Only
+,Palmitoleic acid (micromol/L),,palmitoleic acid,,V,NHANES Only
+,Pefluorodecanoic acid,,pefluorodecanoic acid__raw_,,V,NHANES Only
+,Pentachlorobiphenyl (fg/g),,3 3 4 4 5-pentachlorobiphenyl pncb__fg/g,,V,NHANES Only
+,Pentachlorobiphenyl Lipid Adjusted,,3 3 4 4 5-pentachlorobiphenyl pncb lipid adjusted__raw_,,V,NHANES Only
+,Pentachlorodibenzofuran (fg/g),,1 2 3 7 8-pentachlorodibenzofuran pncdf__fg/g,,V,NHANES Only
+,Pentachlorodibenzofuran (fg/g),,2 3 4 7 8-pentachlorodibenzofuran pncdf__fg/g,,V,NHANES Only
+,Pentachlorodibenzofuran Lipid Adjusted,,1 2 3 7 8-pentachlorodibenzofuran pncdf lipid adjusted__raw_,,V,NHANES Only
+,Pentachlorodibenzofuran Lipid Adjusted,,2 3 4 7 8-pentachlorodibenzofuran pncdf lipid adjusted__raw_,,V,NHANES Only
+,Pentadecanoic acid (C15:0) (ï¿½mol/L),,pentadecanoic acid c15 0,,V,NHANES Only
+,Pentanaldehyde (ng/mL),,pentanaldehyde,,V,NHANES Only
+,Perfluoroheptanoic acid,,perfluoroheptanoic acid__raw_,,V,NHANES Only
+,Perfluorohexane sulfonic acid,,perfluorohexane sulfonic acid__raw_,,V,NHANES Only
+,Perfluorohexanoate,,perfluorohexanoate,,V,NHANES Only
+,Perfluorononanoic acid,,perfluorononanoic acid__raw_,,V,NHANES Only
+,Perfluorooctane sulfonic acid,,perfluorooctane sulfonic acid,,V,NHANES Only
+,Perfluorooctanoic acid,,perfluorooctanoic acid,,V,NHANES Only
+,Perfluoroundecanoic acid,,perfluoroundecanoic acid__raw_,,V,NHANES Only
+,Perflurododecanoic acid,,perflurododecanoic acid__raw_,,V,NHANES Only
+,Phytoene (ug/dL),,phytoene__ug/dl,,V,NHANES Only
+,Phytoene (umol/L),,phytoene__umol/l,,V,NHANES Only
+,Phytofluene (ug/dL),,phytofluene__ug/dl,,V,NHANES Only
+,Phytofluene (umol/L),,phytofluene__umol/l,,V,NHANES Only
+,Propanaldehyde (ng/mL),,propanaldehyde,,V,NHANES Only
+,Protoporphyrin (ug/dL RBC),,protoporphyrin__ug/dlrbc,,V,NHANES Only
+,Protoporphyrin (umol/L RBC),,protoporphyrin__umol/lrbc,,V,NHANES Only
+,Red cell distribution width (%),,red cell distribution width,,V,NHANES Only
+,Retinyl palmitate (ug/dL),,retinyl palmitate__ug/dl,,V,NHANES Only
+,Retinyl palmitate (umol/L),,retinyl palmitate__umol/l,,V,NHANES Only
+,Retinyl stearate (ug/dL),,retinyl stearate__ug/dl,,V,NHANES Only
+,Retinyl stearate (umol/L),,retinyl stearate__umol/l,,V,NHANES Only
+,SCR for initial anti-HCV screening test with Ortho assay (not surplus serum testing),,scr for initial anti-hcv screening test with ortho assay,,V,NHANES Only
+,SCR for second test with Abbott assay (surplus serum testing),,scr for second test with abbott assay,,V,NHANES Only
+,Serum neurofilament light chain (pg/ml),,serum neurofilament light chain,,V,NHANES Only
+,Sieved dust weight (mg),,sieved dust weight,,V,NHANES Only
+,Size of peak if available,,size of peak if available,,V,NHANES Only
+,Specimen Index ratio,,specimen index ratio,,V,NHANES Only
+,Stearic acid (18:0) (umol/L),,stearic acid 18 0,,V,NHANES Only
+,Stearic acid (micromol/L),,stearic acid,,V,NHANES Only
+,Stearidonic acid (C18:4n-3) (umol/L),,stearidonic acid c18 4n-3,,V,NHANES Only
+,Surplus sera 2-(N-ethyl-perfluorooctane sulfonamido) acetate (EPAH) result (ng/ml),,surplus sera 2- n-ethyl-perfluorooctane sulfonamido acetate epah result,,V,NHANES Only
+,Surplus sera 2-(N-methyl-perfluorooctane sulfonamido) acetate (MPAH) result (ng/ml),,surplus sera 2- n-methyl-perfluorooctane sulfonamido acetate mpah result,,V,NHANES Only
+,Surplus sera perfluorodecanoate (PFDE) result (ng/ml),,surplus sera perfluorodecanoate pfde result,,V,NHANES Only
+,Surplus sera perfluoroheptanoate (PFHP) result (ng/ml),,surplus sera perfluoroheptanoate pfhp result,,V,NHANES Only
+,Surplus sera perfluorohexane sulfonate (PFHS) result (ng/ml),,surplus sera perfluorohexane sulfonate pfhs result,,V,NHANES Only
+,Surplus sera perfluorooctane sulfonamide (PFSA) result (ng/ml),,surplus sera perfluorooctane sulfonamide pfsa result,,V,NHANES Only
+,T.gondii antibodies (IU/ml),,t gondii antibodies,,V,NHANES Only
+,TTG IGA value,,ttg iga value,,V,NHANES Only
+,Tetrachlorobiphenyl (fg/g),,3 4 4 5-tetrachlorobiphenyl tcb__fg/g,,V,NHANES Only
+,Tetrachlorobiphenyl Lipid Adjusted,,3 4 4 5-tetrachlorobiphenyl tcb lipid adjusted__raw_,,V,NHANES Only
+,Tetrachlorodibenzofuran (fg/g),,2 3 7 8 -tetrachlorodibenzofuran tcdf,,V,NHANES Only
+,Tetrachlorodibenzofuran Lipid Adjusted,,2 3 7 8 -tetrachlorodibenzofuran tcdf lipid adjusted,,V,NHANES Only
+,Total (cis- and trans-)Lycopene (ug/dL),,total cis- and trans- lycopene__ug/dl,,V,NHANES Only
+,Total (cis- and trans-)Lycopene (umol/L),,total cis- and trans- lycopene__umol/l,,V,NHANES Only
+,Total Lycopene (ug/dL),,total lycopene__ug/dl,,V,NHANES Only
+,Total Lycopene (umol/L),,total lycopene__umol/l,,V,NHANES Only
+,"Total length of 'food fast', hours",,total length of food fast hours,,V,NHANES Only
+,"Total length of 'food fast', minutes",,total length of food fast minutes,,V,NHANES Only
+,Toxocara mean florescent intensity,,toxocara mean florescent intensity,,V,NHANES Only
+,Trans 11-octadecenoic acid (umol/L),,trans 11-octadecenoic acid,,V,NHANES Only
+,Trans 9-Hexadecenoic acid concentrt (umol/L),,trans 9-hexadecenoic acid concentrt,,V,NHANES Only
+,Trans 9-octadecenoic acid (umol/L),,trans 9-octadecenoic acid,,V,NHANES Only
+,"Trans,trans-9,12-Octadecadienoic acid (umol/L)",,trans trans-9 12-octadecadienoic acid,,V,NHANES Only
+,Tricosanoic acid (C23:0) (umol/L),,tricosanoic acid c23 0,,V,NHANES Only
+,Zeaxanthin (ug/dL),,zeaxanthin__ug/dl,,V,NHANES Only
+,Zeaxanthin (umol/L),,zeaxanthin__umol/l,,V,NHANES Only
+,a-Cryptoxanthin (ug/dL),,a-cryptoxanthin__ug/dl,,V,NHANES Only
+,a-Cryptoxanthin (umol/L),,a-cryptoxanthin__umol/l,,V,NHANES Only
+,alpha-Linolenic acid (18:3n-3) (umol/L),,alpha-linolenic acid 18 3n-3,,V,NHANES Only
+,alpha-Linolenic acid (micromol/L),,alpha-linolenic acid,,V,NHANES Only
+,alpha-crypotoxanthin (ug/dL),,alpha-crypotoxanthin__ug/dl,,V,NHANES Only
+,alpha-crypotoxanthin (umol/L),,alpha-crypotoxanthin__umol/l,,V,NHANES Only
+,b-cryptoxanthin (ug/dL),,b-cryptoxanthin__ug/dl,,V,NHANES Only
+,b-cryptoxanthin (umol/L),,b-cryptoxanthin__umol/l,,V,NHANES Only
+,cis- Lutein/Zeaxanthin (ug/dL),,cis- lutein/zeaxanthin__ug/dl,,V,NHANES Only
+,cis- Lutein/Zeaxanthin (umol/L),,cis- lutein/zeaxanthin__umol/l,,V,NHANES Only
+,cis-Lycopene (ug/dL),,cis-lycopene__ug/dl,,V,NHANES Only
+,cis-Lycopene (umol/L),,cis-lycopene__umol/l,,V,NHANES Only
+,cis-Vaccenic acid (18:1n-7) (umol/L),,cis-vaccenic acid 18 1n-7,,V,NHANES Only
+,cis-Vaccenic acid (micromol/L),,cis-vaccenic acid,,V,NHANES Only
+,gamma-Linolenic acid (18:3n-6) (umol/L),,gamma-linolenic acid 18 3n-6,,V,NHANES Only
+,gamma-Linolenic acid (micromol/L),,gamma-linolenic acid,,V,NHANES Only
+,heptabromodiphenyl ether (pg/g),,2 2 3 4 4 5 6-heptabromodiphenyl ether,,V,NHANES Only
+,heptabromodiphenyl lipid adjusted (ng/g),,2 2 3 4 4 5 6-heptabromodiphenyl lipid adjusted,,V,NHANES Only
+,hexabromobiphenyl (pg/g),,2 2 4 4 5 5 -hexabromobiphenyl,,V,NHANES Only
+,hexabromobiphenyl lipid adjusted (ng/g),,2 2 4 4 5 5 -hexabromobiphenyl lipid adjusted,,V,NHANES Only
+,hexabromodiphenyl ether (pg/g),,2 2 4 4 5 5 -hexabromodiphenyl ether,,V,NHANES Only
+,hexabromodiphenyl ether (pg/g),,2 2 4 4 5 6 -hexabromodiphenyl ether,,V,NHANES Only
+,hexabromodiphenyl ether lipid adjusted (ng/g),,2 2 4 4 5 5 -hexabromodiphenyl ether lipid adjusted,,V,NHANES Only
+,hexabromodiphenyl ether lipid adjusted (ng/g),,2 2 4 4 5 6 -hexabromodiphenyl ether lipid adjusted,,V,NHANES Only
+,hexachlorobiphenyl (fg/g),,3 3 4 4 5 5 -hexachlorobiphenyl hxcb__fg/g,,V,NHANES Only
+,hexachlorobiphenyl Lipid Adjusted,,3 3 4 4 5 5 -hexachlorobiphenyl hxcb lipid adjusted__raw_,,V,NHANES Only
+,homo-gamma-Linolenic acid (20:3n-6) (umol/L),,homo-gamma-linolenic acid 20 3n-6,,V,NHANES Only
+,homo-gamma-Linolenic acid (micromol/L),,homo-gamma-linolenic acid,,V,NHANES Only
+,"o,p'-DDT (ng/g)",,o p -ddt,,V,NHANES Only
+,"o,p'-DDT Lipid Adjusted",,o p -ddt lipid adjusted,,V,NHANES Only
+,o-Tolualdehyde (ng/mL),,o-tolualdehyde,,V,NHANES Only
+,"p,p'-DDE (ng/g)",,p p -dde,,V,NHANES Only
+,"p,p'-DDE Lipid Adjusted",,p p -dde lipid adjusted,,V,NHANES Only
+,"p,p'-DDT (ng/g)",,p p -ddt,,V,NHANES Only
+,"p,p'-DDT Lipid Adjusted",,p p -ddt lipid adjusted,,V,NHANES Only
+,pentabromodiphenyl ether (pg/g),,2 2 3 4 4 -pentabromodiphenyl ether,,V,NHANES Only
+,pentabromodiphenyl ether (pg/g),,2 2 4 4 5-pentabromodiphenyl ether,,V,NHANES Only
+,pentabromodiphenyl ether (pg/g),,2 2 4 4 6-pentabromodiphenyl ether,,V,NHANES Only
+,pentabromodiphenyl ether lipid adjusted (ng/g),,2 2 3 4 4 -pentabromodiphenyl ether lipid adjusted,,V,NHANES Only
+,pentabromodiphenyl ether lipid adjusted (ng/g),,2 2 4 4 5-pentabromodiphenyl ether lipid adjusted,,V,NHANES Only
+,pentabromodiphenyl ether lipid adjusted (ng/g),,2 2 4 4 6-pentabromodiphenyl ether lipid adjusted,,V,NHANES Only
+,screen-to-cutoff ratio (SCR) for first test with Abbott assay (surplus serum testing),,screen-to-cutoff ratio scr for first test with abbott assay,,V,NHANES Only
+,tetrabromodiphenyl ether (pg/g),,2 2 4 4 -tetrabromodiphenyl ether,,V,NHANES Only
+,tetrabromodiphenyl ether (pg/g),,2 3 4 4 -tetrabromodiphenyl ether,,V,NHANES Only
+,tetrabromodiphenyl ether lipid adjusted (ng/g),,2 2 4 4 -tetrabromodiphenyl ether lipid adjusted,,V,NHANES Only
+,tetrabromodiphenyl ether lipid adjusted (ng/g),,2 3 4 4 -tetrabromodiphenyl ether lipid adjusted,,V,NHANES Only
+,trans-lycopene (ug/dL),,trans-lycopene__ug/dl,,V,NHANES Only
+,trans-lycopene (umol/L),,trans-lycopene__umol/l,,V,NHANES Only
+,tribromodiphenyl ether (pg/g),,2 2 4-tribromodiphenyl ether,,V,NHANES Only
+,tribromodiphenyl ether (pg/g),,2 4 4 -tribromodiphenyl ether,,V,NHANES Only
+,tribromodiphenyl ether lipid adjusted (ng/g),,2 2 4-tribromodiphenyl ether lipid adjusted,,V,NHANES Only
+,tribromodphenyl ether lipid adjusted (ng/g),,2 4 4 -tribromodphenyl ether lipid adjusted,,V,NHANES Only
+,Acrylamide (pmol/g Hb),,acrylamide,,V,NHANES Only
+,Aldrin,,aldrin,,V,NHANES Only
+,Aldrin Lipid Adjusted,,aldrin lipid adjusted,,V,NHANES Only
+,Benzene (ug/cubic meter),,benzene,,V,NHANES Only
+,"Blood 1,1,1-Trichloroethane (ng/mL)",,blood 1 1 1-trichloroethane,,V,NHANES Only
+,"Blood 1,2-Dichloroethane (ng/mL)",,blood 1 2-dichloroethane,,V,NHANES Only
+,"Blood 1,3-Dichlorobenzene (ng/mL)",,blood 1 3-dichlorobenzene,,V,NHANES Only
+,"Blood 1,4-Dichlorobenzene (ng/mL)",,blood 1 4-dichlorobenzene,,V,NHANES Only
+,Blood Benzene (ng/mL),,blood benzene,,V,NHANES Only
+,Blood Bromoform (ng/mL),,blood bromoform,,V,NHANES Only
+,Blood Carbon Tetrachloride (ng/mL),,blood carbon tetrachloride,,V,NHANES Only
+,Blood Chloroform (ng/mL),,blood chloroform,,V,NHANES Only
+,Blood Ethylbenzene (ng/mL),,blood ethylbenzene,,V,NHANES Only
+,Blood Methyl-tert-butyl ether (MTBE) (ng/mL),,blood methyl-tert-butyl ether mtbe,,V,NHANES Only
+,Blood Styrene (ng/mL),,blood styrene,,V,NHANES Only
+,Blood Tetrachloroethene (ng/mL),,blood tetrachloroethene,,V,NHANES Only
+,Blood Toluene (ng/mL),,blood toluene,,V,NHANES Only
+,Blood Trichloroethene (ng/mL),,blood trichloroethene,,V,NHANES Only
+,Blood cadmium (nmol/L),,blood cadmium__nmol/l,,V,NHANES Only
+,Blood cadmium (ug/L),,blood cadmium__ug/l,,V,NHANES Only
+,Blood lead (ug/dL),,blood lead__ug/dl,,V,NHANES Only
+,Blood lead (umol/L),,blood lead__umol/l,,V,NHANES Only
+,Blood m-/p-Xylene (ng/mL),,blood m-/p-xylene,,V,NHANES Only
+,"Blood mercury, total (nmol/L)",,blood mercury total__nmol/l,,V,NHANES Only
+,"Blood mercury, total (ug/L)",,blood mercury total__ug/l,,V,NHANES Only
+,Blood o-Xylene (ng/mL),,blood o-xylene,,V,NHANES Only
+,Cadmium (nmol/L),,cadmium__nmol/l,,V,NHANES Only
+,Cadmium (ug/L),,cadmium__ug/l,,V,NHANES Only
+,Chloroform (ug/cubic meter),,chloroform,,V,NHANES Only
+,Cotinine (ng/mL),,cotinine,,V,NHANES Only
+,Crotonaldehyde (ng/mL),,crotonaldehyde,,V,NHANES Only
+,Dieldrin (ng/g),,dieldrin,,V,NHANES Only
+,Dieldrin Lipid Adjusted,,dieldrin lipid adjusted,,V,NHANES Only
+,Endrin,,endrin,,V,NHANES Only
+,Endrin Lipid Adjusted,,endrin lipid adjusted,,V,NHANES Only
+,Ethylbenzene (ug/cubic meter),,ethylbenzene,,V,NHANES Only
+,Glycideamide (pmol/g Hb),,glycideamide,,V,NHANES Only
+,Heptachlor Epoxide (ng/g),,heptachlor epoxide,,V,NHANES Only
+,Heptachlor Epoxide Lipid Adjusted,,heptachlor epoxide lipid adjusted,,V,NHANES Only
+,Heptachlororodibenzo-p-dioxin (fg/g),,1 2 3 4 6 7 8-heptachlororodibenzo-p-dioxin hpcdd__fg/g,,V,NHANES Only
+,Heptachlororodibenzo-p-dioxin Lipid Adjusted,,1 2 3 4 6 7 8-heptachlororodibenzo-p-dioxin hpcdd lipid adjusted__raw_,,V,NHANES Only
+,Hexachlorodibenzo-p-dioxin (fg/g),,1 2 3 4 7 8-hexachlorodibenzo-p-dioxin hxcdd__fg/g,,V,NHANES Only
+,Hexachlorodibenzo-p-dioxin (fg/g),,1 2 3 6 7 8-hexachlorodibenzo-p-dioxin hxcdd__fg/g,,V,NHANES Only
+,Hexachlorodibenzo-p-dioxin (fg/g),,1 2 3 7 8 9-hexachlorodibenzo-p-dioxin hxcdd__fg/g,,V,NHANES Only
+,Hexachlorodibenzo-p-dioxin Lipid Adjusted,,1 2 3 4 7 8-hexachlorodibenzo-p-dioxin hxcdd lipid adjusted__raw_,,V,NHANES Only
+,Hexachlorodibenzo-p-dioxin Lipid Adjusted,,1 2 3 6 7 8-hexachlorodibenzo-p-dioxin hxcdd lipid adjusted__raw_,,V,NHANES Only
+,Hexachlorodibenzo-p-dioxin Lipid Adjusted,,1 2 3 7 8 9-hexachlorodibenzo-p-dioxin hxcdd lipid adjusted__raw_,,V,NHANES Only
+,"Hydroxycotinine, Serum (ng/mL)",,hydroxycotinine serum,,V,NHANES Only
+,"Inorganic mercury, blood (ug/L)",,inorganic mercury blood,,V,NHANES Only
+,Lead (ug/dL),,lead__ug/dl,,V,NHANES Only
+,Lead (umol/L),,lead__umol/l,,V,NHANES Only
+,"M,p-Xylene (ug/cubic meter)",,m p-xylene,,V,NHANES Only
+,MTBE (ug/cubic meter),,mtbe,,V,NHANES Only
+,"Mercury, ethyl (ug/L)",,mercury ethyl__ug/l,,V,NHANES Only
+,"Mercury, inorganic (nmol/L)",,mercury inorganic,,V,NHANES Only
+,"Mercury, methyl (nmol/L)",,mercury methyl__nmol/l,,V,NHANES Only
+,"Mercury, methyl (ug/L)",,mercury methyl__ug/l,,V,NHANES Only
+,Mirex (ng/g),,mirex__ng/g,,V,NHANES Only
+,Mirex Lipid Adjusted,,mirex lipid adjusted,,V,NHANES Only
+,Monomethyl br. isomers of PFOS (ng/mL),,monomethyl br isomers of pfos,,V,NHANES Only
+,Octachlorodibenzo-p-dioxin (fg/g),,1 2 3 4 6 7 8 9-octachlorodibenzo-p-dioxin ocdd,,V,NHANES Only
+,Octachlorodibenzo-p-dioxin Lipid Adjusted,,1 2 3 4 6 7 8 9-octachlorodibenzo-p-dioxin ocdd lipid adjusted,,V,NHANES Only
+,PCB101 (ng/g),,pcb101__ng/g,,V,NHANES Only
+,PCB101 Lipid Adjusted,,pcb101 lipid adjusted,,V,NHANES Only
+,PCB105 (ng/g),,pcb105,,V,NHANES Only
+,PCB105 Lipid Adjusted,,pcb105 lipid adjusted,,V,NHANES Only
+,PCB110 (ng/g),,pcb110__ng/g,,V,NHANES Only
+,PCB110 Lipid Adjusted,,pcb110 lipid adjusted,,V,NHANES Only
+,PCB118 (ng/g),,pcb118,,V,NHANES Only
+,PCB118 Lipid Adjusted,,pcb118 lipid adjusted,,V,NHANES Only
+,PCB128 (ng/g),,pcb128__ng/g,,V,NHANES Only
+,PCB128 Lipid Adjusted,,pcb128 lipid adjusted,,V,NHANES Only
+,PCB138 (ng/g),,pcb138,,V,NHANES Only
+,PCB138 Lipid Adjusted,,pcb138 lipid adjusted,,V,NHANES Only
+,PCB146 (ng/g),,pcb146__ng/g,,V,NHANES Only
+,PCB146 Lipid Adjusted,,pcb146 lipid adjusted,,V,NHANES Only
+,PCB149 (ng/g),,pcb149__ng/g,,V,NHANES Only
+,PCB149 Lipid Adjusted,,pcb149 lipid adjusted,,V,NHANES Only
+,PCB151 (ng/g),,pcb151__ng/g,,V,NHANES Only
+,PCB151 Lipid Adjusted,,pcb151 lipid adjusted,,V,NHANES Only
+,PCB153 (ng/g),,pcb153__ng/g,,V,NHANES Only
+,PCB153 Lipid Adjusted,,pcb153 lipid adjusted,,V,NHANES Only
+,PCB156 (ng/g),,pcb156,,V,NHANES Only
+,PCB156 Lipid Adjusted,,pcb156 lipid adjusted,,V,NHANES Only
+,PCB157 (ng/g),,pcb157,,V,NHANES Only
+,PCB157 Lipid Adjusted,,pcb157 lipid adjusted,,V,NHANES Only
+,PCB167 (ng/g),,pcb167,,V,NHANES Only
+,PCB167 Lipid Adjusted,,pcb167 lipid adjusted,,V,NHANES Only
+,PCB170 (ng/g),,pcb170__ng/g,,V,NHANES Only
+,PCB170 Lipid Adjusted,,pcb170 lipid adjusted,,V,NHANES Only
+,PCB172 (ng/g),,pcb172__ng/g,,V,NHANES Only
+,PCB172 Lipid Adjusted,,pcb172 lipid adjusted,,V,NHANES Only
+,PCB177 (ng/g),,pcb177__ng/g,,V,NHANES Only
+,PCB177 Lipid Adjusted,,pcb177 lipid adjusted,,V,NHANES Only
+,PCB178 (ng/g),,pcb178__ng/g,,V,NHANES Only
+,PCB178 Lipid Adjusted,,pcb178 lipid adjusted,,V,NHANES Only
+,PCB180 (ng/g),,pcb180__ng/g,,V,NHANES Only
+,PCB180 Lipid Adjusted,,pcb180 lipid adjusted,,V,NHANES Only
+,PCB183 (ng/g),,pcb183__ng/g,,V,NHANES Only
+,PCB183 Lipid Adjusted,,pcb183 lipid adjusted,,V,NHANES Only
+,PCB187 (ng/g),,pcb187__ng/g,,V,NHANES Only
+,PCB187 Lipid Adjusted,,pcb187 lipid adjusted,,V,NHANES Only
+,PCB189 (ng/g),,pcb189,,V,NHANES Only
+,PCB189 Lipid Adjusted,,pcb189 lipid adjusted,,V,NHANES Only
+,PCB194 (ng/g),,pcb194__ng/g,,V,NHANES Only
+,PCB194 Lipid Adjusted,,pcb194 lipid adjusted,,V,NHANES Only
+,PCB195 (ng/g),,pcb195__ng/g,,V,NHANES Only
+,PCB195 Lipid Adjusted,,pcb195 lipid adjusted,,V,NHANES Only
+,PCB196 & 203 (ng/g),,pcb196 203,,V,NHANES Only
+,PCB196 & 203 Lipid Adjusted (ng/g),,pcb196 203 lipid adjusted,,V,NHANES Only
+,PCB199 (ng/g),,pcb199__ng/g,,V,NHANES Only
+,PCB199 Lipid Adjusted,,pcb199 lipid adjusted__raw_,,V,NHANES Only
+,PCB199 Lipid Adjusted (ng/g),,pcb199 lipid adjusted__ng/g,,V,NHANES Only
+,PCB206 (ng/g),,pcb206__ng/g,,V,NHANES Only
+,PCB206 Lipid Adjusted,,pcb206 lipid adjusted,,V,NHANES Only
+,PCB209 (ng/g),,pcb209__ng/g,,V,NHANES Only
+,PCB209 Lipid Adjusted (ng/g),,pcb209 lipid adjusted,,V,NHANES Only
+,PCB28 (ng/g),,pcb28__ng/g,,V,NHANES Only
+,PCB28 Lipid Adj (ng/g),,pcb28 lipid adj,,V,NHANES Only
+,PCB44 (ng/g),,pcb44__ng/g,,V,NHANES Only
+,PCB44 Lipid Adjusted (ng/g),,pcb44 lipid adjusted,,V,NHANES Only
+,PCB49 (ng/g),,pcb49__ng/g,,V,NHANES Only
+,PCB49 Lipid Adjusted (ng/g),,pcb49 lipid adjusted,,V,NHANES Only
+,PCB52 (ng/g),,pcb52__ng/g,,V,NHANES Only
+,PCB52 Lipid Adj (ng/g),,pcb52 lipid adj,,V,NHANES Only
+,PCB66 (ng/g),,pcb66__ng/g,,V,NHANES Only
+,PCB66 Lipid Adjusted,,pcb66 lipid adjusted,,V,NHANES Only
+,PCB74 (ng/g),,pcb74__ng/g,,V,NHANES Only
+,PCB74 Lipid Adjusted,,pcb74 lipid adjusted,,V,NHANES Only
+,PCB87 (ng/g),,pcb87__ng/g,,V,NHANES Only
+,PCB87 Lipid Adjusted,,pcb87 lipid adjusted,,V,NHANES Only
+,PCB99 (ng/g),,pcb99__ng/g,,V,NHANES Only
+,PCB99 Lipid Adjusted,,pcb99 lipid adjusted,,V,NHANES Only
+,Pentachlorodibenzo-p-dioxin (fg/g),,1 2 3 7 8-pentachlorodibenzo-p-dioxin pncdd__fg/g,,V,NHANES Only
+,Pentachlorodibenzo-p-dioxin Lipid Adjusted,,1 2 3 7 8-pentachlorodibenzo-p-dioxin pncdd lipid adjusted__raw_,,V,NHANES Only
+,"Perchlorate, water (ng/mL)",,perchlorate water,,V,NHANES Only
+,Perfluoro-1-heptanesulfonate,,perfluoro-1-heptanesulfonate,,V,NHANES Only
+,Perfluoromethylheptane sulfonic acid isomers (Sm-PFOS) (ng/mL),,perfluoromethylheptane sulfonic acid isomers sm-pfos,,V,NHANES Only
+,Surplus sera perfluorononanoate (PFNA) result (ng/ml),,surplus sera perfluorononanoate pfna result,,V,NHANES Only
+,Surplus sera perfluorooctane sulfonate (PFOS) result (ng/ml),,surplus sera perfluorooctane sulfonate pfos result,,V,NHANES Only
+,Surplus sera perfluorooctanoate (PFOA) result (ng/ml),,surplus sera perfluorooctanoate pfoa result,,V,NHANES Only
+,Surplus sera perfluoroundecanoate (PFUA) result (ng/ml),,surplus sera perfluoroundecanoate pfua result,,V,NHANES Only
+,Tetrachlorodienzo-p-dioxin (fg/g),,2 3 7 8-tetrachlorodienzo-p-dioxin tcdd__fg/g,,V,NHANES Only
+,Tetrachlorodienzo-p-dioxin Lipid Adjusted,,2 3 7 8-tetrachlorodienzo-p-dioxin tcdd lipid adjusted__raw_,,V,NHANES Only
+,Tetrachloroethene (ug/cubic meter),,tetrachloroethene,,V,NHANES Only
+,Toluene (ug/cubic meter),,toluene,,V,NHANES Only
+,Trans-nonachlor (ng/g),,trans-nonachlor,,V,NHANES Only
+,Trans-nonachlor Lipid Adjusted,,trans-nonachlor lipid adjusted,,V,NHANES Only
+,Trichloroethane Result,,1 1 1-trichloroethane result,,V,NHANES Only
+,Trichloroethene (ug/cubic meter),,trichloroethene,,V,NHANES Only
+,Water Bromodichloromethane (ng/mL),,water bromodichloromethane,,V,NHANES Only
+,Water Bromoform (ng/mL),,water bromoform,,V,NHANES Only
+,Water Chloroform (ng/mL),,water chloroform,,V,NHANES Only
+,Water Dibromochloromethane (ng/mL),,water dibromochloromethane,,V,NHANES Only
+,Water MTBE (ng/mL),,water mtbe,,V,NHANES Only
+,dichlorobenzene (ug/cubic meter),,1 4-dichlorobenzene,,V,NHANES Only
+,n-perfluorooctane sulfonic acid (n-PFOS) (ng/mL),,n-perfluorooctane sulfonic acid n-pfos,,V,NHANES Only
+,n-perfluorooctanoic acid (n-PFOA) (ng/mL),,n-perfluorooctanoic acid n-pfoa,,V,NHANES Only
+,o-Xylene (ug/cubic meter),,o-xylene,,V,NHANES Only
