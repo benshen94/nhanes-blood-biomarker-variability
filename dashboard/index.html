@@ -307,6 +307,7 @@
           <div id="trim-label" class="trim-caption">Using all values (0-100)</div>
 
           <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
+          <label class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
 
           <div id="metrics" class="card" style="margin-top:10px;"></div>
         </div>
@@ -525,12 +526,13 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1771488128';
+    const DATA_VERSION = '1771828142';
 
     const selectEl = document.getElementById('biomarker-select');
     const searchEl = document.getElementById('search');
     const optionsEl = document.getElementById('biomarker-options');
     const showLowNEl = document.getElementById('show-low-n');
+    const hideClalitEl = document.getElementById('hide-clalit');
     const modeCvBtn = document.getElementById('mode-cv');
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
@@ -1105,6 +1107,7 @@
       if (!s) return;
       state.currentId = id;
       const showLow = showLowNEl.checked;
+      const hideClalit = hideClalitEl.checked;
       const cohort = cohortFilterEl.value || 'pooled';
       const trimMode = trimPctToMode(trimSliderEl.value);
 
@@ -1164,6 +1167,60 @@
             marker: { color: c === 'female' ? 'rgba(209,73,91,0.23)' : c === 'male' ? 'rgba(37,99,235,0.23)' : 'rgba(71,85,105,0.25)', size: 4 },
             hovertemplate: 'age=%{x}<br>value=%{y:.4f}<extra>' + `${cohortLabel[c]} raw sample` + '</extra>',
             name: `${cohortLabel[c]} Raw sample`
+          });
+        }
+      }
+
+      if (s.clalit_data && !hideClalit) {
+        for (const c of selectedCohorts) {
+          if (!s.clalit_data[c]) continue;
+          let points = showLow ? s.clalit_data[c] : s.clalit_data[c].filter(p => p.passes_n_threshold);
+          if (!points || points.length === 0) continue;
+
+          if (state.mode === 'cv') {
+            points = points.filter(p => Number.isFinite(p.cv));
+            if (points.length === 0) continue;
+            traces.push({
+              x: points.map(p => p.age_mid),
+              y: points.map(p => p.cv),
+              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>cv=${formatNum(p.cv, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+              mode: 'lines+markers',
+              type: 'scatter',
+              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+              hovertemplate: '%{text}<extra></extra>',
+              name: `Clalit ${cohortLabel[c]} CV`
+            });
+            continue;
+          }
+
+          if (state.mode === 'skewness') {
+            points = points.filter(p => Number.isFinite(p.skewness));
+            if (points.length === 0) continue;
+            traces.push({
+              x: points.map(p => p.age_mid),
+              y: points.map(p => p.skewness),
+              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>skewness=${formatNum(p.skewness, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+              mode: 'lines+markers',
+              type: 'scatter',
+              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+              hovertemplate: '%{text}<extra></extra>',
+              name: `Clalit ${cohortLabel[c]} Skewness`
+            });
+            continue;
+          }
+
+          traces.push({
+            x: points.map(p => p.age_mid),
+            y: points.map(p => p.median),
+            text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+            mode: 'lines+markers',
+            type: 'scatter',
+            marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+            line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+            hovertemplate: '%{text}<extra></extra>',
+            name: `Clalit ${cohortLabel[c]} Median`
           });
         }
       }
@@ -1888,6 +1945,7 @@
       state.metadataById = new Map(metadata.map(m => [m.biomarker_id, m]));
 
       showLowNEl.checked = true;
+      hideClalitEl.checked = false;
       includeEnvEl.checked = false;
       compareIncludeEnvEl.checked = false;
       scatterIncludeEnvEl.checked = false;
@@ -1994,6 +2052,9 @@
         if (state.currentId) await renderPlot(state.currentId);
       });
       showLowNEl.addEventListener('change', async () => {
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      hideClalitEl.addEventListener('change', async () => {
         if (state.currentId) await renderPlot(state.currentId);
       });
       modeCvBtn.addEventListener('click', async () => {

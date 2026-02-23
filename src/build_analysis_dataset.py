@@ -37,7 +37,7 @@ def collect_demo_files(raw_dir: Path) -> List[Path]:
 
 
 def collect_questionnaire_files(raw_dir: Path) -> List[Path]:
-    pats = ["DIQ*.xpt", "MCQ*.xpt", "KIQ_U*.xpt"]
+    pats = ["DIQ*.xpt", "MCQ*.xpt", "KIQ*.xpt", "BPQ*.xpt", "OSQ*.xpt", "VIQ*.xpt", "PFQ*.xpt", "HUQ*.xpt"]
     files: List[Path] = []
     for pat in pats:
         files.extend(raw_dir.rglob(pat))
@@ -114,51 +114,60 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
                     cols.append(c)
             return sorted(set(cols))
 
-        diabetes_cols = pick_cols(["DIQ010"])
-        asthma_cols = pick_cols(["MCQ010"])
-        cancer_cols = pick_cols(["MCQ220"])
-        kidney_cols = pick_cols(["KIQ022"])
-        liver_cols = pick_cols(["MCQ160L", "MCQ500", "MCQ510A", "MCQ510B", "MCQ510C", "MCQ510D", "MCQ510E", "MCQ510F"])
-        cvd_cols = pick_cols([
-            "MCQ160B",
-            "MCQ160C",
-            "MCQ160D",
-            "MCQ160E",
-            "MCQ160F",
-            "MCQ160b",
-            "MCQ160c",
-            "MCQ160d",
-            "MCQ160e",
-            "MCQ160f",
-        ])
-
-        tmp = pd.DataFrame({"seqn": normalize_seqn(df), "cycle_start_year": cycle_year})
-        if diabetes_cols:
-            tmp["diabetes"] = detect_any_yes(df, diabetes_cols)
-        if asthma_cols:
-            tmp["asthma"] = detect_any_yes(df, asthma_cols)
-        if cancer_cols:
-            tmp["cancer"] = detect_any_yes(df, cancer_cols)
-        if kidney_cols:
-            tmp["kidney"] = detect_any_yes(df, kidney_cols)
-        if liver_cols:
-            tmp["liver"] = detect_any_yes(df, liver_cols)
-        if cvd_cols:
-            tmp["cvd"] = detect_any_yes(df, cvd_cols)
-
-        per_cycle.append(tmp)
-        avail_rows.append(
+        fixed_conditions = {
+            "diabetes": ["DIQ010"],
+            "asthma": ["MCQ010"],
+            "cancer": ["MCQ220"],
+            "kidney": ["KIQ022"],
+            "liver": ["MCQ160L", "MCQ500", "MCQ510A", "MCQ510B", "MCQ510C", "MCQ510D", "MCQ510E", "MCQ510F"],
+            "cvd": ["MCQ160B", "MCQ160C", "MCQ160D", "MCQ160E", "MCQ160F"],
+            "hypertension": ["BPQ020"],
+            "osteoporosis": ["OSQ060"],
+            "cataract_operation": ["VIQ070"],
+            "adl_disability": ["ADDLDIS", "ADLDIS"],
+            "iadl_disability": ["IADLDIS"],
+        }
+        mcq_condition_labels = {
+            "MCQ160A": "arthritis",
+            "MCQ160B": "heart_failure",
+            "MCQ160C": "coronary_heart_disease",
+            "MCQ160D": "angina",
+            "MCQ160E": "heart_attack",
+            "MCQ160F": "stroke",
+            "MCQ160G": "emphysema",
+            "MCQ160J": "overweight",
+            "MCQ160K": "chronic_bronchitis",
+            "MCQ160L": "liver_condition",
+            "MCQ160M": "thyroid_problem",
+            "MCQ170K": "still_chronic_bronchitis",
+            "MCQ170L": "still_liver_condition",
+            "MCQ170M": "still_thyroid_problem",
+        }
+        dynamic_mcq_codes = sorted(
             {
-                "cycle_start_year": cycle_year,
-                "file": p.name,
-                "diabetes_cols": "|".join(diabetes_cols),
-                "asthma_cols": "|".join(asthma_cols),
-                "cvd_cols": "|".join(cvd_cols),
-                "cancer_cols": "|".join(cancer_cols),
-                "kidney_cols": "|".join(kidney_cols),
-                "liver_cols": "|".join(liver_cols),
+                c.upper()
+                for c in df.columns
+                if re.fullmatch(r"MCQ160[A-Z]", c.upper()) or re.fullmatch(r"MCQ170[A-Z]", c.upper())
             }
         )
+
+        tmp = pd.DataFrame({"seqn": normalize_seqn(df), "cycle_start_year": cycle_year})
+        avail = {"cycle_start_year": cycle_year, "file": p.name}
+        for name, codes in fixed_conditions.items():
+            cols = pick_cols(codes)
+            avail[f"{name}_cols"] = "|".join(cols)
+            if cols:
+                tmp[name] = detect_any_yes(df, cols)
+        for code in dynamic_mcq_codes:
+            alias = mcq_condition_labels.get(code, f"{code.lower()}_condition")
+            cols = pick_cols([code])
+            avail[f"{alias}_cols"] = "|".join(cols)
+            if cols:
+                tmp[alias] = detect_any_yes(df, cols)
+        avail["mcq_condition_codes"] = "|".join(dynamic_mcq_codes)
+
+        per_cycle.append(tmp)
+        avail_rows.append(avail)
 
     if not per_cycle:
         empty = pd.DataFrame(columns=["seqn", "cycle_start_year", "diabetes", "asthma", "cvd", "cancer", "kidney", "liver"])
@@ -168,16 +177,8 @@ def load_health_flags(raw_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
     for c in ["diabetes", "asthma", "cvd", "cancer", "kidney", "liver"]:
         if c not in flags.columns:
             flags[c] = pd.Series([pd.NA] * len(flags), dtype="boolean")
-    agg = flags.groupby(["seqn", "cycle_start_year"], as_index=False).agg(
-        {
-            "diabetes": "max",
-            "asthma": "max",
-            "cvd": "max",
-            "cancer": "max",
-            "kidney": "max",
-            "liver": "max",
-        }
-    )
+    value_cols = [c for c in flags.columns if c not in {"seqn", "cycle_start_year"}]
+    agg = flags.groupby(["seqn", "cycle_start_year"], as_index=False)[value_cols].max()
 
     availability = pd.DataFrame(avail_rows)
     return agg, availability

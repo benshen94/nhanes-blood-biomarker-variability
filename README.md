@@ -8,11 +8,13 @@ Documentation rule: when dashboard features/metrics change, update this README i
 
 ## Scripts
 - `src/discover_nhanes.py` discovers laboratory variable metadata and blood candidates.
-- `src/download_nhanes.py` downloads required NHANES XPT files.
+- `src/download_nhanes.py` downloads required NHANES XPT files (lab + demographics + questionnaire modules including `DIQ/MCQ/KIQ/BPQ/OSQ/VIQ/PFQ/HUQ`).
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_dashboard.py` builds static interactive HTML dashboard.
-- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots (diabetes/kidney/liver disease vs full cohort, plus asthma vs full) using linked mortality files, in both follow-up-time and age-timescale modes.
+- `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
+- `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
+- `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
 
 ## Run Order
 ```bash
@@ -21,7 +23,9 @@ python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.p
 python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed
 python3 src/compute_cv_metrics.py --in data/processed/biomarker_long.parquet --out data/processed
 python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all data/processed/cv_by_age_all.parquet --metrics data/processed/cv_trend_metrics.parquet --out dashboard/index.html --json-out dashboard/dashboard_data.json
-python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png --png-asthma-age-out output/km_asthma_vs_full_by_age.png --csv-asthma-age-out output/km_asthma_counts_by_age.csv
+python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --png-all-disease-panels-age-out output/km_all_diseases_vs_full_by_age_panels.png --csv-all-disease-age-out output/km_all_diseases_age_summary.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png --png-asthma-age-out output/km_asthma_vs_full_by_age.png --csv-asthma-age-out output/km_asthma_counts_by_age.csv --min-disease-n 100
+python3 src/cluster_km_shapes.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --out-dir output/km_shape_clustering --min-disease-n 100 --k-min 2 --k-max 8 --seed 42
+python3 src/fpca_km_shapes.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --out-dir output/fPCA --min-disease-n 100 --k-min 2 --k-max 8 --seed 42
 ```
 
 ## Kaplan-Meier outputs
@@ -40,13 +44,67 @@ python3 src/plot_km_kidney_liver.py --participants data/processed/participant_he
   - per cohort: median lifespan, Q1/Q3 lifespan, IQR lifespan, steepness (`median / IQR`)
 - Relative disease scatter:
   - `output/steepness_longevity_disease.png`
-  - x-axis: cohort median lifespan divided by full-cohort median lifespan
-  - y-axis: cohort steepness divided by full-cohort steepness
+  - x-axis: disease-cohort median lifespan divided by full-cohort median lifespan
+  - y-axis: disease-cohort steepness divided by full-cohort steepness
   - includes dashed reference lines at `(1,1)`
+- All-disease age panel plot:
+  - `output/km_all_diseases_vs_full_by_age_panels.png`
+  - one panel per available disease flag (each panel overlays full cohort + disease cohort KM curve)
+  - lifelines confidence intervals are shown for both curves in each panel
+- All-disease age summary table:
+  - `output/km_all_diseases_age_summary.csv`
+  - includes `n`, `deaths`, median lifespan, Q1/Q3, IQR, and steepness for each disease cohort
 - Asthma (separate age-timescale curve):
   - `output/km_asthma_vs_full_by_age.png`
   - `output/km_asthma_counts_by_age.csv`
   - compares asthma (`MCQ010==1`) vs full cohort on age timeline
+
+## KM Shape Clustering
+- Output folder:
+  - `output/km_shape_clustering/`
+- Curves used:
+  - disease age-timescale KM curves (left-truncated with interview-age entry), sampled on a shared age grid
+- Distances computed:
+  - cosine (raw KM)
+  - euclidean (raw KM)
+  - correlation (raw KM)
+  - cosine (shape-normalized KM)
+  - euclidean (derivative profile)
+  - DTW (shape-normalized KM)
+- Clustering methods compared:
+  - hierarchical average linkage (cosine)
+  - hierarchical average linkage (DTW)
+  - k-medoids (cosine)
+  - k-means (euclidean features)
+  - spectral clustering (cosine affinity)
+  - agglomerative ward
+- Key outputs:
+  - `cluster_method_summary.csv` (best K + silhouette per method)
+  - `cluster_assignments.csv` (disease cluster membership for each method)
+  - `nearest_neighbors_cosine_raw.csv` (top nearest curve neighbors for each disease)
+  - `dendrogram_cosine_raw.png` (who merges with who)
+  - `heatmap_*.png` + `pairwise_distance_*.csv` (similarity maps)
+  - `consensus_similarity_heatmap.png` (how consistently pairs co-cluster across methods)
+  - `cluster_overlays_by_method.png` (cluster medoid/median shape overlays)
+  - `mds_cosine_raw.png` (2D map of disease-curve similarity)
+
+## fPCA of KM Curves
+- Output folder:
+  - `output/fPCA/`
+- Functional representation:
+  - disease age-timescale KM curves are sampled on a common age grid and smoothed into continuous functions
+  - fPCA is run on centered smoothed functions
+- Core outputs:
+  - `summary.txt` (cohort count, selected k, and FPC1/FPC2 variance capture)
+  - `fpca_explained_variance.csv` + `scree_explained_variance.png`
+  - `fpca_eigenfunctions.csv` + `eigenfunctions_top_components.png`
+  - `modes_of_variation_pc1_pc2.png` (mean ± 2 SD score along FPC1/FPC2)
+  - `scores_scatter_pc1_pc2_clusters.png` (disease points on first two fPCA axes)
+  - `silhouette_vs_k_fpca_scores.png` + `fpca_k_selection_silhouette.csv`
+  - `fpca_scores_clusters.csv` (cluster assignment per disease)
+  - `cluster_overlays_fpca2d_kmeans.png` (curve overlays by fPCA-based cluster)
+  - `reconstruction_examples_pc1_pc2.png` (2-component reconstruction diagnostics)
+  - `nearest_neighbors_fpca2d.csv` (closest diseases in fPCA score space)
 
 ## Open the dashboard
 - Local:
@@ -90,6 +148,7 @@ python3 src/plot_km_kidney_liver.py --participants data/processed/participant_he
   - weak/failing kidneys (`KIQ022 == 1`)
   - liver disease history (`MCQ160L == 1`, or newer liver variables `MCQ500/MCQ510A-F == 1`)
 - Asthma (`MCQ010`) is tracked in `participant_health_flags.parquet` for survival analyses, but is **not** used as a healthy-cohort exclusion in biomarker dashboard analyses.
+- Additional disease flags (for example heart attack, stroke, thyroid, bronchitis, hypertension, overweight, osteoporosis) are tracked for survival analyses and are also **not** used as extra healthy-cohort exclusions in biomarker dashboard analyses.
 
 ## Compare tab
 - Use `Compare Rankings` (top tab) to compare biomarkers by Spearman trend quickly.

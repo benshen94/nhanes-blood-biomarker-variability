@@ -18,3 +18,4 @@ output/
 .DS_Store
 .vscode/
 .idea/
+data/clalit/*.csv

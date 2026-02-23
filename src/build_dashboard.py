@@ -326,7 +326,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <input id=\"trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
           <div id=\"trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
 
-          <label class=\"check-label\"><input id=\"show-low-n\" type=\"checkbox\" checked /> Show low-n bins (&lt;30)</label>
+          <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
+          <label class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
 
           <div id=\"metrics\" class=\"card\" style=\"margin-top:10px;\"></div>
         </div>
@@ -551,6 +552,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const searchEl = document.getElementById('search');
     const optionsEl = document.getElementById('biomarker-options');
     const showLowNEl = document.getElementById('show-low-n');
+    const hideClalitEl = document.getElementById('hide-clalit');
     const modeCvBtn = document.getElementById('mode-cv');
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
@@ -1125,6 +1127,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       if (!s) return;
       state.currentId = id;
       const showLow = showLowNEl.checked;
+      const hideClalit = hideClalitEl.checked;
       const cohort = cohortFilterEl.value || 'pooled';
       const trimMode = trimPctToMode(trimSliderEl.value);
 
@@ -1184,6 +1187,60 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             marker: { color: c === 'female' ? 'rgba(209,73,91,0.23)' : c === 'male' ? 'rgba(37,99,235,0.23)' : 'rgba(71,85,105,0.25)', size: 4 },
             hovertemplate: 'age=%{x}<br>value=%{y:.4f}<extra>' + `${cohortLabel[c]} raw sample` + '</extra>',
             name: `${cohortLabel[c]} Raw sample`
+          });
+        }
+      }
+
+      if (s.clalit_data && !hideClalit) {
+        for (const c of selectedCohorts) {
+          if (!s.clalit_data[c]) continue;
+          let points = showLow ? s.clalit_data[c] : s.clalit_data[c].filter(p => p.passes_n_threshold);
+          if (!points || points.length === 0) continue;
+
+          if (state.mode === 'cv') {
+            points = points.filter(p => Number.isFinite(p.cv));
+            if (points.length === 0) continue;
+            traces.push({
+              x: points.map(p => p.age_mid),
+              y: points.map(p => p.cv),
+              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>cv=${formatNum(p.cv, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+              mode: 'lines+markers',
+              type: 'scatter',
+              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+              hovertemplate: '%{text}<extra></extra>',
+              name: `Clalit ${cohortLabel[c]} CV`
+            });
+            continue;
+          }
+
+          if (state.mode === 'skewness') {
+            points = points.filter(p => Number.isFinite(p.skewness));
+            if (points.length === 0) continue;
+            traces.push({
+              x: points.map(p => p.age_mid),
+              y: points.map(p => p.skewness),
+              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>skewness=${formatNum(p.skewness, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+              mode: 'lines+markers',
+              type: 'scatter',
+              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+              hovertemplate: '%{text}<extra></extra>',
+              name: `Clalit ${cohortLabel[c]} Skewness`
+            });
+            continue;
+          }
+
+          traces.push({
+            x: points.map(p => p.age_mid),
+            y: points.map(p => p.median),
+            text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+            mode: 'lines+markers',
+            type: 'scatter',
+            marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+            line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+            hovertemplate: '%{text}<extra></extra>',
+            name: `Clalit ${cohortLabel[c]} Median`
           });
         }
       }
@@ -1908,6 +1965,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       state.metadataById = new Map(metadata.map(m => [m.biomarker_id, m]));
 
       showLowNEl.checked = true;
+      hideClalitEl.checked = false;
       includeEnvEl.checked = false;
       compareIncludeEnvEl.checked = false;
       scatterIncludeEnvEl.checked = false;
@@ -2014,6 +2072,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (state.currentId) await renderPlot(state.currentId);
       });
       showLowNEl.addEventListener('change', async () => {
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      hideClalitEl.addEventListener('change', async () => {
         if (state.currentId) await renderPlot(state.currentId);
       });
       modeCvBtn.addEventListener('click', async () => {
@@ -2551,6 +2612,84 @@ def trend_from_points(points: list[dict], value_key: str) -> dict:
     return out
 
 
+def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping: dict) -> dict:
+    if clalit_f is None or clalit_m is None or not mapping:
+        return {}
+    df_f = clalit_f.copy()
+    df_m = clalit_m.copy()
+    df_f['sex_norm'] = 'female'
+    df_m['sex_norm'] = 'male'
+    df = pd.concat([df_f, df_m], ignore_index=True)
+    df['biomarker_id'] = df['test'].map(mapping)
+    df = df.dropna(subset=['biomarker_id']).copy()
+    
+    df['age_bin'] = pd.cut(df['age'], bins=AGE_BINS, labels=AGE_LABELS, right=False, include_lowest=True)
+    df = df.dropna(subset=['age_bin']).copy()
+    df['age_mid'] = df['age_bin'].map(AGE_MIDS).astype(float)
+    
+    clalit_payload = {}
+    
+    for (bid, sex), g in df.groupby(['biomarker_id', 'sex_norm'], observed=True):
+        pooled = []
+        for age_bin, g_age in g.groupby('age_bin', observed=True):
+            if g_age.empty:
+                continue
+            n_tot = int(g_age['n'].sum())
+            if n_tot < 30:
+                continue
+            mean_v = float(np.average(g_age['mean'], weights=g_age['n']))
+            var_v = np.average(g_age['sd']**2 + (g_age['mean'] - mean_v)**2, weights=g_age['n'])
+            std_v = float(np.sqrt(var_v)) if var_v > 0 else 0.0
+            cv_v = std_v / abs(mean_v) if abs(mean_v) > 1e-8 else np.nan
+            median_v = float(np.average(g_age['median'], weights=g_age['n']))
+            skew_v = float(np.average(g_age['log_skewness'].fillna(0), weights=g_age['n']))
+            
+            p = {
+                "age_bin": str(age_bin),
+                "age_mid": float(g_age['age_mid'].iloc[0]),
+                "n": n_tot,
+                "mean": mean_v,
+                "std": std_v,
+                "median": median_v,
+                "skewness": skew_v,
+                "cv": float(cv_v),
+                "passes_n_threshold": True
+            }
+            pooled.append(p)
+        clalit_payload.setdefault(bid, {})[sex] = pooled
+        
+    for bid, g in df.groupby('biomarker_id', observed=True):
+        pooled = []
+        for age_bin, g_age in g.groupby('age_bin', observed=True):
+            if g_age.empty:
+                continue
+            n_tot = int(g_age['n'].sum())
+            if n_tot < 30:
+                continue
+            mean_v = float(np.average(g_age['mean'], weights=g_age['n']))
+            var_v = np.average(g_age['sd']**2 + (g_age['mean'] - mean_v)**2, weights=g_age['n'])
+            std_v = float(np.sqrt(var_v)) if var_v > 0 else 0.0
+            cv_v = std_v / abs(mean_v) if abs(mean_v) > 1e-8 else np.nan
+            median_v = float(np.average(g_age['median'], weights=g_age['n']))
+            skew_v = float(np.average(g_age['log_skewness'].fillna(0), weights=g_age['n']))
+            
+            p = {
+                "age_bin": str(age_bin),
+                "age_mid": float(g_age['age_mid'].iloc[0]),
+                "n": n_tot,
+                "mean": mean_v,
+                "std": std_v,
+                "median": median_v,
+                "skewness": skew_v,
+                "cv": float(cv_v),
+                "passes_n_threshold": True
+            }
+            pooled.append(p)
+        clalit_payload[bid]['both'] = pooled
+        
+    return clalit_payload
+
+
 def build_outputs(
     cv_df: pd.DataFrame,
     metrics_df: pd.DataFrame,
@@ -2558,6 +2697,9 @@ def build_outputs(
     long_df: pd.DataFrame | None,
     raw_sample_n: int,
     random_seed: int,
+    clalit_f_df: pd.DataFrame | None = None,
+    clalit_m_df: pd.DataFrame | None = None,
+    clalit_map: dict | None = None,
 ) -> tuple[pd.DataFrame, list[dict], dict[str, str], dict[str, dict]]:
     cv_df = cv_df.copy()
     if "variable_name" not in cv_df.columns:
@@ -2817,8 +2959,11 @@ def build_outputs(
             }
         )
 
+    clalit_data_map = process_clalit_data(clalit_f_df, clalit_m_df, clalit_map)
+
     series_index: dict[str, str] = {}
     series_payloads: dict[str, dict] = {}
+
     meta_by_id = metadata.set_index("biomarker_id").to_dict(orient="index")
 
     for bid in metadata["biomarker_id"].astype(str).tolist():
@@ -2871,6 +3016,7 @@ def build_outputs(
                 "mean": sex_trends_filter_mean,
                 "skewness": sex_trends_filter_skew,
             },
+            "clalit_data": clalit_data_map.get(str(bid)),
         }
 
     return metadata, metrics, series_index, series_payloads
@@ -2887,6 +3033,9 @@ def main() -> None:
     ap.add_argument("--random-seed", type=int, default=42)
     ap.add_argument("--out", default="dashboard/index.html")
     ap.add_argument("--json-out", default="dashboard/dashboard_data.json")
+    ap.add_argument("--clalit-f", default="data/clalit/females_all_statistics.csv")
+    ap.add_argument("--clalit-m", default="data/clalit/males_all_statistics.csv")
+    ap.add_argument("--clalit-map", default="data/clalit_mapping.json")
     args = ap.parse_args()
 
     cv_path = Path(args.cv_all)
@@ -2902,6 +3051,13 @@ def main() -> None:
     if long_path.exists():
         long_df = pd.read_parquet(long_path, columns=["biomarker_id", "age_years", "value", "sex"])
 
+    clalit_f = pd.read_csv(args.clalit_f) if Path(args.clalit_f).exists() else None
+    clalit_m = pd.read_csv(args.clalit_m) if Path(args.clalit_m).exists() else None
+    clalit_map = None
+    if Path(args.clalit_map).exists():
+        with open(args.clalit_map) as f:
+            clalit_map = json.load(f)
+
     metadata, metrics, series_index, series_payloads = build_outputs(
         cv_df=cv_df,
         metrics_df=metrics_df,
@@ -2909,6 +3065,9 @@ def main() -> None:
         long_df=long_df,
         raw_sample_n=args.raw_sample_n,
         random_seed=args.random_seed,
+        clalit_f_df=clalit_f,
+        clalit_m_df=clalit_m,
+        clalit_map=clalit_map,
     )
 
     out_html = Path(args.out)

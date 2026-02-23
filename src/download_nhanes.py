@@ -29,7 +29,7 @@ def select_download_urls(manifest_df: pd.DataFrame, verify_ssl: bool = False) ->
     demo_sel["source"] = "demographics"
 
     q_sel = q_df.loc[
-        q_df["data_file_name"].str.match(r"^(DIQ.*|MCQ.*|KIQ_U.*)$"),
+        q_df["data_file_name"].str.match(r"^(DIQ.*|MCQ.*|KIQ.*|BPQ.*|OSQ.*|VIQ.*|PFQ.*|HUQ.*)$"),
         ["xpt_url", "cycle_start_year", "data_file_name"],
     ].copy()
     q_sel["source"] = "questionnaire"
