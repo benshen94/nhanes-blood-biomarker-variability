@@ -119,6 +119,18 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - Blood: `https://<github-username>.github.io/<repo-name>/dashboard/index.html`
   - Urinary: `https://<github-username>.github.io/<repo-name>/dashboard/urinary.html`
 
+## Navigation model (specimen-first)
+- The dashboard now uses two navigation levels:
+  - Row 1 (`Specimen`): `Blood Tests` and `Urinary Tests`
+  - Row 2 (`Analysis View`): `Dashboard`, `Compare Rankings`, `Scatter Plot`, `Histograms`, `Waterfall`, `Info & Methods`
+- `Blood Tests` / `Urinary Tests` are parent context controls, not peer tabs with analysis views.
+- Active analysis view is URL-hash state:
+  - `#dashboard`, `#compare`, `#scatter`, `#hist`, `#waterfall`, `#info`
+- Switching specimen preserves the current analysis view:
+  - `index.html#scatter` -> `urinary.html#scatter`
+  - `urinary.html#compare` -> `index.html#compare`
+- Browser back/forward keeps panel state and hero title/subtitle synchronized via `hashchange` handling.
+
 ## Performance model (on-demand data loading)
 - `dashboard/index.html` (blood) and `dashboard/urinary.html` (urinary) each load only metadata + metrics initially.
 - Per-biomarker point series are stored in:
@@ -127,8 +139,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - Series are fetched ad hoc only when a biomarker is selected/searched.
 
 ## Plot modes
-- Use the top buttons in the dashboard:
-  - `Blood Tests` / `Urinary Tests`: switch between specimen-specific dashboards while keeping the same UI structure.
+- In `Dashboard` analysis view, use:
   - `Plot CV`: CV vs age.
   - `Plot Median`: median vs age with:
     - interquartile range (IQR) band (25th-75th percentile)

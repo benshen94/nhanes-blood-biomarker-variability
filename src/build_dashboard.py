@@ -66,11 +66,41 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       color: var(--muted);
       white-space: nowrap;
     }
-    .top-tabs {
+    .nav-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .nav-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .nav-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      font-weight: 700;
+      min-width: 96px;
+    }
+    .specimen-row {
+      background: #fffdf7;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .specimen-row .nav-label {
+      color: #0b5f58;
+    }
+    .specimen-tabs,
+    .view-tabs {
       display: flex;
       gap: 8px;
-      margin-bottom: 14px;
       flex-wrap: wrap;
+      flex: 1 1 auto;
     }
     .tab-btn {
       border: 1px solid var(--line);
@@ -80,11 +110,27 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       cursor: pointer;
       font-size: 14px;
       font-weight: 600;
+      text-decoration: none;
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .tab-btn.active {
       background: var(--tab-active);
       border-color: var(--tab-active);
       color: #fff;
+    }
+    .specimen-tabs .tab-btn {
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 700;
+      background: #e6f2f0;
+      border-color: #cde2de;
+    }
+    .specimen-tabs .tab-btn.active {
+      box-shadow: 0 1px 2px rgba(15, 118, 110, 0.28);
     }
     .panel { display: none; }
     .panel.active { display: block; }
@@ -240,10 +286,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       #waterfall-plot { height: 620px; }
     }
     @media (max-width: 760px) {
-      .tab-btn {
-        flex: 1 1 calc(50% - 8px);
-        text-align: center;
-      }
+      .nav-row { align-items: flex-start; }
+      .nav-label { min-width: 100%; margin-bottom: 2px; }
+      .specimen-tabs .tab-btn,
+      .view-tabs .tab-btn { flex: 1 1 calc(50% - 8px); text-align: center; }
       .table-wrap {
         max-height: none;
         overflow-x: auto;
@@ -268,7 +314,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       .waterfall-controls input { width: 100%; }
     }
     @media (max-width: 520px) {
-      .tab-btn { flex: 1 1 100%; }
+      .specimen-tabs .tab-btn,
+      .view-tabs .tab-btn { flex: 1 1 100%; }
       .mode-buttons { flex-wrap: wrap; }
       .mode-btn { flex: 1 1 calc(33.333% - 8px); }
       #plot { height: 340px; }
@@ -290,13 +337,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div id=\"status-chip\" class=\"status-chip\">Loading metadata…</div>
     </div>
 
-    <div class=\"top-tabs\">
-      __SPECIMEN_SWITCH_LINK__
-      <button id=\"tab-compare\" class=\"tab-btn\" type=\"button\">Compare Rankings</button>
-      <button id=\"tab-scatter\" class=\"tab-btn\" type=\"button\">Scatter Plot</button>
-      <button id=\"tab-hist\" class=\"tab-btn\" type=\"button\">Histograms</button>
-      <button id=\"tab-waterfall\" class=\"tab-btn\" type=\"button\">Waterfall</button>
-      <button id=\"tab-info\" class=\"tab-btn\" type=\"button\">Info & Methods</button>
+    <div class=\"nav-stack\" aria-label=\"Dashboard navigation\">
+      <div class=\"nav-row specimen-row\" role=\"navigation\" aria-label=\"Specimen\">
+        <div class=\"nav-label\">Specimen</div>
+        <div class=\"specimen-tabs\">
+          __SPECIMEN_SWITCH_LINK__
+        </div>
+      </div>
+      <div class=\"nav-row view-row\" role=\"tablist\" aria-label=\"Analysis View\">
+        <div class=\"nav-label\">Analysis View</div>
+        <div class=\"view-tabs\">
+          <button id=\"tab-dashboard\" class=\"tab-btn active\" type=\"button\">Dashboard</button>
+          <button id=\"tab-compare\" class=\"tab-btn\" type=\"button\">Compare Rankings</button>
+          <button id=\"tab-scatter\" class=\"tab-btn\" type=\"button\">Scatter Plot</button>
+          <button id=\"tab-hist\" class=\"tab-btn\" type=\"button\">Histograms</button>
+          <button id=\"tab-waterfall\" class=\"tab-btn\" type=\"button\">Waterfall</button>
+          <button id=\"tab-info\" class=\"tab-btn\" type=\"button\">Info & Methods</button>
+        </div>
+      </div>
     </div>
 
     <div id=\"panel-dashboard\" class=\"panel active\">
@@ -571,11 +629,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const heroTitleEl = document.getElementById('hero-title');
     const heroSubEl = document.getElementById('hero-sub');
 
+    const tabDashboardBtn = document.getElementById('tab-dashboard');
     const tabCompareBtn = document.getElementById('tab-compare');
     const tabScatterBtn = document.getElementById('tab-scatter');
     const tabHistBtn = document.getElementById('tab-hist');
     const tabWaterfallBtn = document.getElementById('tab-waterfall');
     const tabInfoBtn = document.getElementById('tab-info');
+    const specimenLinks = Array.from(document.querySelectorAll('.specimen-link'));
     const panelDashboard = document.getElementById('panel-dashboard');
     const panelCompare = document.getElementById('panel-compare');
     const panelScatter = document.getElementById('panel-scatter');
@@ -675,6 +735,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     ];
 
     const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
+    const TOP_TABS = ['dashboard', 'compare', 'scatter', 'hist', 'waterfall', 'info'];
+    const TOP_TAB_SET = new Set(TOP_TABS);
 
     function formatNum(v, d=4) {
       if (v === null || v === undefined || Number.isNaN(v)) return 'NA';
@@ -718,6 +780,34 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       return 'CV';
     }
 
+    function canonicalTopTab(tabName) {
+      const clean = String(tabName || '').trim().toLowerCase();
+      return TOP_TAB_SET.has(clean) ? clean : 'dashboard';
+    }
+
+    function topTabFromHash() {
+      const clean = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+      if (!clean) return null;
+      return TOP_TAB_SET.has(clean) ? clean : null;
+    }
+
+    function setTopTabHash(tabName, replace = false) {
+      const next = `#${canonicalTopTab(tabName)}`;
+      if (window.location.hash === next) return;
+      if (replace) window.history.replaceState(null, '', next);
+      else window.history.pushState(null, '', next);
+    }
+
+    function syncSpecimenSwitchLinks(tabName) {
+      const tabHash = `#${canonicalTopTab(tabName)}`;
+      for (const link of specimenLinks) {
+        const baseHref = link.dataset.baseHref || String(link.getAttribute('href') || '').split('#')[0];
+        if (!baseHref) continue;
+        link.dataset.baseHref = baseHref;
+        link.setAttribute('href', `${baseHref}${tabHash}`);
+      }
+    }
+
     function heroCopy(tabName) {
       if (tabName === 'compare') {
         return {
@@ -756,12 +846,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     function setTopTab(tabName) {
-      const isDash = tabName === 'dashboard';
-      const isCompare = tabName === 'compare';
-      const isScatter = tabName === 'scatter';
-      const isHist = tabName === 'hist';
-      const isWaterfall = tabName === 'waterfall';
-      const isInfo = tabName === 'info';
+      const resolved = canonicalTopTab(tabName);
+      const isDash = resolved === 'dashboard';
+      const isCompare = resolved === 'compare';
+      const isScatter = resolved === 'scatter';
+      const isHist = resolved === 'hist';
+      const isWaterfall = resolved === 'waterfall';
+      const isInfo = resolved === 'info';
+      tabDashboardBtn.classList.toggle('active', isDash);
       tabCompareBtn.classList.toggle('active', isCompare);
       tabScatterBtn.classList.toggle('active', isScatter);
       tabHistBtn.classList.toggle('active', isHist);
@@ -773,9 +865,27 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       panelHist.classList.toggle('active', isHist);
       panelWaterfall.classList.toggle('active', isWaterfall);
       panelInfo.classList.toggle('active', isInfo);
-      const copy = heroCopy(tabName);
+      const copy = heroCopy(resolved);
       if (heroTitleEl) heroTitleEl.textContent = copy.title;
       if (heroSubEl) heroSubEl.textContent = copy.sub;
+      syncSpecimenSwitchLinks(resolved);
+    }
+
+    async function activateTopTab(tabName, opts = {}) {
+      const resolved = canonicalTopTab(tabName);
+      const syncHash = Boolean(opts.syncHash);
+      const replaceHash = Boolean(opts.replaceHash);
+      setTopTab(resolved);
+      if (syncHash) setTopTabHash(resolved, replaceHash);
+      if (resolved === 'compare') {
+        renderComparePlot();
+      } else if (resolved === 'scatter') {
+        renderScatterPlot();
+      } else if (resolved === 'hist') {
+        renderHistogramPlot();
+      } else if (resolved === 'waterfall') {
+        await renderWaterfallPlot(state.waterfallId);
+      }
     }
 
     async function fetchJson(path) {
@@ -1546,7 +1656,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           if (!id) return;
           selectEl.value = id;
           state.currentId = id;
-          setTopTab('dashboard');
+          await activateTopTab('dashboard', { syncHash: true });
           renderMetrics(id);
           await renderPlot(id);
         });
@@ -2163,23 +2273,30 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       statusChip.textContent = `Ready: ${state.metadata.length} ${SPECIMEN_LABEL} biomarkers indexed`;
 
+      tabDashboardBtn.addEventListener('click', () => {
+        activateTopTab('dashboard', { syncHash: true }).catch(console.error);
+      });
       tabCompareBtn.addEventListener('click', () => {
-        setTopTab('compare');
-        renderComparePlot();
+        activateTopTab('compare', { syncHash: true }).catch(console.error);
       });
       tabScatterBtn.addEventListener('click', () => {
-        setTopTab('scatter');
-        renderScatterPlot();
+        activateTopTab('scatter', { syncHash: true }).catch(console.error);
       });
       tabHistBtn.addEventListener('click', () => {
-        setTopTab('hist');
-        renderHistogramPlot();
+        activateTopTab('hist', { syncHash: true }).catch(console.error);
       });
-      tabWaterfallBtn.addEventListener('click', async () => {
-        setTopTab('waterfall');
-        await renderWaterfallPlot(state.waterfallId);
+      tabWaterfallBtn.addEventListener('click', () => {
+        activateTopTab('waterfall', { syncHash: true }).catch(console.error);
       });
-      tabInfoBtn.addEventListener('click', () => setTopTab('info'));
+      tabInfoBtn.addEventListener('click', () => {
+        activateTopTab('info', { syncHash: true }).catch(console.error);
+      });
+      for (const link of specimenLinks) {
+        link.addEventListener('click', () => {
+          const current = topTabFromHash() || 'dashboard';
+          syncSpecimenSwitchLinks(current);
+        });
+      }
       compareSortEl.addEventListener('change', renderComparePlot);
       compareStatEl.addEventListener('change', renderComparePlot);
       compareTopNEl.addEventListener('change', renderComparePlot);
@@ -2402,6 +2519,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       waterfallMinNEl.addEventListener('change', () => {
         renderWaterfallPlot(state.waterfallId);
       });
+      window.addEventListener('hashchange', () => {
+        const hashTab = topTabFromHash();
+        const fallbackToDashboard = hashTab === null;
+        activateTopTab(hashTab || 'dashboard', {
+          syncHash: fallbackToDashboard,
+          replaceHash: fallbackToDashboard,
+        }).catch(console.error);
+      });
       window.addEventListener('resize', () => {
         const plotEl = document.getElementById('plot');
         const compareEl = document.getElementById('compare-plot');
@@ -2413,6 +2538,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (scatterEl) Plotly.Plots.resize(scatterEl);
         if (histEl) Plotly.Plots.resize(histEl);
         if (waterfallEl) Plotly.Plots.resize(waterfallEl);
+      });
+      const initialHashTab = topTabFromHash();
+      await activateTopTab(initialHashTab || 'dashboard', {
+        syncHash: true,
+        replaceHash: true,
       });
     }
 
@@ -3417,12 +3547,12 @@ def main() -> None:
     urine_self_href = os.path.relpath(urine_out_html, start=urine_out_html.parent).replace(os.sep, "/")
 
     blood_switch_links = (
-        f'<a class="tab-btn active" href="{blood_self_href}">Blood Tests</a>'
-        f'<a class="tab-btn" href="{urine_from_blood_href}">Urinary Tests</a>'
+        f'<a class="tab-btn specimen-link active" data-base-href="{blood_self_href}" href="{blood_self_href}#dashboard">Blood Tests</a>'
+        f'<a class="tab-btn specimen-link" data-base-href="{urine_from_blood_href}" href="{urine_from_blood_href}#dashboard">Urinary Tests</a>'
     )
     urine_switch_links = (
-        f'<a class="tab-btn" href="{blood_from_urine_href}">Blood Tests</a>'
-        f'<a class="tab-btn active" href="{urine_self_href}">Urinary Tests</a>'
+        f'<a class="tab-btn specimen-link" data-base-href="{blood_from_urine_href}" href="{blood_from_urine_href}#dashboard">Blood Tests</a>'
+        f'<a class="tab-btn specimen-link active" data-base-href="{urine_self_href}" href="{urine_self_href}#dashboard">Urinary Tests</a>'
     )
 
     blood_out_html.write_text(
