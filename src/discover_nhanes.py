@@ -9,7 +9,13 @@ from pathlib import Path
 import pandas as pd
 import urllib3
 
-from nhanes_common import apply_blood_candidate_rule, ensure_dir, parse_component_datapage, parse_variablelist
+from nhanes_common import (
+    apply_blood_candidate_rule,
+    apply_urine_candidate_rule,
+    ensure_dir,
+    parse_component_datapage,
+    parse_variablelist,
+)
 
 
 def build_manifest(component: str, verify_ssl: bool = False) -> pd.DataFrame:
@@ -49,6 +55,15 @@ def build_manifest(component: str, verify_ssl: bool = False) -> pd.DataFrame:
         ),
         axis=1,
     )
+    merged["is_urine_candidate"] = merged.apply(
+        lambda r: apply_urine_candidate_rule(
+            data_file_desc=str(r.get("data_file_desc", "")),
+            variable_desc=str(r.get("variable_desc", "")),
+            use_constraints=str(r.get("use_constraints", "")),
+            variable_name=str(r.get("variable_name", "")),
+        ),
+        axis=1,
+    )
 
     cols = [
         "cycle_start_year",
@@ -63,6 +78,7 @@ def build_manifest(component: str, verify_ssl: bool = False) -> pd.DataFrame:
         "variable_desc",
         "use_constraints",
         "is_blood_candidate",
+        "is_urine_candidate",
     ]
 
     out = merged[cols].copy()
@@ -108,6 +124,7 @@ def main() -> None:
 
     print(f"Saved manifest: {out_path} ({len(manifest):,} rows)")
     print(f"Blood candidates: {manifest['is_blood_candidate'].sum():,}")
+    print(f"Urine candidates: {manifest['is_urine_candidate'].sum():,}")
 
     rdc_included = manifest.loc[
         manifest["use_constraints"].fillna("").str.contains("RDC", case=False) & manifest["is_blood_candidate"]

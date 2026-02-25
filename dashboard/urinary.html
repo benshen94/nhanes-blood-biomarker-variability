@@ -1,0 +1,2367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NHANES Urinary Biomarker CV vs Age</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f3eb;
+      --card: #ffffff;
+      --ink: #1f2937;
+      --muted: #5f6b7a;
+      --accent: #0f766e;
+      --accent-soft: #c9ebe5;
+      --warn: #b45309;
+      --line: #ddd6c8;
+      --chip: #f4efe5;
+      --tab: #efe7d8;
+      --tab-active: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 8% 10%, #fff9e8, var(--bg));
+    }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 20px; }
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 0; font-size: 34px; letter-spacing: 0.2px; }
+    .sub { color: var(--muted); margin-top: 6px; }
+    .status-chip {
+      background: var(--chip);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .top-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      border: 1px solid var(--line);
+      background: var(--tab);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .tab-btn.active {
+      background: var(--tab-active);
+      border-color: var(--tab-active);
+      color: #fff;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .grid { display: grid; grid-template-columns: 330px 1fr; gap: 16px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .sticky { position: sticky; top: 12px; }
+
+    input[type="text"],
+    input[type="search"],
+    input[type="number"],
+    input[type="range"],
+    select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+      margin: 6px 0 10px 0;
+      background: #fff;
+    }
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+    input[type="range"] {
+      padding: 0;
+      border: 0;
+      margin: 8px 0 2px 0;
+      accent-color: var(--accent);
+      background: transparent;
+    }
+    .trim-caption {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 2px 0 10px 0;
+    }
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0 10px 0;
+    }
+    .mode-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
+    .mode-btn {
+      border: 1px solid var(--line);
+      background: #f8f5ef;
+      border-radius: 8px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .mode-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    #plot { width: 100%; height: 540px; }
+    .metric { font-size: 14px; margin: 6px 0; }
+    .flag-true { color: var(--accent); font-weight: 700; }
+    .flag-false { color: var(--warn); }
+
+    .table-wrap {
+      max-height: 320px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { border-bottom: 1px solid #eee7da; padding: 6px; text-align: left; }
+    th { position: sticky; top: 0; background: #fffaf0; z-index: 1; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .info-card h3 { margin: 2px 0 8px 0; font-size: 18px; }
+    .info-card p { margin: 0 0 8px 0; color: var(--muted); }
+    .info-card ul { margin: 8px 0 0 18px; padding: 0; }
+    .info-card li { margin: 6px 0; }
+    .mono { font-family: Menlo, Monaco, 'Courier New', monospace; font-size: 12px; color: var(--muted); }
+    .compare-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .compare-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .compare-controls select, .compare-controls input { margin: 4px 0 0 0; width: 220px; }
+    #compare-plot { width: 100%; height: 640px; }
+    #compare-clalit-plot { width: 100%; height: 480px; }
+    .scatter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .scatter-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .scatter-controls select, .scatter-controls input { margin: 4px 0 0 0; width: 220px; }
+    #scatter-category { height: 160px; }
+    .scatter-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
+    .scatter-actions button {
+      border: 1px solid var(--line);
+      background: #f8f5ef;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .scatter-hint { font-size: 12px; color: var(--muted); }
+    #scatter-plot { width: 100%; height: 640px; }
+    .toggle-btn-active {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border-color: var(--accent) !important;
+    }
+    .hist-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .hist-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .hist-controls select, .hist-controls input { margin: 4px 0 0 0; width: 220px; }
+    #hist-category { height: 160px; }
+    .hist-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
+    .hist-actions button {
+      border: 1px solid var(--line);
+      background: #f8f5ef;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .hist-hint { font-size: 12px; color: var(--muted); }
+    #hist-plot { width: 100%; height: 600px; }
+    .waterfall-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .waterfall-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .waterfall-controls select, .waterfall-controls input { margin: 4px 0 0 0; width: 260px; }
+    .waterfall-caption { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    #waterfall-plot { width: 100%; height: 760px; }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .sticky { position: static; }
+      #plot { height: 430px; }
+      .info-grid { grid-template-columns: 1fr; }
+      .hero { flex-direction: column; align-items: flex-start; }
+      .wrap { padding: 14px; }
+      h1 { font-size: 28px; }
+      .sub { font-size: 15px; }
+      #compare-plot { height: 560px; }
+      #compare-clalit-plot { height: 480px; }
+      #scatter-plot { height: 560px; }
+      #hist-plot { height: 520px; }
+      #waterfall-plot { height: 620px; }
+    }
+    @media (max-width: 760px) {
+      .tab-btn {
+        flex: 1 1 calc(50% - 8px);
+        text-align: center;
+      }
+      .table-wrap {
+        max-height: none;
+        overflow-x: auto;
+      }
+      table { font-size: 12px; min-width: 560px; }
+      #plot { height: 380px; }
+      #compare-plot { height: 500px; }
+      #compare-clalit-plot { height: 440px; }
+      .compare-controls label { width: 100%; }
+      .compare-controls select,
+      .compare-controls input { width: 100%; }
+      .scatter-controls label { width: 100%; }
+      .scatter-controls select,
+      .scatter-controls input { width: 100%; }
+      #scatter-category { height: 180px; }
+      .hist-controls label { width: 100%; }
+      .hist-controls select,
+      .hist-controls input { width: 100%; }
+      #hist-category { height: 180px; }
+      .waterfall-controls label { width: 100%; }
+      .waterfall-controls select,
+      .waterfall-controls input { width: 100%; }
+    }
+    @media (max-width: 520px) {
+      .tab-btn { flex: 1 1 100%; }
+      .mode-buttons { flex-wrap: wrap; }
+      .mode-btn { flex: 1 1 calc(33.333% - 8px); }
+      #plot { height: 340px; }
+      #compare-plot { height: 440px; }
+      #compare-clalit-plot { height: 440px; }
+      #scatter-plot { height: 440px; }
+      #hist-plot { height: 420px; }
+      #waterfall-plot { height: 500px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>NHANES Urinary Biomarker Variability</h1>
+        <div class="sub">Explore cross-sectional aging trajectories across urinary biomarkers.</div>
+      </div>
+      <div id="status-chip" class="status-chip">Loading metadata…</div>
+    </div>
+
+    <div class="top-tabs">
+      <a class="tab-btn" href="index.html">Blood Tests</a><a class="tab-btn active" href="urinary.html">Urinary Tests</a>
+      <button id="tab-dashboard" class="tab-btn active" type="button">Dashboard</button>
+      <button id="tab-compare" class="tab-btn" type="button">Compare Rankings</button>
+      <button id="tab-scatter" class="tab-btn" type="button">Scatter Plot</button>
+      <button id="tab-hist" class="tab-btn" type="button">Histograms</button>
+      <button id="tab-waterfall" class="tab-btn" type="button">Waterfall</button>
+      <button id="tab-info" class="tab-btn" type="button">Info & Methods</button>
+    </div>
+
+    <div id="panel-dashboard" class="panel active">
+      <div class="grid">
+        <div class="card sticky">
+          <div class="mode-buttons">
+            <button id="mode-cv" class="mode-btn active" type="button">Plot CV</button>
+            <button id="mode-mean" class="mode-btn" type="button">Plot Median</button>
+            <button id="mode-skew" class="mode-btn" type="button">Plot Skewness</button>
+          </div>
+
+          <label for="search">Search Biomarker</label>
+          <input id="search" list="biomarker-options" placeholder="Type name, code, file..." />
+          <datalist id="biomarker-options"></datalist>
+
+          <label for="category-filter">Clinical Category</label>
+          <select id="category-filter"></select>
+          <label class="check-label"><input id="include-env" type="checkbox" /> Include environmental/toxicant assays</label>
+
+          <label for="biomarker-select">Select Biomarker</label>
+          <select id="biomarker-select"></select>
+
+          <label for="cohort-filter">Sex Group</label>
+          <select id="cohort-filter">
+            <option value="pooled" selected>Pooled</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="both">Both (Female + Male)</option>
+          </select>
+
+          <label for="trim-slider">Symmetric Trim Per Tail (%)</label>
+          <input id="trim-slider" type="range" min="0" max="25" step="5" value="0" />
+          <div id="trim-label" class="trim-caption">Using all values (0-100)</div>
+
+          <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
+          <label id="hide-clalit-wrap" class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
+
+          <div id="metrics" class="card" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="card">
+          <div id="plot"></div>
+          <h3 id="rank-title">Biomarkers Ranked by Most Negative Spearman Rho (CV vs age)</h3>
+          <div class="table-wrap"><table id="rank-table"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-compare" class="panel">
+      <div class="card">
+        <div class="compare-controls">
+          <label>Sort
+            <select id="compare-sort">
+              <option value="negative" selected>Most Negative Spearman</option>
+              <option value="positive">Most Positive Spearman</option>
+              <option value="absolute">Largest Absolute Spearman</option>
+            </select>
+          </label>
+          <label>Statistic
+            <select id="compare-stat">
+              <option value="cv" selected>CV vs age</option>
+              <option value="mean">Mean vs age</option>
+              <option value="skewness">Skewness vs age</option>
+            </select>
+          </label>
+          <label>Category
+            <select id="compare-category"></select>
+          </label>
+          <label class="check-label"><input id="compare-include-env" type="checkbox" /> Include environmental/toxicant</label>
+          <label>Cohort
+            <select id="compare-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="both">Both (Female + Male)</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id="compare-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="compare-trim-label" class="trim-caption">Using all values (0-100)</div>
+          </label>
+          <label>Top N
+            <input id="compare-topn" type="number" min="10" max="200" step="5" value="40" />
+          </label>
+        </div>
+        <div id="compare-plot"></div>
+        <h3 id="compare-clalit-title" style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
+        <div id="compare-clalit-plot"></div>
+      </div>
+    </div>
+
+    <div id="panel-scatter" class="panel">
+      <div class="card">
+        <div class="scatter-controls">
+          <label>X axis statistic
+            <select id="scatter-x-stat">
+              <option value="cv" selected>CV vs age (Spearman rho)</option>
+              <option value="mean">Mean vs age (Spearman rho)</option>
+              <option value="skewness">Skewness vs age (Spearman rho)</option>
+            </select>
+          </label>
+          <label>Y axis statistic
+            <select id="scatter-y-stat">
+              <option value="cv">CV vs age (Spearman rho)</option>
+              <option value="mean" selected>Mean vs age (Spearman rho)</option>
+              <option value="skewness">Skewness vs age (Spearman rho)</option>
+            </select>
+          </label>
+          <label>Cohort
+            <select id="scatter-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="both">Both (Female + Male)</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id="scatter-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="scatter-trim-label" class="trim-caption">Using all values (0-100)</div>
+          </label>
+          <label class="check-label"><input id="scatter-include-env" type="checkbox" /> Include environmental/toxicant</label>
+        </div>
+        <label>Categories (multi-select)</label>
+        <div class="scatter-actions">
+          <button id="scatter-cat-all" type="button">Select all visible</button>
+          <button id="scatter-cat-core" type="button">Clinical/core only</button>
+          <button id="scatter-cat-clear" type="button">Clear</button>
+          <button id="scatter-label-toggle" type="button">Show labels</button>
+          <span id="scatter-selection-count" class="scatter-hint"></span>
+        </div>
+        <select id="scatter-category" multiple></select>
+        <div id="scatter-plot"></div>
+      </div>
+    </div>
+
+    <div id="panel-hist" class="panel">
+      <div class="card">
+        <div class="hist-controls">
+          <label>Statistic
+            <select id="hist-stat">
+              <option value="cv" selected>CV vs age (Spearman rho)</option>
+              <option value="mean">Mean vs age (Spearman rho)</option>
+              <option value="skewness">Skewness vs age (Spearman rho)</option>
+            </select>
+          </label>
+          <label>Cohort
+            <select id="hist-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="both">Both (Female + Male)</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id="hist-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="hist-trim-label" class="trim-caption">Using all values (0-100)</div>
+          </label>
+          <label class="check-label"><input id="hist-include-env" type="checkbox" /> Include environmental/toxicant</label>
+        </div>
+        <label>Categories (multi-select)</label>
+        <div class="hist-actions">
+          <button id="hist-cat-all" type="button">Select all visible</button>
+          <button id="hist-cat-core" type="button">Clinical/core only</button>
+          <button id="hist-cat-clear" type="button">Clear</button>
+          <span id="hist-selection-count" class="hist-hint"></span>
+        </div>
+        <select id="hist-category" multiple></select>
+        <div id="hist-plot"></div>
+      </div>
+    </div>
+
+    <div id="panel-waterfall" class="panel">
+      <div class="card">
+        <div class="waterfall-controls">
+          <label>Search biomarker
+            <input id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." />
+            <datalist id="waterfall-biomarker-options"></datalist>
+          </label>
+          <label>Biomarker
+            <select id="waterfall-biomarker"></select>
+          </label>
+          <label>Cohort
+            <select id="waterfall-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id="waterfall-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="waterfall-trim-label" class="trim-caption">Using all values (0-100)</div>
+          </label>
+          <label>Min n per age bin
+            <input id="waterfall-min-n" type="number" min="5" max="100" step="5" value="20" />
+            <div class="waterfall-caption">Bins below this n are hidden from waterfall.</div>
+          </label>
+        </div>
+        <div id="waterfall-plot"></div>
+      </div>
+    </div>
+
+    <div id="panel-info" class="panel">
+      <div class="info-grid">
+        <div class="card info-card">
+          <h3>What This Analysis Does</h3>
+          <p>For each urinary biomarker test, this dashboard pools all NHANES cycles/files into one trajectory.</p>
+          <ul>
+            <li>Population: adults age 20+.</li>
+            <li>Primary filter: non-pathological (pregnancy + major disease exclusions).</li>
+            <li>Age aggregation: 5-year bins with minimum n=30 for primary trend metrics.</li>
+            <li>Main metric: CV = SD / |Mean| per age bin.</li>
+            <li>Pooling is done by normalized test name (not by NHANES variable code).</li>
+            <li>Compatible unit variants are converted and pooled; incompatible unit systems remain separate entries.</li>
+          </ul>
+        </div>
+
+        <div class="card info-card">
+          <h3>Healthy Filter</h3>
+          <p>Participants are excluded when available fields indicate:</p>
+          <ul>
+            <li>Pregnancy (<span class="mono">RIDEXPRG==1</span>)</li>
+            <li>Diagnosed diabetes (<span class="mono">DIQ010==1</span>)</li>
+            <li>CVD history (<span class="mono">MCQ160b/c/d/e/f</span> or legacy uppercase equivalents)</li>
+            <li>Cancer history (<span class="mono">MCQ220==1</span>)</li>
+            <li>Weak/failing kidneys (<span class="mono">KIQ022==1</span>)</li>
+          </ul>
+        </div>
+
+        <div class="card info-card">
+          <h3>Plot Modes</h3>
+          <ul>
+            <li><b>Plot CV</b>: age-binned CV trend.</li>
+            <li><b>Plot Median</b>: age-binned median with interquartile band (25th-75th percentile) and raw scatter sample.</li>
+            <li><b>Plot Skewness</b>: age-binned skewness trend (shape/asymmetry of per-bin values).</li>
+            <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
+            <li>Optional robust mode uses configurable symmetric trimming within each age bin (for example 10-90, 20-80, 25-75) before computing summaries.</li>
+            <li>Raw scatter is sampled for performance and readability.</li>
+          </ul>
+        </div>
+
+        <div class="card info-card">
+          <h3>Decline Criteria</h3>
+          <p>A biomarker is flagged as declining variability when all conditions hold:</p>
+          <ul>
+            <li><span class="mono">n_bins &gt;= 5</span></li>
+            <li><span class="mono">Spearman rho &lt; 0</span></li>
+            <li><span class="mono">Spearman p &lt; 0.05</span></li>
+            <li><span class="mono">linear_slope_cv_per_year &lt; 0</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DATA_BASE = './data_urine';
+    const DATA_VERSION = '1772001053';
+    const HAS_CLALIT = false;
+    const SPECIMEN_LABEL = 'urinary';
+
+    const selectEl = document.getElementById('biomarker-select');
+    const searchEl = document.getElementById('search');
+    const optionsEl = document.getElementById('biomarker-options');
+    const showLowNEl = document.getElementById('show-low-n');
+    const hideClalitEl = document.getElementById('hide-clalit');
+    const hideClalitWrapEl = document.getElementById('hide-clalit-wrap');
+    const modeCvBtn = document.getElementById('mode-cv');
+    const modeMeanBtn = document.getElementById('mode-mean');
+    const modeSkewBtn = document.getElementById('mode-skew');
+    const statusChip = document.getElementById('status-chip');
+
+    const tabDashboardBtn = document.getElementById('tab-dashboard');
+    const tabCompareBtn = document.getElementById('tab-compare');
+    const tabScatterBtn = document.getElementById('tab-scatter');
+    const tabHistBtn = document.getElementById('tab-hist');
+    const tabWaterfallBtn = document.getElementById('tab-waterfall');
+    const tabInfoBtn = document.getElementById('tab-info');
+    const panelDashboard = document.getElementById('panel-dashboard');
+    const panelCompare = document.getElementById('panel-compare');
+    const panelScatter = document.getElementById('panel-scatter');
+    const panelHist = document.getElementById('panel-hist');
+    const panelWaterfall = document.getElementById('panel-waterfall');
+    const panelInfo = document.getElementById('panel-info');
+    const compareClalitTitleEl = document.getElementById('compare-clalit-title');
+    const compareSortEl = document.getElementById('compare-sort');
+    const compareStatEl = document.getElementById('compare-stat');
+    const compareTopNEl = document.getElementById('compare-topn');
+    const categoryFilterEl = document.getElementById('category-filter');
+    const includeEnvEl = document.getElementById('include-env');
+    const compareCategoryEl = document.getElementById('compare-category');
+    const compareIncludeEnvEl = document.getElementById('compare-include-env');
+    const cohortFilterEl = document.getElementById('cohort-filter');
+    const compareCohortEl = document.getElementById('compare-cohort');
+    const trimSliderEl = document.getElementById('trim-slider');
+    const trimLabelEl = document.getElementById('trim-label');
+    const compareTrimSliderEl = document.getElementById('compare-trim-slider');
+    const compareTrimLabelEl = document.getElementById('compare-trim-label');
+    const rankTitleEl = document.getElementById('rank-title');
+    const scatterXStatEl = document.getElementById('scatter-x-stat');
+    const scatterYStatEl = document.getElementById('scatter-y-stat');
+    const scatterCohortEl = document.getElementById('scatter-cohort');
+    const scatterTrimSliderEl = document.getElementById('scatter-trim-slider');
+    const scatterTrimLabelEl = document.getElementById('scatter-trim-label');
+    const scatterIncludeEnvEl = document.getElementById('scatter-include-env');
+    const scatterCategoryEl = document.getElementById('scatter-category');
+    const scatterCatAllBtn = document.getElementById('scatter-cat-all');
+    const scatterCatCoreBtn = document.getElementById('scatter-cat-core');
+    const scatterCatClearBtn = document.getElementById('scatter-cat-clear');
+    const scatterLabelToggleBtn = document.getElementById('scatter-label-toggle');
+    const scatterSelectionCountEl = document.getElementById('scatter-selection-count');
+    const histStatEl = document.getElementById('hist-stat');
+    const histCohortEl = document.getElementById('hist-cohort');
+    const histTrimSliderEl = document.getElementById('hist-trim-slider');
+    const histTrimLabelEl = document.getElementById('hist-trim-label');
+    const histIncludeEnvEl = document.getElementById('hist-include-env');
+    const histCategoryEl = document.getElementById('hist-category');
+    const histCatAllBtn = document.getElementById('hist-cat-all');
+    const histCatCoreBtn = document.getElementById('hist-cat-core');
+    const histCatClearBtn = document.getElementById('hist-cat-clear');
+    const histSelectionCountEl = document.getElementById('hist-selection-count');
+    const waterfallSearchEl = document.getElementById('waterfall-search');
+    const waterfallOptionsEl = document.getElementById('waterfall-biomarker-options');
+    const waterfallBiomarkerEl = document.getElementById('waterfall-biomarker');
+    const waterfallCohortEl = document.getElementById('waterfall-cohort');
+    const waterfallTrimSliderEl = document.getElementById('waterfall-trim-slider');
+    const waterfallTrimLabelEl = document.getElementById('waterfall-trim-label');
+    const waterfallMinNEl = document.getElementById('waterfall-min-n');
+
+    const CATEGORY_PRIORITY = {
+      'Routine - CBC': 1,
+      'Routine - CMP': 2,
+      'Cardiometabolic - Lipid': 3,
+      'Cardiometabolic - Glycemic': 4,
+      'Organ - Thyroid': 5,
+      'Organ - Renal': 6,
+      'Organ - Hepatic': 7,
+      'Specialized - Coagulation': 8,
+      'Specialized - Nutritional/Vitamin': 9,
+      'Specialized - Inflammatory': 10,
+      'Hormones/Reproductive': 11,
+      'Infectious/Serology': 12,
+      'Other Clinical': 13,
+      'Environmental/Toxicant': 14,
+    };
+
+    const COHORT_COLORS = {
+      pooled: '#0f766e',
+      female: '#d1495b',
+      male: '#2563eb',
+    };
+
+    const state = {
+      metadata: [],
+      metrics: [],
+      seriesIndex: {},
+      metricsById: new Map(),
+      metadataById: new Map(),
+      cache: new Map(),
+      mode: 'cv',
+      currentId: null,
+      scatterLabels: false,
+      waterfallId: null,
+    };
+
+    const WATERFALL_AGE_BINS = [
+      { label: '20-29', lo: 20, hi: 30 },
+      { label: '30-39', lo: 30, hi: 40 },
+      { label: '40-49', lo: 40, hi: 50 },
+      { label: '50-59', lo: 50, hi: 60 },
+      { label: '60-69', lo: 60, hi: 70 },
+      { label: '70-79', lo: 70, hi: 80 },
+      { label: '80-89', lo: 80, hi: 90 },
+      { label: '90+', lo: 90, hi: 200 },
+    ];
+
+    const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
+
+    function formatNum(v, d=4) {
+      if (v === null || v === undefined || Number.isNaN(v)) return 'NA';
+      return Number(v).toFixed(d);
+    }
+
+    function normalizeTrimPct(v) {
+      const n = Number(v ?? 0);
+      if (!Number.isFinite(n)) return 0;
+      return Math.max(0, Math.min(25, Math.round(n / 5) * 5));
+    }
+
+    function trimPctToMode(pct) {
+      const p = normalizeTrimPct(pct);
+      if (p <= 0) return 'all';
+      return `trim_${p}_${100 - p}`;
+    }
+
+    function trimModeToPct(mode) {
+      if (!mode || mode === 'all') return 0;
+      const m = String(mode).match(/^trim_(\d{1,2})_(\d{1,2})$/);
+      if (!m) return 0;
+      return normalizeTrimPct(Number(m[1]));
+    }
+
+    function trimLabelFromPct(pct) {
+      const p = normalizeTrimPct(pct);
+      if (p <= 0) return 'Using all values (0-100)';
+      return `${p}% each tail kept out -> using ${p}-${100 - p} percentile band`;
+    }
+
+    function modeToStat(mode) {
+      if (mode === 'mean') return 'mean';
+      if (mode === 'skewness') return 'skewness';
+      return 'cv';
+    }
+
+    function statLabel(statKey) {
+      if (statKey === 'mean') return 'Mean';
+      if (statKey === 'skewness') return 'Skewness';
+      return 'CV';
+    }
+
+    function setTopTab(tabName) {
+      const isDash = tabName === 'dashboard';
+      const isCompare = tabName === 'compare';
+      const isScatter = tabName === 'scatter';
+      const isHist = tabName === 'hist';
+      const isWaterfall = tabName === 'waterfall';
+      const isInfo = tabName === 'info';
+      tabDashboardBtn.classList.toggle('active', isDash);
+      tabCompareBtn.classList.toggle('active', isCompare);
+      tabScatterBtn.classList.toggle('active', isScatter);
+      tabHistBtn.classList.toggle('active', isHist);
+      tabWaterfallBtn.classList.toggle('active', isWaterfall);
+      tabInfoBtn.classList.toggle('active', isInfo);
+      panelDashboard.classList.toggle('active', isDash);
+      panelCompare.classList.toggle('active', isCompare);
+      panelScatter.classList.toggle('active', isScatter);
+      panelHist.classList.toggle('active', isHist);
+      panelWaterfall.classList.toggle('active', isWaterfall);
+      panelInfo.classList.toggle('active', isInfo);
+    }
+
+    async function fetchJson(path) {
+      const sep = path.includes('?') ? '&' : '?';
+      const r = await fetch(`${path}${sep}v=${DATA_VERSION}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`Failed to fetch ${path}: ${r.status}`);
+      return await r.json();
+    }
+
+    async function loadSeries(biomarkerId) {
+      if (state.cache.has(biomarkerId)) return state.cache.get(biomarkerId);
+      const rel = state.seriesIndex[biomarkerId];
+      if (!rel) return null;
+      statusChip.textContent = `Loading series… ${biomarkerId}`;
+      const series = await fetchJson(`${DATA_BASE}/${rel}`);
+      state.cache.set(biomarkerId, series);
+      statusChip.textContent = `Loaded ${state.cache.size} series in local cache`;
+      return series;
+    }
+
+    function sortedCategories(metadata, includeEnv) {
+      const cats = new Set();
+      for (const m of metadata) {
+        if (!includeEnv && m.is_environmental) continue;
+        cats.add(m.category || 'Other Clinical');
+      }
+      return Array.from(cats).sort((a, b) => (CATEGORY_PRIORITY[a] ?? 999) - (CATEGORY_PRIORITY[b] ?? 999) || a.localeCompare(b));
+    }
+
+    function renderCategorySelect(selectNode, includeEnv, selectedValue) {
+      const cats = sortedCategories(state.metadata, includeEnv);
+      const options = [
+        { value: 'all_core', label: 'Clinical/core tests first' },
+        { value: 'all_non_env', label: `All non-environmental ${SPECIMEN_LABEL} tests` },
+        { value: 'all', label: 'All visible categories' },
+        ...cats.map(c => ({ value: `cat:${c}`, label: c })),
+      ];
+      selectNode.innerHTML = '';
+      for (const opt of options) {
+        const el = document.createElement('option');
+        el.value = opt.value;
+        el.textContent = opt.label;
+        selectNode.appendChild(el);
+      }
+      const keep = options.some(o => o.value === selectedValue) ? selectedValue : 'all_core';
+      selectNode.value = keep;
+    }
+
+    function metadataPasses(m, categoryValue, includeEnv) {
+      const isEnv = Boolean(m.is_environmental);
+      const isCore = Boolean(m.is_core_clinical);
+      const cat = m.category || 'Other Clinical';
+      if (!includeEnv && isEnv) return false;
+      if (categoryValue === 'all_core') return isCore && !isEnv;
+      if (categoryValue === 'all_non_env') return !isEnv;
+      if (categoryValue === 'all') return includeEnv ? true : !isEnv;
+      if (String(categoryValue || '').startsWith('cat:')) return cat === categoryValue.slice(4);
+      return includeEnv ? true : !isEnv;
+    }
+
+    function getDashboardMetadata() {
+      return state.metadata.filter(m => metadataPasses(m, categoryFilterEl.value, includeEnvEl.checked));
+    }
+
+    function getAllMetricsEnriched() {
+      const byId = state.metadataById;
+      return state.metrics
+        .map(m => {
+          const md = byId.get(m.biomarker_id) || {};
+          return {
+            ...m,
+            display_name: md.display_name || m.biomarker_name || m.biomarker_id,
+            category: md.category || 'Other Clinical',
+            is_environmental: Boolean(md.is_environmental),
+            is_core_clinical: Boolean(md.is_core_clinical),
+            trends: m.trends || {},
+            sex_metrics_by_mode: m.sex_metrics || {},
+            trends_by_stat: m.trends_by_stat || {
+              cv: m.trends || {},
+              mean: m.mean_trends || {},
+              skewness: m.skewness_trends || {},
+            },
+            sex_metrics_by_stat: m.sex_metrics_by_stat || {
+              cv: m.sex_metrics || {},
+              mean: m.sex_mean_metrics || {},
+              skewness: m.sex_skewness_metrics || {},
+            },
+          };
+        });
+    }
+
+    function getCompareMetrics() {
+      return getAllMetricsEnriched().filter(m => metadataPasses(m, compareCategoryEl.value, compareIncludeEnvEl.checked));
+    }
+
+    function setAllTrimSliders(pctRaw) {
+      const pct = normalizeTrimPct(pctRaw);
+      trimSliderEl.value = String(pct);
+      compareTrimSliderEl.value = String(pct);
+      scatterTrimSliderEl.value = String(pct);
+      histTrimSliderEl.value = String(pct);
+      waterfallTrimSliderEl.value = String(pct);
+      const txt = trimLabelFromPct(pct);
+      trimLabelEl.textContent = txt;
+      compareTrimLabelEl.textContent = txt;
+      scatterTrimLabelEl.textContent = txt;
+      histTrimLabelEl.textContent = txt;
+      waterfallTrimLabelEl.textContent = txt;
+      return pct;
+    }
+
+    function setScatterLabelsEnabled(on) {
+      const enabled = Boolean(on);
+      state.scatterLabels = enabled;
+      scatterLabelToggleBtn.classList.toggle('toggle-btn-active', enabled);
+      scatterLabelToggleBtn.textContent = enabled ? 'Hide labels' : 'Show labels';
+    }
+
+    function renderScatterCategoryOptions(selectCore=false) {
+      const cats = sortedCategories(state.metadata, scatterIncludeEnvEl.checked);
+      const prev = new Set(Array.from(scatterCategoryEl.selectedOptions).map(o => o.value));
+      const coreCats = new Set(
+        state.metadata
+          .filter(m => Boolean(m.is_core_clinical) && (scatterIncludeEnvEl.checked || !Boolean(m.is_environmental)))
+          .map(m => m.category || 'Other Clinical')
+      );
+      scatterCategoryEl.innerHTML = '';
+      for (const c of cats) {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        const keep = selectCore ? coreCats.has(c) : (prev.size ? prev.has(c) : true);
+        opt.selected = keep;
+        scatterCategoryEl.appendChild(opt);
+      }
+      if (Array.from(scatterCategoryEl.options).every(o => !o.selected)) {
+        for (const o of Array.from(scatterCategoryEl.options)) o.selected = true;
+      }
+      const selected = Array.from(scatterCategoryEl.selectedOptions).length;
+      scatterSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+    }
+
+    function getScatterSelectedCategories() {
+      return new Set(Array.from(scatterCategoryEl.selectedOptions).map(o => o.value));
+    }
+
+    function renderHistogramCategoryOptions(selectCore=false) {
+      const cats = sortedCategories(state.metadata, histIncludeEnvEl.checked);
+      const prev = new Set(Array.from(histCategoryEl.selectedOptions).map(o => o.value));
+      const coreCats = new Set(
+        state.metadata
+          .filter(m => Boolean(m.is_core_clinical) && (histIncludeEnvEl.checked || !Boolean(m.is_environmental)))
+          .map(m => m.category || 'Other Clinical')
+      );
+      histCategoryEl.innerHTML = '';
+      for (const c of cats) {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        const keep = selectCore ? coreCats.has(c) : (prev.size ? prev.has(c) : true);
+        opt.selected = keep;
+        histCategoryEl.appendChild(opt);
+      }
+      if (Array.from(histCategoryEl.options).every(o => !o.selected)) {
+        for (const o of Array.from(histCategoryEl.options)) o.selected = true;
+      }
+      const selected = Array.from(histCategoryEl.selectedOptions).length;
+      histSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+    }
+
+    function getHistogramSelectedCategories() {
+      return new Set(Array.from(histCategoryEl.selectedOptions).map(o => o.value));
+    }
+
+    function renderOptions() {
+      const opts = getDashboardMetadata().slice().sort(
+        (a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || ''))
+      );
+      const previousId = state.currentId || selectEl.value;
+      selectEl.innerHTML = '';
+      optionsEl.innerHTML = '';
+      for (const o of opts) {
+        const label = `${o.display_name || o.biomarker_name}`;
+        const opt = document.createElement('option');
+        opt.value = o.biomarker_id;
+        opt.textContent = label;
+        selectEl.appendChild(opt);
+
+        const dopt = document.createElement('option');
+        dopt.value = label;
+        optionsEl.appendChild(dopt);
+      }
+      if (opts.length === 0) {
+        state.currentId = null;
+        return null;
+      }
+      const next = opts.some(o => o.biomarker_id === previousId) ? previousId : opts[0].biomarker_id;
+      selectEl.value = next;
+      state.currentId = next;
+      return next;
+    }
+
+    function renderWaterfallOptions() {
+      const opts = state.metadata.slice().sort(
+        (a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || ''))
+      );
+      const prev = state.waterfallId || waterfallBiomarkerEl.value || state.currentId;
+      waterfallBiomarkerEl.innerHTML = '';
+      waterfallOptionsEl.innerHTML = '';
+      for (const o of opts) {
+        const label = `${o.display_name || o.biomarker_name}`;
+        const opt = document.createElement('option');
+        opt.value = o.biomarker_id;
+        opt.textContent = label;
+        waterfallBiomarkerEl.appendChild(opt);
+
+        const dopt = document.createElement('option');
+        dopt.value = label;
+        waterfallOptionsEl.appendChild(dopt);
+      }
+      if (!opts.length) {
+        state.waterfallId = null;
+        return null;
+      }
+      const next = opts.some(o => o.biomarker_id === prev) ? prev : opts[0].biomarker_id;
+      waterfallBiomarkerEl.value = next;
+      state.waterfallId = next;
+      return next;
+    }
+
+    function quantile(values, q) {
+      if (!values || values.length === 0) return NaN;
+      const sorted = values.slice().sort((a, b) => a - b);
+      const pos = (sorted.length - 1) * q;
+      const base = Math.floor(pos);
+      const rest = pos - base;
+      if ((base + 1) < sorted.length) return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+      return sorted[base];
+    }
+
+    function assignAgeBin(age) {
+      const a = Number(age);
+      if (!Number.isFinite(a)) return null;
+      for (let i = 0; i < WATERFALL_AGE_BINS.length; i += 1) {
+        const b = WATERFALL_AGE_BINS[i];
+        if (a >= b.lo && a < b.hi) return b.label;
+      }
+      return null;
+    }
+
+    function gaussianKde(values, xGrid) {
+      const n = values.length;
+      if (n < 2) return xGrid.map(() => 0);
+      const mean = values.reduce((acc, v) => acc + v, 0) / n;
+      const variance = values.reduce((acc, v) => acc + ((v - mean) ** 2), 0) / Math.max(1, n - 1);
+      const sd = Math.sqrt(Math.max(variance, 1e-12));
+      const q25 = quantile(values, 0.25);
+      const q75 = quantile(values, 0.75);
+      const iqr = Number.isFinite(q25) && Number.isFinite(q75) ? (q75 - q25) : sd;
+      let sigma = Math.min(sd, iqr / 1.34);
+      if (!Number.isFinite(sigma) || sigma <= 0) sigma = sd;
+      if (!Number.isFinite(sigma) || sigma <= 0) sigma = Math.max(1e-3, Math.abs(mean) * 0.05);
+      let h = 0.9 * sigma * (n ** -0.2);
+      if (!Number.isFinite(h) || h <= 0) h = Math.max(1e-3, sigma * 0.3);
+      const norm = 1 / (Math.sqrt(2 * Math.PI) * h * n);
+      return xGrid.map((x) => {
+        let sum = 0;
+        for (const v of values) {
+          const z = (x - v) / h;
+          sum += Math.exp(-0.5 * z * z);
+        }
+        return norm * sum;
+      });
+    }
+
+    function rangeMask(xs, lo, hi) {
+      const idx = [];
+      for (let i = 0; i < xs.length; i += 1) {
+        const x = xs[i];
+        if (x >= lo && x <= hi) idx.push(i);
+      }
+      return idx;
+    }
+
+    function renderMetricRows(title, m, rawTotal, rawCap, statKey) {
+      if (!m) return `<div class="metric"><b>${title}:</b> no metrics</div>`;
+      const isNegative = Boolean(m.negative_flag ?? m.decline_flag);
+      const flagCls = isNegative ? 'flag-true' : 'flag-false';
+      const stat = statLabel(statKey);
+      return `
+        <div class="metric"><b>${title} bins:</b> ${m.n_bins ?? 'NA'}</div>
+        <div class="metric"><b>${title} Spearman rho (${stat} vs age):</b> ${formatNum(m.spearman_rho, 4)}</div>
+        <div class="metric"><b>${title} Spearman p:</b> ${formatNum(m.spearman_p, 5)}</div>
+        <div class="metric"><b>${title} Slope ${stat}/year:</b> ${formatNum(m.linear_slope_per_year ?? m.linear_slope_cv_per_year, 6)}</div>
+        <div class="metric"><b>${title} Slope log(${stat})/year:</b> ${formatNum(m.linear_slope_log_per_year ?? m.linear_slope_logcv_per_year, 6)}</div>
+        <div class="metric"><b>${title} Raw points:</b> up to ${rawCap ?? 'NA'} sampled of ${rawTotal ?? 'NA'} total</div>
+        <div class="metric"><b>${title} Negative-trend flag:</b> <span class="${flagCls}">${isNegative}</span></div>
+      `;
+    }
+
+    function renderMetrics(id, series=null) {
+      const pooled = state.metricsById.get(id) || {};
+      const md = state.metadataById.get(id) || {};
+      const box = document.getElementById('metrics');
+      if (!pooled || !Object.keys(pooled).length) {
+        box.innerHTML = '<div class="metric">No metrics available.</div>';
+        return;
+      }
+
+      const cohort = cohortFilterEl.value || 'pooled';
+      const trimMode = trimPctToMode(trimSliderEl.value);
+      const statKey = modeToStat(state.mode);
+      const trendsByStat = pooled.trends_by_stat || {
+        cv: pooled.trends || {},
+        mean: pooled.mean_trends || {},
+        skewness: pooled.skewness_trends || {},
+      };
+      const sexByStat = pooled.sex_metrics_by_stat || {
+        cv: pooled.sex_metrics || {},
+        mean: pooled.sex_mean_metrics || {},
+        skewness: pooled.sex_skewness_metrics || {},
+      };
+      const trendByMode = trendsByStat[statKey] || {};
+      const pooledMetric = trendByMode[trimMode] || trendByMode.all || null;
+      const sexMetricsByMode = sexByStat[statKey] || {};
+      const sexMetrics = sexMetricsByMode[trimMode] || sexMetricsByMode.all || {};
+      const rawBySex = (series && series.raw_total_n_by_sex) ? series.raw_total_n_by_sex : {};
+      const rawCap = md.raw_sample_cap ?? 'NA';
+      const trimLabel = trimLabelFromPct(trimSliderEl.value);
+      const stat = statLabel(statKey);
+
+      let html = `<div class="metric"><b>Category:</b> ${md.category || 'Other Clinical'}</div>`;
+      html += `<div class="metric"><b>Outlier mode:</b> ${trimLabel}</div>`;
+      html += `<div class="metric"><b>Ranking/stat view:</b> ${stat} vs age</div>`;
+      if (cohort === 'both') {
+        html += renderMetricRows('Female', sexMetrics.female || null, rawBySex.female ?? 'NA', rawCap, statKey);
+        html += renderMetricRows('Male', sexMetrics.male || null, rawBySex.male ?? 'NA', rawCap, statKey);
+      } else if (cohort === 'female' || cohort === 'male') {
+        const m = sexMetrics[cohort] || null;
+        html += renderMetricRows(cohort === 'female' ? 'Female' : 'Male', m, rawBySex[cohort] ?? 'NA', rawCap, statKey);
+      } else {
+        html += renderMetricRows('Pooled', pooledMetric, md.raw_total_n ?? 'NA', rawCap, statKey);
+      }
+      box.innerHTML = html;
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      modeCvBtn.classList.toggle('active', mode === 'cv');
+      modeMeanBtn.classList.toggle('active', mode === 'mean');
+      modeSkewBtn.classList.toggle('active', mode === 'skewness');
+    }
+
+    function pickPointsByCohort(s, cohort, trimMode) {
+      const mode = trimMode || 'all';
+      const byMode = s.points_by_filter || {};
+      const sexByMode = s.sex_points_by_filter || {};
+      if (cohort === 'female') return (sexByMode[mode] && sexByMode[mode].female) ? sexByMode[mode].female : [];
+      if (cohort === 'male') return (sexByMode[mode] && sexByMode[mode].male) ? sexByMode[mode].male : [];
+      if (byMode[mode]) return byMode[mode];
+      return s.points || [];
+    }
+
+    function pickRawByCohort(s, cohort) {
+      if (cohort === 'female') return (s.raw_sample_by_sex && s.raw_sample_by_sex.female) ? s.raw_sample_by_sex.female : [];
+      if (cohort === 'male') return (s.raw_sample_by_sex && s.raw_sample_by_sex.male) ? s.raw_sample_by_sex.male : [];
+      return s.raw_sample || [];
+    }
+
+    function lineTrace(points, color, label, valueField, hoverTextFn=null) {
+      return {
+        x: points.map(p => p.age_mid),
+        y: points.map(p => p[valueField]),
+        text: points.map(p => hoverTextFn ? hoverTextFn(p) : `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}<br>skewness=${formatNum(p.skewness, 4)}`),
+        mode: 'lines+markers',
+        type: 'scatter',
+        marker: { size: points.map(p => p.passes_n_threshold ? 8 : 5), color },
+        line: { color, width: 2 },
+        hovertemplate: '%{text}<extra></extra>',
+        name: label
+      };
+    }
+
+    function ciBandTrace(points, color, label) {
+      const ciPoints = points.filter(p => p.q25 !== null && p.q75 !== null);
+      if (ciPoints.length < 2) return null;
+      return {
+        x: ciPoints.map(p => p.age_mid).concat(ciPoints.map(p => p.age_mid).reverse()),
+        y: ciPoints.map(p => p.q75).concat(ciPoints.map(p => p.q25).reverse()),
+        type: 'scatter',
+        fill: 'toself',
+        fillcolor: color,
+        line: { color: 'rgba(0,0,0,0)' },
+        hoverinfo: 'skip',
+        name: label
+      };
+    }
+
+    async function renderPlot(id) {
+      const s = await loadSeries(id);
+      if (!s) return;
+      state.currentId = id;
+      const showLow = showLowNEl.checked;
+      const hideClalit = hideClalitEl.checked;
+      const cohort = cohortFilterEl.value || 'pooled';
+      const trimMode = trimPctToMode(trimSliderEl.value);
+
+      const traces = [];
+      const title = `${s.display_name || s.biomarker_name}`;
+      const selectedCohorts = cohort === 'both' ? ['female', 'male'] : [cohort];
+      const cohortLabel = { pooled: 'Pooled', female: 'Female', male: 'Male' };
+      const band95 = {
+        pooled: 'rgba(15,118,110,0.16)',
+        female: 'rgba(209,73,91,0.18)',
+        male: 'rgba(37,99,235,0.18)',
+      };
+      for (const c of selectedCohorts) {
+        const pointsRaw = pickPointsByCohort(s, c, trimMode);
+        let points = showLow ? pointsRaw : pointsRaw.filter(p => p.passes_n_threshold);
+        if (!points || points.length === 0) continue;
+
+        if (state.mode === 'cv') {
+          points = points.filter(p => p.cv !== null && p.cv !== undefined && Number.isFinite(Number(p.cv)));
+          if (points.length === 0) continue;
+          traces.push(lineTrace(points, COHORT_COLORS[c], `${cohortLabel[c]} CV`, 'cv'));
+          continue;
+        }
+
+        if (state.mode === 'skewness') {
+          points = points.filter(p => p.skewness !== null && p.skewness !== undefined && Number.isFinite(Number(p.skewness)));
+          if (points.length === 0) continue;
+          traces.push(lineTrace(
+            points,
+            COHORT_COLORS[c],
+            `${cohortLabel[c]} Skewness`,
+            'skewness',
+            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>skewness=${formatNum(p.skewness, 4)}<br>median=${formatNum(p.median, 4)}<br>mean=${formatNum(p.mean, 4)}<br>cv=${formatNum(p.cv, 4)}`
+          ));
+          continue;
+        }
+
+        const ci = ciBandTrace(points, band95[c], `${cohortLabel[c]} IQR (25th-75th)`);
+        if (ci) traces.push(ci);
+        traces.push({
+          ...lineTrace(
+            points,
+            COHORT_COLORS[c],
+            `${cohortLabel[c]} Median (binned)`,
+            'median',
+            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>q25=${formatNum(p.q25, 4)}<br>q75=${formatNum(p.q75, 4)}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}<br>skewness=${formatNum(p.skewness, 4)}`
+          ),
+        });
+
+        const raw = pickRawByCohort(s, c);
+        if (raw && raw.length > 0) {
+          traces.push({
+            x: raw.map(p => p.age_years),
+            y: raw.map(p => p.value),
+            mode: 'markers',
+            type: 'scatter',
+            marker: { color: c === 'female' ? 'rgba(209,73,91,0.23)' : c === 'male' ? 'rgba(37,99,235,0.23)' : 'rgba(71,85,105,0.25)', size: 4 },
+            hovertemplate: 'age=%{x}<br>value=%{y:.4f}<extra>' + `${cohortLabel[c]} raw sample` + '</extra>',
+            name: `${cohortLabel[c]} Raw sample`
+          });
+        }
+      }
+
+      if (HAS_CLALIT && s.clalit_data && !hideClalit) {
+        for (const c of selectedCohorts) {
+          if (!s.clalit_data[c]) continue;
+          let points = showLow ? s.clalit_data[c] : s.clalit_data[c].filter(p => p.passes_n_threshold);
+          if (!points || points.length === 0) continue;
+
+          if (state.mode === 'cv') {
+            points = points.filter(p => Number.isFinite(p.cv));
+            if (points.length === 0) continue;
+            traces.push({
+              x: points.map(p => p.age_mid),
+              y: points.map(p => p.cv),
+              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>cv=${formatNum(p.cv, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+              mode: 'lines+markers',
+              type: 'scatter',
+              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+              hovertemplate: '%{text}<extra></extra>',
+              name: `Clalit ${cohortLabel[c]} CV`
+            });
+            continue;
+          }
+
+          if (state.mode === 'skewness') {
+            // Clalit data provides log_skewness, which causes sign inversion issues when compared to raw skewness. We skip it.
+            continue;
+          }
+
+          const clalitBandColors = {
+            pooled: 'rgba(15,118,110,0.16)',
+            female: 'rgba(209,73,91,0.18)',
+            male: 'rgba(37,99,235,0.18)',
+          };
+
+          const clalitCi = ciBandTrace(points, clalitBandColors[c], `Clalit ${cohortLabel[c]} IQR (25th-75th)`);
+          if (clalitCi) traces.push(clalitCi);
+
+          traces.push({
+            x: points.map(p => p.age_mid),
+            y: points.map(p => p.median),
+            text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>q25=${formatNum(p.q25, 4)}<br>q75=${formatNum(p.q75, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+            mode: 'lines+markers',
+            type: 'scatter',
+            marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+            line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+            hovertemplate: '%{text}<extra></extra>',
+            name: `Clalit ${cohortLabel[c]} Median`
+          });
+        }
+      }
+
+      renderMetrics(id, s);
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('plot', traces, {
+        title,
+        xaxis: { title: 'Age (years)', tickfont: { size: mobile ? 10 : 12 } },
+        yaxis: {
+          title: state.mode === 'cv'
+            ? 'Coefficient of Variation (CV)'
+            : state.mode === 'skewness'
+              ? 'Skewness (binned)'
+              : 'Median Biomarker Value',
+          tickfont: { size: mobile ? 10 : 12 }
+        },
+        margin: mobile ? { t: 52, l: 46, r: 10, b: 44 } : { t: 56, l: 64, r: 18, b: 54 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        legend: {
+          orientation: 'h',
+          y: 1.08,
+          font: { size: mobile ? 10 : 12 },
+          itemwidth: mobile ? 38 : undefined
+        }
+      }, { responsive: true, displaylogo: false });
+    }
+
+    function metricsForView(rows, cohort, trimMode, statKey='cv') {
+      const out = [];
+      for (const rec of rows) {
+        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
+        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+        const trends = trendsByStat[statKey] || {};
+        const sexByMode = sexByStat[statKey] || {};
+        const tr = trends[trimMode] || trends.all || null;
+        const sexTr = sexByMode[trimMode] || sexByMode.all || {};
+
+        if (cohort === 'both') {
+          const fm = sexTr.female || null;
+          const ml = sexTr.male || null;
+          if (!fm || !ml) continue;
+          const rhoF = Number(fm.spearman_rho);
+          const rhoM = Number(ml.spearman_rho);
+          if (!Number.isFinite(rhoF) || !Number.isFinite(rhoM)) continue;
+          out.push({
+            ...rec,
+            rho: (rhoF + rhoM) / 2,
+            p: null,
+            n_bins: Math.min(Number(fm.n_bins || 0), Number(ml.n_bins || 0)),
+            decline_flag: Boolean((fm.negative_flag ?? fm.decline_flag) && (ml.negative_flag ?? ml.decline_flag)),
+            female_metric: fm,
+            male_metric: ml,
+            rho_female: rhoF,
+            rho_male: rhoM,
+          });
+          continue;
+        }
+
+        const m = cohort === 'female' || cohort === 'male' ? (sexTr[cohort] || null) : tr;
+        if (!m) continue;
+        const rho = Number(m.spearman_rho);
+        if (!Number.isFinite(rho)) continue;
+          out.push({
+            ...rec,
+            rho,
+            p: m.spearman_p,
+            n_bins: m.n_bins,
+            decline_flag: Boolean(m.negative_flag ?? m.decline_flag),
+            metric: m,
+          });
+      }
+      return out;
+    }
+
+    function metricForRecord(rec, cohort, trimMode, statKey='cv') {
+      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
+      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+      const trends = trendsByStat[statKey] || {};
+      const sexByMode = sexByStat[statKey] || {};
+      const tr = trends[trimMode] || trends.all || null;
+      const sexTr = sexByMode[trimMode] || sexByMode.all || {};
+      if (cohort === 'both') {
+        return { female: sexTr.female || null, male: sexTr.male || null };
+      }
+      if (cohort === 'female' || cohort === 'male') return sexTr[cohort] || null;
+      return tr;
+    }
+
+    function renderScatterPlot() {
+      const xStat = scatterXStatEl.value || 'cv';
+      const yStat = scatterYStatEl.value || 'mean';
+      const xLabel = statLabel(xStat);
+      const yLabel = statLabel(yStat);
+      const cohort = scatterCohortEl.value || 'pooled';
+      const trimMode = trimPctToMode(scatterTrimSliderEl.value);
+      const trimLabel = trimLabelFromPct(scatterTrimSliderEl.value);
+      const includeEnv = scatterIncludeEnvEl.checked;
+      const showLabels = Boolean(state.scatterLabels);
+      const selectedCats = getScatterSelectedCategories();
+      const rows = getAllMetricsEnriched().filter(r => {
+        if (!includeEnv && r.is_environmental) return false;
+        return selectedCats.has(r.category || 'Other Clinical');
+      });
+
+      const points = [];
+      if (cohort === 'both') {
+        for (const r of rows) {
+          const mx = metricForRecord(r, 'both', trimMode, xStat);
+          const my = metricForRecord(r, 'both', trimMode, yStat);
+          for (const sx of ['female', 'male']) {
+            const vx = mx ? mx[sx] : null;
+            const vy = my ? my[sx] : null;
+            const xv = Number(vx?.spearman_rho);
+            const yv = Number(vy?.spearman_rho);
+            if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
+            points.push({
+              biomarker_id: r.biomarker_id,
+              display_name: r.display_name,
+              category: r.category || 'Other Clinical',
+              sex: sx,
+              x: xv,
+              y: yv,
+              n_bins_x: Number(vx?.n_bins || 0),
+              n_bins_y: Number(vy?.n_bins || 0),
+              p_x: vx?.spearman_p,
+              p_y: vy?.spearman_p,
+            });
+          }
+        }
+      } else {
+        for (const r of rows) {
+          const vx = metricForRecord(r, cohort, trimMode, xStat);
+          const vy = metricForRecord(r, cohort, trimMode, yStat);
+          const xv = Number(vx?.spearman_rho);
+          const yv = Number(vy?.spearman_rho);
+          if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
+          points.push({
+            biomarker_id: r.biomarker_id,
+            display_name: r.display_name,
+            category: r.category || 'Other Clinical',
+            sex: cohort,
+            x: xv,
+            y: yv,
+            n_bins_x: Number(vx?.n_bins || 0),
+            n_bins_y: Number(vy?.n_bins || 0),
+            p_x: vx?.spearman_p,
+            p_y: vy?.spearman_p,
+          });
+        }
+      }
+
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      const scatterDiv = document.getElementById('scatter-plot');
+      if (!points.length) {
+        Plotly.newPlot('scatter-plot', [], {
+          title: 'No biomarkers match current scatter filters',
+          xaxis: { title: `Spearman rho (Age vs ${xLabel})` },
+          yaxis: { title: `Spearman rho (Age vs ${yLabel})` },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
+      let traces = [];
+      const baseType = showLabels ? 'scatter' : 'scattergl';
+      const baseMode = showLabels ? 'markers+text' : 'markers';
+      if (cohort === 'both') {
+        const femalePts = points.filter(p => p.sex === 'female');
+        const malePts = points.filter(p => p.sex === 'male');
+        traces = [
+          {
+            type: baseType,
+            mode: baseMode,
+            name: 'Female',
+            marker: { color: COHORT_COLORS.female, size: 8, opacity: 0.74, symbol: 'circle' },
+            x: femalePts.map(p => p.x),
+            y: femalePts.map(p => p.y),
+            text: showLabels ? femalePts.map(p => p.display_name) : undefined,
+            textposition: showLabels ? 'top center' : undefined,
+            textfont: showLabels ? { size: mobile ? 8 : 9, color: '#9f1239' } : undefined,
+            customdata: femalePts.map(p => [p.biomarker_id, p.display_name, p.category, p.n_bins_x, p.n_bins_y, p.p_x, p.p_y]),
+            hovertemplate: '%{customdata[1]}<br>sex=female<br>category=%{customdata[2]}<br>x rho=%{x:.4f} (n_bins=%{customdata[3]}, p=%{customdata[5]:.5f})<br>y rho=%{y:.4f} (n_bins=%{customdata[4]}, p=%{customdata[6]:.5f})<br>id=%{customdata[0]}<extra></extra>',
+          },
+          {
+            type: baseType,
+            mode: baseMode,
+            name: 'Male',
+            marker: { color: COHORT_COLORS.male, size: 8, opacity: 0.74, symbol: 'square' },
+            x: malePts.map(p => p.x),
+            y: malePts.map(p => p.y),
+            text: showLabels ? malePts.map(p => p.display_name) : undefined,
+            textposition: showLabels ? 'top center' : undefined,
+            textfont: showLabels ? { size: mobile ? 8 : 9, color: '#1d4ed8' } : undefined,
+            customdata: malePts.map(p => [p.biomarker_id, p.display_name, p.category, p.n_bins_x, p.n_bins_y, p.p_x, p.p_y]),
+            hovertemplate: '%{customdata[1]}<br>sex=male<br>category=%{customdata[2]}<br>x rho=%{x:.4f} (n_bins=%{customdata[3]}, p=%{customdata[5]:.5f})<br>y rho=%{y:.4f} (n_bins=%{customdata[4]}, p=%{customdata[6]:.5f})<br>id=%{customdata[0]}<extra></extra>',
+          }
+        ];
+      } else {
+        traces = [{
+          type: baseType,
+          mode: baseMode,
+          name: cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male'),
+          marker: { color: COHORT_COLORS[cohort] || '#0f766e', size: 8, opacity: 0.72 },
+          x: points.map(p => p.x),
+          y: points.map(p => p.y),
+          text: showLabels ? points.map(p => p.display_name) : undefined,
+          textposition: showLabels ? 'top center' : undefined,
+          textfont: showLabels ? { size: mobile ? 8 : 9, color: '#134e4a' } : undefined,
+          customdata: points.map(p => [p.biomarker_id, p.display_name, p.category, p.n_bins_x, p.n_bins_y, p.p_x, p.p_y]),
+          hovertemplate: '%{customdata[1]}<br>category=%{customdata[2]}<br>x rho=%{x:.4f} (n_bins=%{customdata[3]}, p=%{customdata[5]:.5f})<br>y rho=%{y:.4f} (n_bins=%{customdata[4]}, p=%{customdata[6]:.5f})<br>id=%{customdata[0]}<extra></extra>',
+        }];
+      }
+
+      Plotly.newPlot('scatter-plot', traces, {
+        title: `Biomarker Scatter: ${xLabel} vs ${yLabel} Spearman`,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.12,
+          showarrow: false,
+          text: `Cohort: ${cohort}, outliers: ${trimLabel}, categories: ${selectedCats.size}, n_points: ${points.length}, labels: ${showLabels ? 'on' : 'off'}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: {
+          title: `Spearman rho (Age vs ${xLabel})`,
+          zeroline: true,
+          zerolinecolor: '#c2c8d0',
+          range: [-1, 1],
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        yaxis: {
+          title: `Spearman rho (Age vs ${yLabel})`,
+          zeroline: true,
+          zerolinecolor: '#c2c8d0',
+          range: [-1, 1],
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        margin: mobile ? { t: 62, l: 52, r: 10, b: 52 } : { t: 64, l: 70, r: 14, b: 60 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
+
+      if (scatterDiv && scatterDiv.removeAllListeners) {
+        scatterDiv.removeAllListeners('plotly_click');
+      }
+      if (scatterDiv && scatterDiv.on) {
+        scatterDiv.on('plotly_click', async (evt) => {
+          const pt = evt?.points?.[0];
+          const id = pt?.customdata?.[0];
+          if (!id) return;
+          selectEl.value = id;
+          state.currentId = id;
+          setTopTab('dashboard');
+          renderMetrics(id);
+          await renderPlot(id);
+        });
+      }
+    }
+
+    function histogramSummary(values) {
+      let negative = 0;
+      let positive = 0;
+      let zeroish = 0;
+      for (const v of values) {
+        if (!Number.isFinite(v)) continue;
+        if (v < 0) negative += 1;
+        else if (v > 0) positive += 1;
+        else zeroish += 1;
+      }
+      return { negative, positive, zeroish, total: negative + positive + zeroish };
+    }
+
+    function renderHistogramPlot() {
+      const statKey = histStatEl.value || 'cv';
+      const stat = statLabel(statKey);
+      const cohort = histCohortEl.value || 'pooled';
+      const trimMode = trimPctToMode(histTrimSliderEl.value);
+      const trimLabel = trimLabelFromPct(histTrimSliderEl.value);
+      const includeEnv = histIncludeEnvEl.checked;
+      const selectedCats = getHistogramSelectedCategories();
+      const rows = getAllMetricsEnriched().filter(r => {
+        if (!includeEnv && r.is_environmental) return false;
+        return selectedCats.has(r.category || 'Other Clinical');
+      });
+
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      const xbins = { start: -1, end: 1, size: 0.05 };
+      let traces = [];
+      let annoText = '';
+
+      if (cohort === 'both') {
+        const femaleVals = [];
+        const maleVals = [];
+        for (const r of rows) {
+          const fx = metricForRecord(r, 'female', trimMode, statKey);
+          const mx = metricForRecord(r, 'male', trimMode, statKey);
+          const fr = Number(fx?.spearman_rho);
+          const mr = Number(mx?.spearman_rho);
+          if (Number.isFinite(fr)) femaleVals.push(fr);
+          if (Number.isFinite(mr)) maleVals.push(mr);
+        }
+        const sf = histogramSummary(femaleVals);
+        const sm = histogramSummary(maleVals);
+        annoText = `Cohort: both, outliers: ${trimLabel}, categories: ${selectedCats.size}, female n=${sf.total} (neg=${sf.negative}, pos=${sf.positive}), male n=${sm.total} (neg=${sm.negative}, pos=${sm.positive})`;
+        traces = [
+          {
+            type: 'histogram',
+            name: 'Female',
+            x: femaleVals,
+            xbins,
+            marker: { color: COHORT_COLORS.female },
+            opacity: 0.62,
+          },
+          {
+            type: 'histogram',
+            name: 'Male',
+            x: maleVals,
+            xbins,
+            marker: { color: COHORT_COLORS.male },
+            opacity: 0.62,
+          },
+        ];
+        if (HAS_CLALIT) {
+          const clalitF = [];
+          const clalitM = [];
+          for (const r of rows) {
+            const fc = Number(r.clalit_trends?.[statKey]?.female?.spearman_rho);
+            const mc = Number(r.clalit_trends?.[statKey]?.male?.spearman_rho);
+            if (Number.isFinite(fc)) clalitF.push(fc);
+            if (Number.isFinite(mc)) clalitM.push(mc);
+          }
+          if (clalitF.length || clalitM.length) {
+            traces.push({
+              type: 'histogram',
+              name: 'Clalit Female',
+              x: clalitF,
+              xbins,
+              marker: { color: COHORT_COLORS.female, line: { width: 1, color: '#ffffff' } },
+              opacity: 0.8,
+              histnorm: '',
+            }, {
+              type: 'histogram',
+              name: 'Clalit Male',
+              x: clalitM,
+              xbins,
+              marker: { color: COHORT_COLORS.male, line: { width: 1, color: '#ffffff' } },
+              opacity: 0.8,
+            });
+          }
+        }
+      } else {
+        const values = [];
+        for (const r of rows) {
+          const m = metricForRecord(r, cohort, trimMode, statKey);
+          const rho = Number(m?.spearman_rho);
+          if (Number.isFinite(rho)) values.push(rho);
+        }
+        if (HAS_CLALIT) {
+          const clalitVals = [];
+          for (const r of rows) {
+            const cr = Number(r.clalit_trends?.[statKey]?.[cohort]?.spearman_rho);
+            if (Number.isFinite(cr)) clalitVals.push(cr);
+          }
+          if (clalitVals.length) {
+            traces.push({
+              type: 'histogram',
+              name: `Clalit ${cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male')}`,
+              x: clalitVals,
+              xbins,
+              marker: { color: '#fb923c', line: { width: 1, color: '#ffffff' } },
+              opacity: 0.9,
+            });
+          }
+        }
+        const s = histogramSummary(values);
+        annoText = `Cohort: ${cohort}, outliers: ${trimLabel}, categories: ${selectedCats.size}, n=${s.total} (neg=${s.negative}, pos=${s.positive}, zero=${s.zeroish})`;
+        traces = [
+          {
+            type: 'histogram',
+            name: cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male'),
+            x: values,
+            xbins,
+            marker: { color: COHORT_COLORS[cohort] || '#0f766e' },
+            opacity: 0.78,
+          },
+        ];
+      }
+
+      const noData = traces.every(t => !t.x || t.x.length === 0);
+      if (noData) {
+        Plotly.newPlot('hist-plot', [], {
+          title: 'No biomarkers match current histogram filters',
+          xaxis: { title: `Spearman rho (Age vs ${stat})`, range: [-1, 1] },
+          yaxis: { title: 'Count of biomarkers' },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
+      Plotly.newPlot('hist-plot', traces, {
+        title: `Histogram of Spearman rho: ${stat} vs age`,
+        barmode: 'overlay',
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.12,
+          showarrow: false,
+          text: annoText,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: {
+          title: `Spearman rho (Age vs ${stat})`,
+          range: [-1, 1],
+          tickfont: { size: mobile ? 10 : 12 },
+          zeroline: true,
+          zerolinecolor: '#c2c8d0',
+        },
+        yaxis: {
+          title: 'Count of biomarkers',
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        legend: { orientation: 'h' },
+        margin: mobile ? { t: 66, l: 52, r: 10, b: 52 } : { t: 68, l: 70, r: 14, b: 60 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
+    }
+
+    async function applyWaterfallSearch() {
+      const q = waterfallSearchEl.value.toLowerCase().trim();
+      if (!q) return;
+      const hit = state.metadata.find(
+        m => `${m.display_name || ''} ${m.biomarker_name || ''} ${m.variable_name || ''}`
+          .toLowerCase()
+          .includes(q)
+      );
+      if (!hit) return;
+      waterfallBiomarkerEl.value = hit.biomarker_id;
+      state.waterfallId = hit.biomarker_id;
+      await renderWaterfallPlot(hit.biomarker_id);
+    }
+
+    async function renderWaterfallPlot(biomarkerId = null) {
+      const id = biomarkerId || waterfallBiomarkerEl.value || state.currentId;
+      if (!id) return;
+      const s = await loadSeries(id);
+      if (!s) return;
+      state.waterfallId = id;
+
+      const cohort = waterfallCohortEl.value || 'pooled';
+      const trimPct = normalizeTrimPct(waterfallTrimSliderEl.value);
+      const trimLo = trimPct / 100;
+      const trimHi = 1 - trimLo;
+      const minN = Math.max(5, Math.min(1000, Number(waterfallMinNEl.value || 20)));
+      waterfallMinNEl.value = String(minN);
+
+      let raw = [];
+      if (cohort === 'female' || cohort === 'male') {
+        raw = (s.raw_sample_by_sex && s.raw_sample_by_sex[cohort]) ? s.raw_sample_by_sex[cohort] : [];
+      } else {
+        raw = s.raw_sample || [];
+      }
+
+      const bins = {};
+      for (const b of WATERFALL_AGE_BINS) bins[b.label] = [];
+      for (const p of raw) {
+        const age = Number(p.age_years);
+        const value = Number(p.value);
+        if (!Number.isFinite(age) || !Number.isFinite(value)) continue;
+        const label = assignAgeBin(age);
+        if (!label) continue;
+        bins[label].push(value);
+      }
+
+      const rows = [];
+      for (const b of WATERFALL_AGE_BINS) {
+        const vals = (bins[b.label] || []).slice().sort((a, z) => a - z);
+        if (vals.length < minN) continue;
+        let trimmed = vals;
+        if (trimPct > 0) {
+          const loCut = quantile(vals, trimLo);
+          const hiCut = quantile(vals, trimHi);
+          trimmed = vals.filter(v => v >= loCut && v <= hiCut);
+        }
+        if (trimmed.length < minN) continue;
+        const q1 = quantile(trimmed, 0.25);
+        const q2 = quantile(trimmed, 0.50);
+        const q3 = quantile(trimmed, 0.75);
+        rows.push({ label: b.label, values: trimmed, q1, q2, q3, n: trimmed.length });
+      }
+
+      if (!rows.length) {
+        Plotly.newPlot('waterfall-plot', [], {
+          title: 'No age bins pass minimum n for this biomarker/cohort',
+          xaxis: { title: s.display_name || s.biomarker_name || id },
+          yaxis: { title: 'Age bin' },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
+      let globalMin = Infinity;
+      let globalMax = -Infinity;
+      let allNonNegative = true;
+      for (const r of rows) {
+        const lo = Math.min(...r.values);
+        const hi = Math.max(...r.values);
+        if (lo < 0) allNonNegative = false;
+        if (lo < globalMin) globalMin = lo;
+        if (hi > globalMax) globalMax = hi;
+      }
+      const span = Math.max(1e-6, globalMax - globalMin);
+      const pad = span * 0.08;
+      const xMin = allNonNegative ? 0 : (globalMin - pad);
+      const xMax = globalMax + pad;
+      const gridN = 180;
+      const xGrid = Array.from({ length: gridN }, (_, i) => xMin + (i * (xMax - xMin) / (gridN - 1)));
+
+      const withDensity = rows.map(r => ({ ...r, density: gaussianKde(r.values, xGrid) }));
+      let maxD = 0;
+      for (const r of withDensity) {
+        for (const d of r.density) if (d > maxD) maxD = d;
+      }
+      const amp = 0.82;
+
+      const traces = [];
+      const quartNames = ['Q1', 'Q2', 'Q3', 'Q4'];
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+
+      const yPos = withDensity.map((_, idx) => withDensity.length - 1 - idx);
+      for (let rowIdx = 0; rowIdx < withDensity.length; rowIdx += 1) {
+        const r = withDensity[rowIdx];
+        const yBase = yPos[rowIdx];
+        const yCurve = r.density.map(d => yBase + (maxD > 0 ? (d / maxD) * amp : 0));
+        const bounds = [Number.NEGATIVE_INFINITY, r.q1, r.q2, r.q3, Number.POSITIVE_INFINITY];
+
+        for (let q = 0; q < 4; q += 1) {
+          const lo = bounds[q];
+          const hi = bounds[q + 1];
+          const idx = rangeMask(xGrid, lo, hi);
+          if (idx.length < 2) continue;
+          const xs = idx.map(i => xGrid[i]);
+          const ys = idx.map(i => yCurve[i]);
+          traces.push({
+            type: 'scatter',
+            mode: 'lines',
+            x: xs.concat(xs.slice().reverse()),
+            y: ys.concat(xs.map(() => yBase).reverse()),
+            fill: 'toself',
+            fillcolor: WATERFALL_QUARTILE_COLORS[q],
+            line: { color: 'rgba(0,0,0,0)' },
+            name: quartNames[q],
+            legendgroup: quartNames[q],
+            showlegend: rowIdx === 0,
+            opacity: 0.96,
+            hovertemplate: `${r.label}<br>${quartNames[q]}<br>n=${r.n}<br>Q1=${formatNum(r.q1, 4)}<br>Median=${formatNum(r.q2, 4)}<br>Q3=${formatNum(r.q3, 4)}<extra></extra>`,
+          });
+        }
+
+        traces.push({
+          type: 'scatter',
+          mode: 'lines',
+          x: xGrid,
+          y: yCurve,
+          line: { color: '#111827', width: 1.6 },
+          hovertemplate: `${r.label}<br>n=${r.n}<br>Q1=${formatNum(r.q1, 4)}<br>Median=${formatNum(r.q2, 4)}<br>Q3=${formatNum(r.q3, 4)}<extra>density</extra>`,
+          name: `${r.label} density`,
+          showlegend: false,
+        });
+      }
+
+      Plotly.newPlot('waterfall-plot', traces, {
+        title: `${s.display_name || s.biomarker_name} — age-stratified waterfall (${cohort})`,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.1,
+          showarrow: false,
+          text: `Outliers: ${trimLabelFromPct(trimPct)}, min n/bin: ${minN}, bins shown: ${withDensity.length}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: { title: 'Biomarker value', tickfont: { size: mobile ? 10 : 12 } },
+        yaxis: {
+          title: 'Age bin',
+          tickmode: 'array',
+          tickvals: yPos,
+          ticktext: withDensity.map(r => r.label),
+          tickfont: { size: mobile ? 10 : 12 },
+        },
+        legend: { orientation: 'v', title: { text: 'Quartiles' } },
+        margin: mobile ? { t: 72, l: 72, r: 12, b: 52 } : { t: 72, l: 88, r: 16, b: 60 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
+    }
+
+    function renderRankTable() {
+      const tbl = document.getElementById('rank-table');
+      const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
+      const cohort = cohortFilterEl.value || 'pooled';
+      const trimMode = trimPctToMode(trimSliderEl.value);
+      const statKey = modeToStat(state.mode);
+      const stat = statLabel(statKey);
+      if (rankTitleEl) rankTitleEl.textContent = `Biomarkers Ranked by Most Negative Spearman Rho (${stat} vs age)`;
+      const ranked = metricsForView(
+        getCompareMetrics().filter(r => visible.has(r.biomarker_id)),
+        cohort,
+        trimMode,
+        statKey
+      ).sort((a, b) => (a.rho ?? 999) - (b.rho ?? 999));
+      const top = ranked.slice(0, 200);
+      let html = `<thead><tr><th>Biomarker</th><th>Spearman rho (${stat})</th><th>p</th><th>Negative trend</th></tr></thead><tbody>`;
+      for (const r of top) {
+        html += `<tr data-id="${r.biomarker_id}"><td>${r.display_name}</td><td>${formatNum(r.rho, 4)}</td><td>${formatNum(r.p, 5)}</td><td>${r.decline_flag}</td></tr>`;
+      }
+      html += '</tbody>';
+      tbl.innerHTML = html;
+
+      for (const tr of tbl.querySelectorAll('tbody tr')) {
+        tr.style.cursor = 'pointer';
+        tr.onclick = async () => {
+          const id = tr.getAttribute('data-id');
+          selectEl.value = id;
+          renderMetrics(id);
+          await renderPlot(id);
+        };
+      }
+    }
+
+    function renderComparePlot() {
+      const mode = compareSortEl.value;
+      const statKey = compareStatEl.value || 'cv';
+      const stat = statLabel(statKey);
+      const cohort = compareCohortEl.value || 'pooled';
+      const trimMode = trimPctToMode(compareTrimSliderEl.value);
+      const topN = Math.max(10, Math.min(200, Number(compareTopNEl.value || 40)));
+      const trimLabel = trimLabelFromPct(compareTrimSliderEl.value);
+      compareTopNEl.value = String(topN);
+
+      let ranked = metricsForView(getCompareMetrics(), cohort, trimMode, statKey).slice();
+      const rankVal = (m) => (mode === 'absolute' ? Math.abs(m.rho) : m.rho);
+      if (mode === 'negative') ranked.sort((a, b) => rankVal(a) - rankVal(b));
+      if (mode === 'positive') ranked.sort((a, b) => rankVal(b) - rankVal(a));
+      if (mode === 'absolute') ranked.sort((a, b) => rankVal(b) - rankVal(a));
+      ranked = ranked.slice(0, topN);
+
+      const y = ranked.map(r => r.display_name).reverse();
+      const categoryLabel = compareCategoryEl.options[compareCategoryEl.selectedIndex]?.textContent || 'All';
+      let traces = [];
+      let xTitle = `Spearman rho (Age vs ${stat})`;
+
+      if (cohort === 'both') {
+        const xF = ranked.map(r => Number(r.rho_female)).reverse();
+        const xM = ranked.map(r => Number(r.rho_male)).reverse();
+        traces = [
+          {
+            type: 'bar',
+            orientation: 'h',
+            y,
+            x: xF,
+            marker: { color: COHORT_COLORS.female },
+            name: 'Female',
+            customdata: ranked.map(r => [r.female_metric?.spearman_p, r.female_metric?.n_bins, r.biomarker_id, r.category]).reverse(),
+            hovertemplate: 'Female rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>id=%{customdata[2]}<br>category=%{customdata[3]}<extra></extra>',
+          },
+          {
+            type: 'bar',
+            orientation: 'h',
+            y,
+            x: xM,
+            marker: { color: COHORT_COLORS.male },
+            name: 'Male',
+            customdata: ranked.map(r => [r.male_metric?.spearman_p, r.male_metric?.n_bins, r.biomarker_id, r.category]).reverse(),
+            hovertemplate: 'Male rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>id=%{customdata[2]}<br>category=%{customdata[3]}<extra></extra>',
+          }
+        ];
+        xTitle = `Spearman rho (female vs male, Age vs ${stat})`;
+      } else {
+        const x = ranked.map(r => Number(r.rho)).reverse();
+        const custom = ranked.map(r => {
+          return [r.p, r.n_bins, r.decline_flag, r.biomarker_id, r.category];
+        }).reverse();
+        const colors = x.map(v => (v < 0 ? '#0f766e' : '#b45309'));
+        traces = [{
+          type: 'bar',
+          orientation: 'h',
+          y,
+          x,
+          marker: { color: colors },
+          customdata: custom,
+          hovertemplate: 'rho=%{x:.4f}<br>p=%{customdata[0]:.5f}<br>n_bins=%{customdata[1]}<br>negative_trend=%{customdata[2]}<br>id=%{customdata[3]}<br>category=%{customdata[4]}<extra></extra>',
+          name: cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled',
+        }];
+      }
+
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('compare-plot', traces, {
+        title: mode === 'negative' ? `Top ${topN} Most Negative Spearman Biomarkers (${stat} vs age)` :
+               mode === 'positive' ? `Top ${topN} Most Positive Spearman Biomarkers (${stat} vs age)` :
+               `Top ${topN} Largest |Spearman| Biomarkers (${stat} vs age)`,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.12,
+          showarrow: false,
+          text: `Filter: ${categoryLabel}${compareIncludeEnvEl.checked ? ' (env included)' : ''}, cohort: ${cohort}, statistic: ${stat}, outliers: ${trimLabel}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        barmode: cohort === 'both' ? 'group' : 'relative',
+        xaxis: { title: xTitle, tickfont: { size: mobile ? 10 : 12 } },
+        yaxis: { automargin: true, tickfont: { size: mobile ? 10 : 12 } },
+        margin: mobile ? { t: 64, l: 150, r: 10, b: 44 } : { t: 56, l: 260, r: 16, b: 54 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+      }, { responsive: true, displaylogo: false });
+
+      if (!HAS_CLALIT) {
+        Plotly.newPlot('compare-clalit-plot', [], {
+          title: 'No external cohort overlay configured for this specimen',
+          xaxis: { visible: false },
+          yaxis: { visible: false },
+          margin: mobile ? { t: 44, l: 20, r: 10, b: 20 } : { t: 44, l: 30, r: 16, b: 28 },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
+      let cTraces = [];
+      if (cohort === 'both') {
+        const bothRanked = ranked.filter(r => r.clalit_trends && r.clalit_trends[statKey] && r.clalit_trends[statKey].female && r.clalit_trends[statKey].male);
+        cTraces = [
+          {
+            type: 'scatter',
+            mode: 'markers+text',
+            name: 'Female',
+            marker: { color: COHORT_COLORS.female, size: 8, symbol: 'circle' },
+            x: bothRanked.map(r => Number(r.rho_female)),
+            y: bothRanked.map(r => Number(r.clalit_trends[statKey].female.spearman_rho)),
+            text: bothRanked.map(r => r.display_name),
+            textposition: 'top center',
+            textfont: { size: mobile ? 8 : 9, color: '#9f1239' },
+            customdata: bothRanked.map(r => [r.biomarker_id, r.category]),
+            hovertemplate: '%{text}<br>sex=female<br>category=%{customdata[1]}<br>NHANES rho=%{x:.4f}<br>Clalit rho=%{y:.4f}<extra></extra>',
+          },
+          {
+            type: 'scatter',
+            mode: 'markers+text',
+            name: 'Male',
+            marker: { color: COHORT_COLORS.male, size: 8, symbol: 'square' },
+            x: bothRanked.map(r => Number(r.rho_male)),
+            y: bothRanked.map(r => Number(r.clalit_trends[statKey].male.spearman_rho)),
+            text: bothRanked.map(r => r.display_name),
+            textposition: 'top center',
+            textfont: { size: mobile ? 8 : 9, color: '#1d4ed8' },
+            customdata: bothRanked.map(r => [r.biomarker_id, r.category]),
+            hovertemplate: '%{text}<br>sex=male<br>category=%{customdata[1]}<br>NHANES rho=%{x:.4f}<br>Clalit rho=%{y:.4f}<extra></extra>',
+          }
+        ];
+      } else {
+        const rankedC = ranked.filter(r => r.clalit_trends && r.clalit_trends[statKey] && r.clalit_trends[statKey][cohort]);
+        cTraces = [{
+          type: 'scatter',
+          mode: 'markers+text',
+          name: cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male'),
+          marker: { color: COHORT_COLORS[cohort] || '#0f766e', size: 8 },
+          x: rankedC.map(r => Number(r.rho)),
+          y: rankedC.map(r => Number(r.clalit_trends[statKey][cohort].spearman_rho)),
+          text: rankedC.map(r => r.display_name),
+          textposition: 'top center',
+          textfont: { size: mobile ? 8 : 9, color: '#134e4a' },
+          customdata: rankedC.map(r => [r.biomarker_id, r.category]),
+          hovertemplate: '%{text}<br>category=%{customdata[1]}<br>NHANES rho=%{x:.4f}<br>Clalit rho=%{y:.4f}<extra></extra>',
+        }];
+      }
+
+      cTraces.push({
+        x: [-1, 1],
+        y: [-1, 1],
+        mode: 'lines',
+        name: 'Agreement Diagonal',
+        line: { color: 'rgba(0,0,0,0.2)', dash: 'dash' },
+        hoverinfo: 'none'
+      });
+
+      Plotly.newPlot('compare-clalit-plot', cTraces, {
+        title: `Clalit vs NHANES Spearman rho (${stat} vs age)`,
+        xaxis: { title: `NHANES Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
+        yaxis: { title: `Clalit Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
+        margin: mobile ? { t: 40, l: 52, r: 10, b: 44 } : { t: 40, l: 60, r: 16, b: 54 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        showlegend: false,
+      }, { responsive: true, displaylogo: false });
+    }
+
+    async function applySearch() {
+      const q = searchEl.value.toLowerCase().trim();
+      if (!q) return;
+      const hit = getDashboardMetadata().find(
+        m => `${m.display_name || ''} ${m.biomarker_name || ''} ${m.variable_name || ''} ${m.source_files || ''} ${m.source_variables || ''}`
+          .toLowerCase()
+          .includes(q)
+      );
+      if (hit) {
+        selectEl.value = hit.biomarker_id;
+        waterfallBiomarkerEl.value = hit.biomarker_id;
+        state.waterfallId = hit.biomarker_id;
+        renderMetrics(hit.biomarker_id);
+        await renderPlot(hit.biomarker_id);
+      }
+    }
+
+    async function refreshDashboardFromFilters() {
+      const id = renderOptions();
+      renderRankTable();
+      if (!id) {
+        document.getElementById('metrics').innerHTML = '<div class="metric">No biomarkers match current filters.</div>';
+        Plotly.newPlot('plot', [], { title: 'No biomarkers match current filters' }, { responsive: true, displaylogo: false });
+        return;
+      }
+      renderMetrics(id);
+      await renderPlot(id);
+    }
+
+    async function init() {
+      const [metadata, metrics, index] = await Promise.all([
+        fetchJson(`${DATA_BASE}/metadata.json`),
+        fetchJson(`${DATA_BASE}/metrics.json`),
+        fetchJson(`${DATA_BASE}/series_index.json`),
+      ]);
+
+      state.metadata = metadata;
+      state.metrics = metrics;
+      state.seriesIndex = index;
+      state.metricsById = new Map(metrics.map(m => [m.biomarker_id, m]));
+      state.metadataById = new Map(metadata.map(m => [m.biomarker_id, m]));
+
+      showLowNEl.checked = true;
+      hideClalitEl.checked = !HAS_CLALIT;
+      includeEnvEl.checked = false;
+      compareIncludeEnvEl.checked = false;
+      scatterIncludeEnvEl.checked = false;
+      histIncludeEnvEl.checked = false;
+      if (!HAS_CLALIT) {
+        if (hideClalitWrapEl) hideClalitWrapEl.style.display = 'none';
+        if (compareClalitTitleEl) compareClalitTitleEl.textContent = 'External Cohort Agreement';
+      }
+      setScatterLabelsEnabled(false);
+      setAllTrimSliders(0);
+      renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
+      renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
+      renderScatterCategoryOptions(false);
+      renderHistogramCategoryOptions(false);
+      renderWaterfallOptions();
+
+      await refreshDashboardFromFilters();
+      renderComparePlot();
+      renderScatterPlot();
+      renderHistogramPlot();
+      await renderWaterfallPlot(state.waterfallId);
+
+      statusChip.textContent = `Ready: ${state.metadata.length} ${SPECIMEN_LABEL} biomarkers indexed`;
+
+      tabDashboardBtn.addEventListener('click', () => setTopTab('dashboard'));
+      tabCompareBtn.addEventListener('click', () => {
+        setTopTab('compare');
+        renderComparePlot();
+      });
+      tabScatterBtn.addEventListener('click', () => {
+        setTopTab('scatter');
+        renderScatterPlot();
+      });
+      tabHistBtn.addEventListener('click', () => {
+        setTopTab('hist');
+        renderHistogramPlot();
+      });
+      tabWaterfallBtn.addEventListener('click', async () => {
+        setTopTab('waterfall');
+        await renderWaterfallPlot(state.waterfallId);
+      });
+      tabInfoBtn.addEventListener('click', () => setTopTab('info'));
+      compareSortEl.addEventListener('change', renderComparePlot);
+      compareStatEl.addEventListener('change', renderComparePlot);
+      compareTopNEl.addEventListener('change', renderComparePlot);
+      compareCategoryEl.addEventListener('change', renderComparePlot);
+      compareCohortEl.addEventListener('change', async () => {
+        cohortFilterEl.value = compareCohortEl.value;
+        scatterCohortEl.value = compareCohortEl.value;
+        histCohortEl.value = compareCohortEl.value;
+        if (compareCohortEl.value !== 'both') waterfallCohortEl.value = compareCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (compareCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      compareTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(compareTrimSliderEl.value);
+        renderRankTable();
+        if (state.currentId) renderPlot(state.currentId);
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
+      });
+      compareIncludeEnvEl.addEventListener('change', () => {
+        renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, compareCategoryEl.value);
+        renderComparePlot();
+      });
+      selectEl.addEventListener('change', async () => {
+        const id = selectEl.value;
+        state.currentId = id;
+        if (Array.from(waterfallBiomarkerEl.options).some(o => o.value === id)) {
+          waterfallBiomarkerEl.value = id;
+          state.waterfallId = id;
+        }
+        renderMetrics(id);
+        await renderPlot(id);
+      });
+      searchEl.addEventListener('change', applySearch);
+      searchEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') applySearch(); });
+      categoryFilterEl.addEventListener('change', refreshDashboardFromFilters);
+      includeEnvEl.addEventListener('change', async () => {
+        renderCategorySelect(categoryFilterEl, includeEnvEl.checked, categoryFilterEl.value);
+        await refreshDashboardFromFilters();
+      });
+      cohortFilterEl.addEventListener('change', async () => {
+        compareCohortEl.value = cohortFilterEl.value;
+        scatterCohortEl.value = cohortFilterEl.value;
+        histCohortEl.value = cohortFilterEl.value;
+        if (cohortFilterEl.value !== 'both') waterfallCohortEl.value = cohortFilterEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (cohortFilterEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      trimSliderEl.addEventListener('input', async () => {
+        setAllTrimSliders(trimSliderEl.value);
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      showLowNEl.addEventListener('change', async () => {
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      hideClalitEl.addEventListener('change', async () => {
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeCvBtn.addEventListener('click', async () => {
+        setMode('cv');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeMeanBtn.addEventListener('click', async () => {
+        setMode('mean');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeSkewBtn.addEventListener('click', async () => {
+        setMode('skewness');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      scatterXStatEl.addEventListener('change', renderScatterPlot);
+      scatterYStatEl.addEventListener('change', renderScatterPlot);
+      scatterCohortEl.addEventListener('change', () => {
+        cohortFilterEl.value = scatterCohortEl.value;
+        compareCohortEl.value = scatterCohortEl.value;
+        histCohortEl.value = scatterCohortEl.value;
+        if (scatterCohortEl.value !== 'both') waterfallCohortEl.value = scatterCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderHistogramPlot();
+        if (scatterCohortEl.value !== 'both') renderWaterfallPlot(state.waterfallId);
+        if (state.currentId) renderPlot(state.currentId);
+        renderScatterPlot();
+      });
+      scatterTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(scatterTrimSliderEl.value);
+        renderRankTable();
+        renderComparePlot();
+        renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
+        if (state.currentId) renderPlot(state.currentId);
+        renderScatterPlot();
+      });
+      scatterIncludeEnvEl.addEventListener('change', () => {
+        renderScatterCategoryOptions(false);
+        renderScatterPlot();
+      });
+      scatterCategoryEl.addEventListener('change', () => {
+        const cats = sortedCategories(state.metadata, scatterIncludeEnvEl.checked);
+        const selected = Array.from(scatterCategoryEl.selectedOptions).length;
+        scatterSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+        renderScatterPlot();
+      });
+      scatterCatAllBtn.addEventListener('click', () => {
+        for (const o of Array.from(scatterCategoryEl.options)) o.selected = true;
+        renderScatterCategoryOptions(false);
+        renderScatterPlot();
+      });
+      scatterCatCoreBtn.addEventListener('click', () => {
+        renderScatterCategoryOptions(true);
+        renderScatterPlot();
+      });
+      scatterCatClearBtn.addEventListener('click', () => {
+        for (const o of Array.from(scatterCategoryEl.options)) o.selected = false;
+        const cats = sortedCategories(state.metadata, scatterIncludeEnvEl.checked);
+        scatterSelectionCountEl.textContent = `0/${cats.length} categories selected`;
+        renderScatterPlot();
+      });
+      scatterLabelToggleBtn.addEventListener('click', () => {
+        setScatterLabelsEnabled(!state.scatterLabels);
+        renderScatterPlot();
+      });
+      histStatEl.addEventListener('change', renderHistogramPlot);
+      histCohortEl.addEventListener('change', async () => {
+        cohortFilterEl.value = histCohortEl.value;
+        compareCohortEl.value = histCohortEl.value;
+        scatterCohortEl.value = histCohortEl.value;
+        if (histCohortEl.value !== 'both') waterfallCohortEl.value = histCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (histCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      histTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(histTrimSliderEl.value);
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        renderWaterfallPlot(state.waterfallId);
+        if (state.currentId) renderPlot(state.currentId);
+      });
+      histIncludeEnvEl.addEventListener('change', () => {
+        renderHistogramCategoryOptions(false);
+        renderHistogramPlot();
+      });
+      histCategoryEl.addEventListener('change', () => {
+        const cats = sortedCategories(state.metadata, histIncludeEnvEl.checked);
+        const selected = Array.from(histCategoryEl.selectedOptions).length;
+        histSelectionCountEl.textContent = `${selected}/${cats.length} categories selected`;
+        renderHistogramPlot();
+      });
+      histCatAllBtn.addEventListener('click', () => {
+        for (const o of Array.from(histCategoryEl.options)) o.selected = true;
+        renderHistogramCategoryOptions(false);
+        renderHistogramPlot();
+      });
+      histCatCoreBtn.addEventListener('click', () => {
+        renderHistogramCategoryOptions(true);
+        renderHistogramPlot();
+      });
+      histCatClearBtn.addEventListener('click', () => {
+        for (const o of Array.from(histCategoryEl.options)) o.selected = false;
+        const cats = sortedCategories(state.metadata, histIncludeEnvEl.checked);
+        histSelectionCountEl.textContent = `0/${cats.length} categories selected`;
+        renderHistogramPlot();
+      });
+      waterfallBiomarkerEl.addEventListener('change', async () => {
+        const id = waterfallBiomarkerEl.value;
+        state.waterfallId = id;
+        if (Array.from(selectEl.options).some(o => o.value === id)) {
+          selectEl.value = id;
+          state.currentId = id;
+        }
+        await renderWaterfallPlot(id);
+      });
+      waterfallSearchEl.addEventListener('change', applyWaterfallSearch);
+      waterfallSearchEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyWaterfallSearch(); });
+      waterfallCohortEl.addEventListener('change', async () => {
+        cohortFilterEl.value = waterfallCohortEl.value;
+        compareCohortEl.value = waterfallCohortEl.value;
+        scatterCohortEl.value = waterfallCohortEl.value;
+        histCohortEl.value = waterfallCohortEl.value;
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (state.currentId) await renderPlot(state.currentId);
+        await renderWaterfallPlot(state.waterfallId);
+      });
+      waterfallTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(waterfallTrimSliderEl.value);
+        renderRankTable();
+        renderComparePlot();
+        renderScatterPlot();
+        renderHistogramPlot();
+        if (state.currentId) renderPlot(state.currentId);
+        renderWaterfallPlot(state.waterfallId);
+      });
+      waterfallMinNEl.addEventListener('change', () => {
+        renderWaterfallPlot(state.waterfallId);
+      });
+      window.addEventListener('resize', () => {
+        const plotEl = document.getElementById('plot');
+        const compareEl = document.getElementById('compare-plot');
+        const scatterEl = document.getElementById('scatter-plot');
+        const histEl = document.getElementById('hist-plot');
+        const waterfallEl = document.getElementById('waterfall-plot');
+        if (plotEl) Plotly.Plots.resize(plotEl);
+        if (compareEl) Plotly.Plots.resize(compareEl);
+        if (scatterEl) Plotly.Plots.resize(scatterEl);
+        if (histEl) Plotly.Plots.resize(histEl);
+        if (waterfallEl) Plotly.Plots.resize(waterfallEl);
+      });
+    }
+
+    init().catch(err => {
+      console.error(err);
+      const plot = document.getElementById('plot');
+      plot.innerHTML = `<div style="padding:16px;color:#b45309;">Failed to load dashboard data. Open via local server (not file://). Error: ${err.message}</div>`;
+      statusChip.textContent = 'Load failed';
+    });
+  </script>
+</body>
+</html>

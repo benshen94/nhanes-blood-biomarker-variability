@@ -273,10 +273,12 @@ def conversion_factor(src_unit: str, dst_unit: str) -> Optional[float]:
     return float(src_density / dst_density)
 
 
-def build_pooling_map(lab_manifest: pd.DataFrame) -> pd.DataFrame:
-    blood = lab_manifest[lab_manifest["is_blood_candidate"]].copy()
+def build_pooling_map(lab_manifest: pd.DataFrame, candidate_column: str = "is_blood_candidate") -> pd.DataFrame:
+    if candidate_column not in lab_manifest.columns:
+        raise ValueError(f"Candidate column not found in manifest: {candidate_column}")
+    selected = lab_manifest[lab_manifest[candidate_column]].copy()
     var_counts = (
-        blood.groupby(["variable_name", "variable_desc"], as_index=False)
+        selected.groupby(["variable_name", "variable_desc"], as_index=False)
         .size()
         .sort_values(["variable_name", "size"], ascending=[True, False])
         .drop_duplicates(subset=["variable_name"], keep="first")
@@ -380,22 +382,25 @@ def write_long_dataset(
     processed_dir: Path,
     lab_manifest: pd.DataFrame,
     participants: pd.DataFrame,
+    candidate_column: str = "is_blood_candidate",
 ) -> Tuple[int, int, int]:
-    blood = lab_manifest[lab_manifest["is_blood_candidate"]].copy()
-    blood = blood.drop_duplicates(subset=["xpt_url", "variable_name"]).reset_index(drop=True)
+    if candidate_column not in lab_manifest.columns:
+        raise ValueError(f"Candidate column not found in manifest: {candidate_column}")
+    selected = lab_manifest[lab_manifest[candidate_column]].copy()
+    selected = selected.drop_duplicates(subset=["xpt_url", "variable_name"]).reset_index(drop=True)
 
     file_meta = (
-        blood[["data_file_name", "cycle_label", "cycle_start_year", "cycle_end_year", "xpt_url", "data_file_desc"]]
+        selected[["data_file_name", "cycle_label", "cycle_start_year", "cycle_end_year", "xpt_url", "data_file_desc"]]
         .drop_duplicates(subset=["xpt_url"])
         .set_index("xpt_url")
     )
 
     vars_by_url: Dict[str, pd.DataFrame] = {
         url: g[["variable_name", "variable_desc"]].drop_duplicates().reset_index(drop=True)
-        for url, g in blood.groupby("xpt_url")
+        for url, g in selected.groupby("xpt_url")
     }
 
-    pooling_map_df = build_pooling_map(lab_manifest)
+    pooling_map_df = build_pooling_map(lab_manifest, candidate_column=candidate_column)
     pooling_map = pooling_map_df.set_index("variable_name").to_dict(orient="index")
 
     out_path = processed_dir / "biomarker_long.parquet"
@@ -562,7 +567,7 @@ def write_long_dataset(
     screen_df = pd.DataFrame(screen_rows)
     screen_df.to_csv(processed_dir / "variable_screening_summary.csv", index=False)
 
-    kept_from_manifest = blood[blood["variable_name"].isin(kept_variables)].copy()
+    kept_from_manifest = selected[selected["variable_name"].isin(kept_variables)].copy()
     kept_from_manifest = kept_from_manifest.merge(
         pooling_map_df[["variable_name", "pooled_id", "pooled_name", "pooled_unit"]],
         on="variable_name",
@@ -609,6 +614,7 @@ def main() -> None:
     ap.add_argument("--raw", default="data/raw")
     ap.add_argument("--manifest", default="data/processed/lab_variable_manifest.parquet")
     ap.add_argument("--out", default="data/processed")
+    ap.add_argument("--candidate-column", default="is_blood_candidate")
     args = ap.parse_args()
 
     raw_dir = Path(args.raw)
@@ -626,10 +632,17 @@ def main() -> None:
         processed_dir=out_dir,
         lab_manifest=lab_manifest,
         participants=participants,
+        candidate_column=args.candidate_column,
     )
 
+    specimen_label = "blood"
+    if args.candidate_column == "is_urine_candidate":
+        specimen_label = "urine"
+    elif args.candidate_column not in {"is_blood_candidate", "is_urine_candidate"}:
+        specimen_label = args.candidate_column
+
     print(f"Participant rows (age>=20): {len(participants):,}")
-    print(f"Processed blood lab files: {n_files:,}")
+    print(f"Processed {specimen_label} lab files: {n_files:,}")
     print(f"Pooled biomarkers kept: {n_vars:,}")
     print(f"Long biomarker rows written: {n_rows:,}")
     print(f"Dataset: {out_dir / 'biomarker_long.parquet'}")

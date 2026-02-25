@@ -15,9 +15,16 @@ import urllib3
 from nhanes_common import cycle_year_from_url, ensure_dir, parse_component_datapage, sha256_file
 
 
-def select_download_urls(manifest_df: pd.DataFrame, verify_ssl: bool = False) -> pd.DataFrame:
-    blood_files = manifest_df.loc[manifest_df["is_blood_candidate"], ["xpt_url", "cycle_start_year"]].drop_duplicates()
-    blood_files["source"] = "laboratory"
+def select_download_urls(
+    manifest_df: pd.DataFrame,
+    candidate_column: str = "is_blood_candidate",
+    verify_ssl: bool = False,
+) -> pd.DataFrame:
+    if candidate_column not in manifest_df.columns:
+        raise ValueError(f"Candidate column not found in manifest: {candidate_column}")
+
+    lab_files = manifest_df.loc[manifest_df[candidate_column], ["xpt_url", "cycle_start_year"]].drop_duplicates()
+    lab_files["source"] = "laboratory"
 
     demo_df = parse_component_datapage(component="Demographics", verify_ssl=verify_ssl)
     q_df = parse_component_datapage(component="Questionnaire", verify_ssl=verify_ssl)
@@ -34,9 +41,9 @@ def select_download_urls(manifest_df: pd.DataFrame, verify_ssl: bool = False) ->
     ].copy()
     q_sel["source"] = "questionnaire"
 
-    blood_files = blood_files.assign(data_file_name=blood_files["xpt_url"].str.extract(r"/([^/]+)\.xpt$", expand=False))
+    lab_files = lab_files.assign(data_file_name=lab_files["xpt_url"].str.extract(r"/([^/]+)\.xpt$", expand=False))
 
-    all_files = pd.concat([blood_files, demo_sel, q_sel], ignore_index=True)
+    all_files = pd.concat([lab_files, demo_sel, q_sel], ignore_index=True)
     all_files["cycle_start_year"] = all_files["cycle_start_year"].fillna(
         all_files["xpt_url"].map(cycle_year_from_url)
     )
@@ -64,6 +71,7 @@ def download_one(url: str, out_path: Path, verify_ssl: bool = False, timeout: in
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest", default="data/processed/lab_variable_manifest.parquet")
+    ap.add_argument("--candidate-column", default="is_blood_candidate")
     ap.add_argument("--out", default="data/raw")
     ap.add_argument("--download-manifest", default="data/processed/download_manifest.csv")
     ap.add_argument("--verify-ssl", action="store_true")
@@ -78,7 +86,11 @@ def main() -> None:
     ensure_dir(dl_manifest_path.parent)
 
     manifest_df = pd.read_parquet(manifest_path)
-    urls_df = select_download_urls(manifest_df, verify_ssl=args.verify_ssl)
+    urls_df = select_download_urls(
+        manifest_df,
+        candidate_column=args.candidate_column,
+        verify_ssl=args.verify_ssl,
+    )
 
     records = []
     total = len(urls_df)

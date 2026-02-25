@@ -1,17 +1,17 @@
-# NHANES Blood Biomarker Explorer
+# NHANES Blood + Urinary Biomarker Explorer
 
-Interactive explorer for age-related blood biomarker trajectories in NHANES.
+Interactive explorer for age-related blood and urinary biomarker trajectories in NHANES.
 
-This project builds a static web dashboard where users can search biomarkers, compare trends across age and sex, and inspect ranking metrics across hundreds of blood tests.
+This project builds static web dashboards where users can search biomarkers, compare trends across age and sex, and inspect ranking metrics across hundreds of tests.
 
 Documentation rule: when dashboard features/metrics change, update this README in the same commit.
 
 ## Scripts
-- `src/discover_nhanes.py` discovers laboratory variable metadata and blood candidates.
-- `src/download_nhanes.py` downloads required NHANES XPT files (lab + demographics + questionnaire modules including `DIQ/MCQ/KIQ/BPQ/OSQ/VIQ/PFQ/HUQ`).
-- `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data.
+- `src/discover_nhanes.py` discovers laboratory variable metadata and tags both blood and urinary candidates in the manifest (`is_blood_candidate`, `is_urine_candidate`).
+- `src/download_nhanes.py` downloads required NHANES XPT files (lab + demographics + questionnaire modules including `DIQ/MCQ/KIQ/BPQ/OSQ/VIQ/PFQ/HUQ`), with candidate selection controlled by `--candidate-column`.
+- `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data, with candidate selection controlled by `--candidate-column`.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
-- `src/build_dashboard.py` builds static interactive HTML dashboard.
+- `src/build_dashboard.py` builds both static interactive HTML dashboards: blood (`dashboard/index.html`) and urinary (`dashboard/urinary.html`).
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
@@ -22,7 +22,10 @@ python3 src/discover_nhanes.py --component Laboratory --verify-urls
 python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.parquet
 python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed
 python3 src/compute_cv_metrics.py --in data/processed/biomarker_long.parquet --out data/processed
-python3 src/build_dashboard.py --cv data/processed/cv_by_age.parquet --cv-all data/processed/cv_by_age_all.parquet --metrics data/processed/cv_trend_metrics.parquet --out dashboard/index.html --json-out dashboard/dashboard_data.json
+python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.parquet --candidate-column is_urine_candidate --download-manifest data/processed/download_manifest_urine.csv
+python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed/urine --candidate-column is_urine_candidate
+python3 src/compute_cv_metrics.py --in data/processed/urine/biomarker_long.parquet --out data/processed/urine
+python3 src/build_dashboard.py
 python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --png-all-disease-panels-age-out output/km_all_diseases_vs_full_by_age_panels.png --csv-all-disease-age-out output/km_all_diseases_age_summary.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png --png-asthma-age-out output/km_asthma_vs_full_by_age.png --csv-asthma-age-out output/km_asthma_counts_by_age.csv --min-disease-n 100
 python3 src/cluster_km_shapes.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --out-dir output/km_shape_clustering --min-disease-n 100 --k-min 2 --k-max 8 --seed 42
 python3 src/fpca_km_shapes.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --out-dir output/fPCA --min-disease-n 100 --k-min 2 --k-max 8 --seed 42
@@ -109,19 +112,23 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ## Open the dashboard
 - Local:
   - Double-click `Open_NHANES_Dashboard.command`
-  - It starts a local server and opens `http://127.0.0.1:8765/dashboard/index.html`
+  - It starts a local server and opens `http://127.0.0.1:8765/dashboard/index.html` (blood dashboard)
+  - Urinary dashboard is at `http://127.0.0.1:8765/dashboard/urinary.html` (or use the `Urinary Tests` tab button inside the blood dashboard)
 - Online:
   - Open the GitHub Pages site (if enabled in your repo settings):
-  - `https://<github-username>.github.io/<repo-name>/`
+  - Blood: `https://<github-username>.github.io/<repo-name>/dashboard/index.html`
+  - Urinary: `https://<github-username>.github.io/<repo-name>/dashboard/urinary.html`
 
 ## Performance model (on-demand data loading)
-- `dashboard/index.html` now loads only metadata + metrics initially.
+- `dashboard/index.html` (blood) and `dashboard/urinary.html` (urinary) each load only metadata + metrics initially.
 - Per-biomarker point series are stored in:
   - `dashboard/data/series/*.json`
+  - `dashboard/data_urine/series/*.json`
 - Series are fetched ad hoc only when a biomarker is selected/searched.
 
 ## Plot modes
 - Use the top buttons in the dashboard:
+  - `Blood Tests` / `Urinary Tests`: switch between specimen-specific dashboards while keeping the same UI structure.
   - `Plot CV`: CV vs age.
   - `Plot Median`: median vs age with:
     - interquartile range (IQR) band (25th-75th percentile)
@@ -161,6 +168,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - Visual:
   - horizontal bar chart with hover details (`rho`, `p`, `n_bins`, negative-trend flag, biomarker id)
   - in `Both` cohort mode, female and male bars are shown side-by-side on the same biomarker list
+  - blood dashboard includes a `Clalit vs NHANES Agreement` scatter panel; urinary dashboard keeps the panel but shows a placeholder (no urinary Clalit overlay configured)
 
 ## Scatter tab
 - Use `Scatter Plot` (top tab) to compare biomarkers in 2D across trend metrics.
@@ -227,8 +235,10 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - CRP/hs-CRP are included as pooled blood biomarkers.
 - Screening audit is written to:
   - `data/processed/variable_screening_summary.csv`
+  - `data/processed/urine/variable_screening_summary.csv`
 - Pooled catalog is written to:
   - `data/processed/biomarker_catalog.parquet`
+  - `data/processed/urine/biomarker_catalog.parquet`
 
 ## Median mode interpretation
 - `Plot Median` displays the age-binned median and IQR band (25th-75th percentile).
@@ -242,6 +252,7 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 ## Clalit Data Integration
 - We map Israeli Clalit clinical data to NHANES biomarkers to allow direct visual overlay of age-trajectory statistics on the dashboard.
+- Clalit overlays are currently configured for the blood dashboard (`dashboard/index.html`) and not for urinary dashboard (`dashboard/urinary.html`).
 - Overall availability and mapped linkage between tests are tracked in `data/data_availability.csv`.
 - Mapping scripts (using Jaccard string similarity filtering) live in `scripts/match_clalit_nhanes.py` and manual overrides loop is in `scripts/match_clalit_nhanes_round2.py`.
 - The final JSON index connecting Clalit test keys to NHANES IDs is read from `data/clalit_mapping.json`.

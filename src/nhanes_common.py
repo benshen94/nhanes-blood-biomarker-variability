@@ -167,6 +167,23 @@ def apply_blood_candidate_rule(data_file_desc: str, variable_desc: str, use_cons
     return bool((has_include or has_lab_marker) and not has_exclude and not is_rdc)
 
 
+def apply_urine_candidate_rule(data_file_desc: str, variable_desc: str, use_constraints: str, variable_name: str = "") -> bool:
+    txt = f"{data_file_desc} {variable_desc} {variable_name}".lower()
+    use_txt = (use_constraints or "").lower()
+
+    include_tokens = ["urine", "urinary"]
+    # Most NHANES urine analytes are encoded as URX* (result) / URD* (detection/comment).
+    has_urx_marker = bool(re.search(r"\b(urx[a-z0-9]*|urd[a-z0-9]*)\b", txt))
+    has_include = any(tok in txt for tok in include_tokens)
+
+    # Guard against non-urine biospecimens or oral/saliva assays.
+    exclude_tokens = ["blood", "serum", "plasma", "saliva", "oral", "vaginal", "semen", "hair", "nail", "milk", "csf"]
+    has_exclude = any(tok in txt for tok in exclude_tokens)
+
+    is_rdc = "rdc" in use_txt
+    return bool((has_include or has_urx_marker) and not has_exclude and not is_rdc)
+
+
 def list_xpt_files(raw_dir: Path, pattern: str = "*.xpt") -> List[Path]:
     return sorted(raw_dir.rglob(pattern))
 

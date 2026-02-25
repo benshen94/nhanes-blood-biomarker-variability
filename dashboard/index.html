@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NHANES Biomarker CV vs Age</title>
+  <title>NHANES Blood Biomarker CV vs Age</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {
@@ -270,6 +270,7 @@
     </div>
 
     <div class="top-tabs">
+      <a class="tab-btn active" href="index.html">Blood Tests</a><a class="tab-btn" href="urinary.html">Urinary Tests</a>
       <button id="tab-dashboard" class="tab-btn active" type="button">Dashboard</button>
       <button id="tab-compare" class="tab-btn" type="button">Compare Rankings</button>
       <button id="tab-scatter" class="tab-btn" type="button">Scatter Plot</button>
@@ -311,7 +312,7 @@
           <div id="trim-label" class="trim-caption">Using all values (0-100)</div>
 
           <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
-          <label class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
+          <label id="hide-clalit-wrap" class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
 
           <div id="metrics" class="card" style="margin-top:10px;"></div>
         </div>
@@ -362,7 +363,7 @@
           </label>
         </div>
         <div id="compare-plot"></div>
-        <h3 style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
+        <h3 id="compare-clalit-title" style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
         <div id="compare-clalit-plot"></div>
       </div>
     </div>
@@ -532,13 +533,16 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1771831297';
+    const DATA_VERSION = '1772001053';
+    const HAS_CLALIT = true;
+    const SPECIMEN_LABEL = 'blood';
 
     const selectEl = document.getElementById('biomarker-select');
     const searchEl = document.getElementById('search');
     const optionsEl = document.getElementById('biomarker-options');
     const showLowNEl = document.getElementById('show-low-n');
     const hideClalitEl = document.getElementById('hide-clalit');
+    const hideClalitWrapEl = document.getElementById('hide-clalit-wrap');
     const modeCvBtn = document.getElementById('mode-cv');
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
@@ -556,6 +560,7 @@
     const panelHist = document.getElementById('panel-hist');
     const panelWaterfall = document.getElementById('panel-waterfall');
     const panelInfo = document.getElementById('panel-info');
+    const compareClalitTitleEl = document.getElementById('compare-clalit-title');
     const compareSortEl = document.getElementById('compare-sort');
     const compareStatEl = document.getElementById('compare-stat');
     const compareTopNEl = document.getElementById('compare-topn');
@@ -743,7 +748,7 @@
       const cats = sortedCategories(state.metadata, includeEnv);
       const options = [
         { value: 'all_core', label: 'Clinical/core tests first' },
-        { value: 'all_non_env', label: 'All non-environmental blood tests' },
+        { value: 'all_non_env', label: `All non-environmental ${SPECIMEN_LABEL} tests` },
         { value: 'all', label: 'All visible categories' },
         ...cats.map(c => ({ value: `cat:${c}`, label: c })),
       ];
@@ -1177,7 +1182,7 @@
         }
       }
 
-      if (s.clalit_data && !hideClalit) {
+      if (HAS_CLALIT && s.clalit_data && !hideClalit) {
         for (const c of selectedCohorts) {
           if (!s.clalit_data[c]) continue;
           let points = showLow ? s.clalit_data[c] : s.clalit_data[c].filter(p => p.passes_n_threshold);
@@ -1550,31 +1555,33 @@
             opacity: 0.62,
           },
         ];
-        const clalitF = [];
-        const clalitM = [];
-        for (const r of rows) {
-          const fc = Number(r.clalit_trends?.[statKey]?.female?.spearman_rho);
-          const mc = Number(r.clalit_trends?.[statKey]?.male?.spearman_rho);
-          if (Number.isFinite(fc)) clalitF.push(fc);
-          if (Number.isFinite(mc)) clalitM.push(mc);
-        }
-        if (clalitF.length || clalitM.length) {
-          traces.push({
-            type: 'histogram',
-            name: 'Clalit Female',
-            x: clalitF,
-            xbins,
-            marker: { color: COHORT_COLORS.female, line: { width: 1, color: '#ffffff' } },
-            opacity: 0.8,
-            histnorm: '',
-          }, {
-            type: 'histogram',
-            name: 'Clalit Male',
-            x: clalitM,
-            xbins,
-            marker: { color: COHORT_COLORS.male, line: { width: 1, color: '#ffffff' } },
-            opacity: 0.8,
-          });
+        if (HAS_CLALIT) {
+          const clalitF = [];
+          const clalitM = [];
+          for (const r of rows) {
+            const fc = Number(r.clalit_trends?.[statKey]?.female?.spearman_rho);
+            const mc = Number(r.clalit_trends?.[statKey]?.male?.spearman_rho);
+            if (Number.isFinite(fc)) clalitF.push(fc);
+            if (Number.isFinite(mc)) clalitM.push(mc);
+          }
+          if (clalitF.length || clalitM.length) {
+            traces.push({
+              type: 'histogram',
+              name: 'Clalit Female',
+              x: clalitF,
+              xbins,
+              marker: { color: COHORT_COLORS.female, line: { width: 1, color: '#ffffff' } },
+              opacity: 0.8,
+              histnorm: '',
+            }, {
+              type: 'histogram',
+              name: 'Clalit Male',
+              x: clalitM,
+              xbins,
+              marker: { color: COHORT_COLORS.male, line: { width: 1, color: '#ffffff' } },
+              opacity: 0.8,
+            });
+          }
         }
       } else {
         const values = [];
@@ -1583,20 +1590,22 @@
           const rho = Number(m?.spearman_rho);
           if (Number.isFinite(rho)) values.push(rho);
         }
-        const clalitVals = [];
-        for (const r of rows) {
-          const cr = Number(r.clalit_trends?.[statKey]?.[cohort]?.spearman_rho);
-          if (Number.isFinite(cr)) clalitVals.push(cr);
-        }
-        if (clalitVals.length) {
-          traces.push({
-            type: 'histogram',
-            name: `Clalit ${cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male')}`,
-            x: clalitVals,
-            xbins,
-            marker: { color: '#fb923c', line: { width: 1, color: '#ffffff' } },
-            opacity: 0.9,
-          });
+        if (HAS_CLALIT) {
+          const clalitVals = [];
+          for (const r of rows) {
+            const cr = Number(r.clalit_trends?.[statKey]?.[cohort]?.spearman_rho);
+            if (Number.isFinite(cr)) clalitVals.push(cr);
+          }
+          if (clalitVals.length) {
+            traces.push({
+              type: 'histogram',
+              name: `Clalit ${cohort === 'pooled' ? 'Pooled' : (cohort === 'female' ? 'Female' : 'Male')}`,
+              x: clalitVals,
+              xbins,
+              marker: { color: '#fb923c', line: { width: 1, color: '#ffffff' } },
+              opacity: 0.9,
+            });
+          }
         }
         const s = histogramSummary(values);
         annoText = `Cohort: ${cohort}, outliers: ${trimLabel}, categories: ${selectedCats.size}, n=${s.total} (neg=${s.negative}, pos=${s.positive}, zero=${s.zeroish})`;
@@ -1945,6 +1954,18 @@
         plot_bgcolor: '#ffffff',
       }, { responsive: true, displaylogo: false });
 
+      if (!HAS_CLALIT) {
+        Plotly.newPlot('compare-clalit-plot', [], {
+          title: 'No external cohort overlay configured for this specimen',
+          xaxis: { visible: false },
+          yaxis: { visible: false },
+          margin: mobile ? { t: 44, l: 20, r: 10, b: 20 } : { t: 44, l: 30, r: 16, b: 28 },
+          paper_bgcolor: '#ffffff',
+          plot_bgcolor: '#ffffff',
+        }, { responsive: true, displaylogo: false });
+        return;
+      }
+
       let cTraces = [];
       if (cohort === 'both') {
         const bothRanked = ranked.filter(r => r.clalit_trends && r.clalit_trends[statKey] && r.clalit_trends[statKey].female && r.clalit_trends[statKey].male);
@@ -1992,7 +2013,7 @@
           hovertemplate: '%{text}<br>category=%{customdata[1]}<br>NHANES rho=%{x:.4f}<br>Clalit rho=%{y:.4f}<extra></extra>',
         }];
       }
-      
+
       cTraces.push({
         x: [-1, 1],
         y: [-1, 1],
@@ -2056,11 +2077,15 @@
       state.metadataById = new Map(metadata.map(m => [m.biomarker_id, m]));
 
       showLowNEl.checked = true;
-      hideClalitEl.checked = false;
+      hideClalitEl.checked = !HAS_CLALIT;
       includeEnvEl.checked = false;
       compareIncludeEnvEl.checked = false;
       scatterIncludeEnvEl.checked = false;
       histIncludeEnvEl.checked = false;
+      if (!HAS_CLALIT) {
+        if (hideClalitWrapEl) hideClalitWrapEl.style.display = 'none';
+        if (compareClalitTitleEl) compareClalitTitleEl.textContent = 'External Cohort Agreement';
+      }
       setScatterLabelsEnabled(false);
       setAllTrimSliders(0);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
@@ -2075,7 +2100,7 @@
       renderHistogramPlot();
       await renderWaterfallPlot(state.waterfallId);
 
-      statusChip.textContent = `Ready: ${state.metadata.length} biomarkers indexed`;
+      statusChip.textContent = `Ready: ${state.metadata.length} ${SPECIMEN_LABEL} biomarkers indexed`;
 
       tabDashboardBtn.addEventListener('click', () => setTopTab('dashboard'));
       tabCompareBtn.addEventListener('click', () => {
