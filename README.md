@@ -267,3 +267,5 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 - Overall availability and mapped linkage between tests are tracked in `data/data_availability.csv`.
 - Mapping scripts (using Jaccard string similarity filtering) live in `scripts/match_clalit_nhanes.py` and manual overrides loop is in `scripts/match_clalit_nhanes_round2.py`.
 - The final JSON index connecting Clalit test keys to NHANES IDs is read from `data/clalit_mapping.json`.
+- `data/clalit_mapping.json` supports mapping one Clalit test code to multiple NHANES biomarker IDs (JSON array) when the same analyte appears under multiple NHANES pooled IDs (for example, CRP aliases).
+- A post-build audit of mapping coverage/validity is written to `output/clalit_mapping_audit.csv` (`mapped_valid` vs `unmapped`).

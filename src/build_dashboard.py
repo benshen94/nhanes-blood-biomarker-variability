@@ -2941,8 +2941,15 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
     df_f['sex_norm'] = 'female'
     df_m['sex_norm'] = 'male'
     df = pd.concat([df_f, df_m], ignore_index=True)
-    df['biomarker_id'] = df['test'].map(mapping)
+    df['mapped_targets'] = df['test'].map(mapping)
+    df = df.dropna(subset=['mapped_targets']).copy()
+    # Allow one Clalit test to map to multiple NHANES biomarker IDs (e.g., CRP aliases).
+    df['mapped_targets'] = df['mapped_targets'].apply(
+        lambda v: v if isinstance(v, list) else [v]
+    )
+    df = df.explode('mapped_targets').rename(columns={'mapped_targets': 'biomarker_id'})
     df = df.dropna(subset=['biomarker_id']).copy()
+    df['biomarker_id'] = df['biomarker_id'].astype(str)
     
     df['age_bin'] = pd.cut(df['age'], bins=AGE_BINS, labels=AGE_LABELS, right=False, include_lowest=True)
     df = df.dropna(subset=['age_bin']).copy()
