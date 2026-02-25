@@ -24,7 +24,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title>NHANES __SPECIMEN_TITLE__ Biomarker CV vs Age</title>
+  <title>nhanes-biomarker-dashboard - __SPECIMEN_TITLE__</title>
   <script src=\"https://cdn.plot.ly/plotly-2.35.2.min.js\"></script>
   <style>
     :root {
@@ -331,7 +331,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class=\"wrap\">
     <div class=\"hero\">
       <div>
-        <h1 id=\"hero-title\">NHANES __SPECIMEN_TITLE__ Biomarker Variability</h1>
+        <h1 id=\"hero-title\">nhanes-biomarker-dashboard</h1>
         <div id=\"hero-sub\" class=\"sub\">Explore cross-sectional aging trajectories across __SPECIMEN_LOWER__ biomarkers.</div>
       </div>
       <div id=\"status-chip\" class=\"status-chip\">Loading metadata…</div>

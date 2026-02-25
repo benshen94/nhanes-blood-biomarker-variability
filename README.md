@@ -1,6 +1,6 @@
-# NHANES Blood + Urinary Biomarker Explorer
+# nhanes-biomarker-dashboard
 
-Interactive explorer for age-related blood and urinary biomarker trajectories in NHANES.
+Interactive explorer for age-related blood and urinary biomarker trajectories in the NHANES dataset.
 
 This project builds static web dashboards where users can search biomarkers, compare trends across age and sex, and inspect ranking metrics across hundreds of tests.
 
