@@ -1,0 +1,118 @@
+lab.22500.no_meds | CK_CREAT | CK | Creatine kinase
+lab.21800.no_meds | PHOSPHATASE_ALKALINE | ALP | Phosphatase alkaline
+lab.103500.no_meds | PARATHYROID_HORMONE_PTH | PTH | PTH
+lab.20900.no_meds | PHOSPHORUS_BLOOD | P | Phosphorus
+lab.22300.no_meds | LDH_22300 | LDH | LDH
+lab.27300.no_meds | VITAMIN_D3_25OH_RIA | VitD3_25OH | Vitamin D3 25OH
+marker.height.no_meds | height | height | height
+marker.weight.no_meds | weight | weight | weight
+marker.BMI.no_meds | BMI | BMI | BMI
+lab.100500.no_meds | ESTRADIOL_E_2 | E2 | Estradiol
+lab.101100.no_meds | TESTOSTERONE_TOTAL | TT | Testosterone_T
+lab.100600.no_meds | PROGESTERONE | P4 | Progesterone
+lab.101000.no_meds | PROLACTIN | PRL | Prolactin
+lab.100800.no_meds | LH_LFUTEINIZING_HORMONE | LH | LH
+lab.100900.no_meds | FSH_FOLLICLE_STIMULATING_HORMONE | FSH | FSH
+lab.101500.no_meds | DHEA_SULPHATE | DHEA-S | DHEA-S
+lab.101300.no_meds | ANDROSTENEDIONE | AND | Androstenedione
+lab.100700.no_meds | 17_HYDROXY_PROGESTERONE | 17α-OHP | 17α-OHP
+lab.102100.no_meds | TSH_THYROID_STIMULATING_HORMONE | TSH | TSH
+lab.102500.no_meds | T4_FREE | FT4 | Free T4
+lab.102300.no_meds | T3_FREE | FT3 | Free T3
+lab.102200.no_meds | T3_TOTAL | TT3 | Total T3
+lab.102600.no_meds | THYROGLOBULIN | Tg | Thyroglobulin
+lab.101600.no_meds | CORTISOL_BLOOD | Cort | Cortisol
+lab.101701.no_meds | CORTISOL_U_FREE_24h | Cort 24 h | Cortisol urine 24 h
+lab.101702.no_meds | CORTISOL_U_FREE_SAMP | Cort u samp | Cortisol urine free samp
+lab.104400.no_meds | ACTH_ADRENOCORTICOTROPIC_HORMONE | ACTH | ACTH
+lab.103200.no_meds | ALDOSTERONE_BLOOD | ALD | Aldosterone
+lab.104300.no_meds | DEOXYCORTISOL_11 | 11-DOC | 11-Deoxycortisol
+lab.101900.no_meds | GROWTH_HORMONE_GH | GH | Growth Hormone
+lab.102800.no_meds | INSULIN_LIKE_GROWTH_FACTOR_1 | IGF-1 | IGF-1
+lab.103000.no_meds | ANGIOTENSIN_I_CONVERTING_ENZYME | ACE | ACE
+lab.21100.no_meds | ALBUMIN | Alb | Albumin
+lab.23400.no_meds | BILIRUBIN_DIRECT | BILID | Bilirubin direct
+lab.36200.no_meds | BILIRUBIN_INDIRECT | BILII | Bilirubin indirect
+lab.23300.no_meds | BILIRUBIN_TOTAL | BILIT | Bilirubin total
+lab.22200.no_meds | GAMMA_GLUTAMYL_TRANSPEPTIDASE | GGT | GGT
+lab.36400.no_meds | GLOBULIN | GLB | Globulin
+lab.21000.no_meds | PROTEIN_TOTAL_BLOOD | TP | Total Protein
+lab.22000.no_meds | AST_GOT | AST_GOT | AST (GOT)
+lab.22100.no_meds | ALT_GPT | ALT_GPT | ALT (GPT)
+lab.23000.no_meds | AMYLASE_BLOOD | AMYL | Amylase
+lab.21200.no_meds | CHOLESTEROL | TC | Cholesterol
+lab.21400.no_meds | CHOLESTEROL_HDL | HDL | HDL
+lab.33300.no_meds | CHOLESTEROL_HDL_RATIO | HDL ratio | HDL ratio
+lab.21500.no_meds | CHOLESTEROL_LDL | LDL | LDL
+lab.20100.no_meds | GLUCOSE_BLOOD | Glucose | Glucose
+lab.25203.no_meds | HEMOGLOBIN_A1C_CALCULATED | HbA1c | HbA1c
+lab.101800.no_meds | INSULIN | Insulin | Insulin
+lab.520706.no_meds | NON_HDL_CHOLESTEROL | Non-HDL  | Non-HDL Cholesterol
+lab.21300.no_meds | TRIGLYCERIDES | TGs | Triglycerides
+lab.17703.no_meds | APTT_R | APTT-R | APTT-R
+lab.17702.no_meds | APTT_sec | APTT-sec | APTT-sec
+lab.110.no_meds | MPV | MPV | MPV
+lab.112.no_meds | PDW | PDW | PDW
+lab.105.no_meds | PLT | PLT | Platelets
+lab.17601.no_meds | PT_INR | PT-INR | PT INR
+lab.17603.no_meds | PT_perc | PT % | PT %
+lab.17602.no_meds | PT_SEC | PT-sec | PT sec
+lab.20008.no_meds | CONTROL_PT | PT ctrl | PT control
+lab.101.no_meds | WBC | WBC | WBC
+lab.148.no_meds | BASOPHILES_abs | Baso | Basophiles
+lab.146.no_meds | EOS_ABS | EOS ABS | Eosinophils ABS
+lab.140.no_meds | LYMP | LYMP | Lymphocytes
+lab.144.no_meds | MONO | MONO | Monocytes
+lab.142.no_meds | NEUT | NEUT | Neutrophils
+lab.123.no_meds | LUC | LUC | Large unstained cells
+lab.149.no_meds | BASO_perc | Baso % | Basophils %
+lab.147.no_meds | EOS_perc | EOS % | Eosinophils %
+lab.141.no_meds | LYMperc | LYMP % | Lymphocytes %
+lab.145.no_meds | MONperc | MONO % | Monocytes %
+lab.203.no_meds | MONOperc | MONO % | Monocytes %
+lab.143.no_meds | NEUTperc | NEUT % | Neutrophils %
+lab.202.no_meds | NEUTperc | NEUT % | Neutrophils %
+lab.158.no_meds | ALY_perc | ALY % | Atypical lymphocytes %
+lab.122.no_meds | LUCperc | LUC % | Large unstained cells %
+lab.124.no_meds | MPXI | MPXI | MPXI
+lab.60200.no_meds | C_REACTIVE_PROTEIN_CRP | CRP | CRP
+lab.400.no_meds | SEDIMENTATION_RATE | Sed Rate | Sedimentation rate
+lab.111.no_meds | PCT | PCT | Procalcitonin
+lab.20800.no_meds | CALCIUM_BLOOD | Ca | Calcium
+lab.25403.no_meds | Cl | Cl | Chloride
+lab.20300.no_meds | CREATININE_BLOOD | sCr | Creatinine (blood)
+lab.41500.no_meds | CREATININE_URINE_SAMPLE | uCr | Creatinine (urine)
+lab.35000.no_meds | M | ACR | Microalbumin/Creatinine 
+lab.24500.no_meds | MAGNESIUM_BLOOD | Mg | Magnesium
+lab.46700.no_meds | MICROALBU_U_SAMP | UMA | Microalbumin urine 24h
+lab.25401.no_meds | Na | Na | Sodium
+lab.9911.no_meds | PH_u | pH U | Urine pH
+lab.9904.no_meds | SPECIFIC_GRAVITY | SG | Specific gravity
+lab.20400.no_meds | URIC_ACID_BLOOD | Uric acid | Uric acid
+lab.20600.no_meds | K | K | Potassium Blood
+lab.9907.no_meds | LEUCOCYTES_URINE | Leu U | Leucocytes (urine strip)
+lab.9909.no_meds | ERYTHROCYTES_URINE | RBC U | Erythrocytes (urine strip)
+lab.102.no_meds | RBC | RBC | RBC
+lab.103.no_meds | HGB | Hgb | Hemoglobin
+lab.104.no_meds | HCT | Hct | Hematocrit
+lab.150.no_meds | HCT_HGB_RATIO | Hct/Hgb | Hct/Hgb
+lab.166.no_meds | CH | CH | CH
+lab.117.no_meds | HDW | HDW | HDW
+lab.107.no_meds | MCH | MCH | MCH
+lab.108.no_meds | MCHC | MCHC | MCHC
+lab.106.no_meds | MCV | MCV | MCV
+lab.109.no_meds | RDW | RDW | RDW
+lab.152.no_meds | RDW_CV | RDW | RDW
+lab.151.no_meds | RDW_SD | RDW SD | RDW SD
+lab.126.no_meds | MACROperc | Macro % | Macrocytic %
+lab.127.no_meds | MICR_perc | MICR % | Microcytic %
+lab.128.no_meds | HYPERperc | Hyper % | Hyperchromic %
+lab.129.no_meds | HYPO_perc | Hypo % | Hypochromic %
+lab.172.no_meds | MICROperc_HYPOperc | Micro:Hypo | Microcytic/Hypochromic
+lab.91200.no_meds | FERRITIN | FER | Ferritin
+lab.23100.no_meds | IRON | Iron | Iron
+lab.23200.no_meds | TRANSFERRIN | TRSF | Transferrin
+lab.31400.no_meds | FOLIC_ACID | FA | Folic acid
+lab.27100.no_meds | VITAMIN_B12 | VitB12 | Vitamin B12
+lab.20500.no_meds | SODIUM_BLOOD | Na | Sodium
+lab.20200.no_meds | UREA_BLOOD | Urea | Urea
