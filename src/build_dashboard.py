@@ -292,7 +292,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <div class=\"top-tabs\">
       __SPECIMEN_SWITCH_LINK__
-      <button id=\"tab-dashboard\" class=\"tab-btn active\" type=\"button\">Dashboard</button>
       <button id=\"tab-compare\" class=\"tab-btn\" type=\"button\">Compare Rankings</button>
       <button id=\"tab-scatter\" class=\"tab-btn\" type=\"button\">Scatter Plot</button>
       <button id=\"tab-hist\" class=\"tab-btn\" type=\"button\">Histograms</button>
@@ -569,7 +568,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const modeSkewBtn = document.getElementById('mode-skew');
     const statusChip = document.getElementById('status-chip');
 
-    const tabDashboardBtn = document.getElementById('tab-dashboard');
     const tabCompareBtn = document.getElementById('tab-compare');
     const tabScatterBtn = document.getElementById('tab-scatter');
     const tabHistBtn = document.getElementById('tab-hist');
@@ -724,7 +722,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const isHist = tabName === 'hist';
       const isWaterfall = tabName === 'waterfall';
       const isInfo = tabName === 'info';
-      tabDashboardBtn.classList.toggle('active', isDash);
       tabCompareBtn.classList.toggle('active', isCompare);
       tabScatterBtn.classList.toggle('active', isScatter);
       tabHistBtn.classList.toggle('active', isHist);
@@ -2123,7 +2120,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       statusChip.textContent = `Ready: ${state.metadata.length} ${SPECIMEN_LABEL} biomarkers indexed`;
 
-      tabDashboardBtn.addEventListener('click', () => setTopTab('dashboard'));
       tabCompareBtn.addEventListener('click', () => {
         setTopTab('compare');
         renderComparePlot();
@@ -2407,6 +2403,19 @@ def clean_display_base(name: str) -> str:
     return s
 
 
+def clean_urinary_ui_base(name: str) -> str:
+    s = str(name or "").strip()
+    orig = s
+    # Remove leading chemistry locants for UI readability in urinary list labels.
+    s = re.sub(r"^\s*(?:\d+[a-z]?(?:\s*,\s*\d+[a-z]?){0,6})\s*-\s*", "", s)
+    s = re.sub(r"^\s*#\d+\s*", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    s = s or orig
+    if s and s[0].islower():
+        s = s[0].upper() + s[1:]
+    return s
+
+
 def parse_terminal_unit(label: str) -> tuple[str, str]:
     s = str(label or "").strip()
     m = re.search(r"\(([^()]*)\)\s*$", s)
@@ -2417,8 +2426,10 @@ def parse_terminal_unit(label: str) -> tuple[str, str]:
     return base, unit
 
 
-def make_display_name(name: str, unit: str) -> str:
+def make_display_name(name: str, unit: str, specimen_kind: str = "blood") -> str:
     base = clean_display_base(name)
+    if specimen_kind == "urine":
+        base = clean_urinary_ui_base(base)
     u = str(unit or "").strip()
     if not u:
         _, parsed_unit = parse_terminal_unit(name)
@@ -2838,6 +2849,7 @@ def build_outputs(
     long_df: pd.DataFrame | None,
     raw_sample_n: int,
     random_seed: int,
+    specimen_kind: str = "blood",
     clalit_f_df: pd.DataFrame | None = None,
     clalit_m_df: pd.DataFrame | None = None,
     clalit_map: dict | None = None,
@@ -3030,7 +3042,10 @@ def build_outputs(
     metadata["source_variable_count"] = pd.to_numeric(metadata["source_variable_count"], errors="coerce").fillna(0).astype(int)
     metadata["raw_total_n"] = metadata["biomarker_id"].map(raw_counts).fillna(0).astype(int)
     metadata["raw_sample_cap"] = int(raw_sample_n)
-    metadata["display_name"] = [make_display_name(n, u) for n, u in zip(metadata["biomarker_name"], metadata["unit"])]
+    metadata["display_name"] = [
+        make_display_name(n, u, specimen_kind=specimen_kind)
+        for n, u in zip(metadata["biomarker_name"], metadata["unit"])
+    ]
     cat_rows = [
         classify_biomarker(n, v, sf)
         for n, v, sf in zip(metadata["biomarker_name"], metadata["variable_name"], metadata["source_files"])
@@ -3136,6 +3151,7 @@ def build_outputs(
             "display_name": str(md.get("display_name") or make_display_name(
                 str(md.get("biomarker_name") or bid),
                 str(md.get("unit") or ""),
+                specimen_kind=specimen_kind,
             )),
             "variable_name": str(md.get("variable_name") or bid),
             "unit": str(md.get("unit") or ""),
@@ -3308,6 +3324,7 @@ def main() -> None:
         long_df=blood_long_df,
         raw_sample_n=args.raw_sample_n,
         random_seed=args.random_seed,
+        specimen_kind="blood",
         clalit_f_df=clalit_f if has_blood_clalit else None,
         clalit_m_df=clalit_m if has_blood_clalit else None,
         clalit_map=clalit_map if has_blood_clalit else None,
@@ -3319,6 +3336,7 @@ def main() -> None:
         long_df=urine_long_df,
         raw_sample_n=args.raw_sample_n,
         random_seed=args.random_seed,
+        specimen_kind="urine",
         clalit_f_df=None,
         clalit_m_df=None,
         clalit_map=None,

@@ -271,7 +271,6 @@
 
     <div class="top-tabs">
       <a class="tab-btn active" href="index.html">Blood Tests</a><a class="tab-btn" href="urinary.html">Urinary Tests</a>
-      <button id="tab-dashboard" class="tab-btn active" type="button">Dashboard</button>
       <button id="tab-compare" class="tab-btn" type="button">Compare Rankings</button>
       <button id="tab-scatter" class="tab-btn" type="button">Scatter Plot</button>
       <button id="tab-hist" class="tab-btn" type="button">Histograms</button>
@@ -533,7 +532,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1772001053';
+    const DATA_VERSION = '1772002383';
     const HAS_CLALIT = true;
     const SPECIMEN_LABEL = 'blood';
 
@@ -548,7 +547,6 @@
     const modeSkewBtn = document.getElementById('mode-skew');
     const statusChip = document.getElementById('status-chip');
 
-    const tabDashboardBtn = document.getElementById('tab-dashboard');
     const tabCompareBtn = document.getElementById('tab-compare');
     const tabScatterBtn = document.getElementById('tab-scatter');
     const tabHistBtn = document.getElementById('tab-hist');
@@ -703,7 +701,6 @@
       const isHist = tabName === 'hist';
       const isWaterfall = tabName === 'waterfall';
       const isInfo = tabName === 'info';
-      tabDashboardBtn.classList.toggle('active', isDash);
       tabCompareBtn.classList.toggle('active', isCompare);
       tabScatterBtn.classList.toggle('active', isScatter);
       tabHistBtn.classList.toggle('active', isHist);
@@ -2102,7 +2099,6 @@
 
       statusChip.textContent = `Ready: ${state.metadata.length} ${SPECIMEN_LABEL} biomarkers indexed`;
 
-      tabDashboardBtn.addEventListener('click', () => setTopTab('dashboard'));
       tabCompareBtn.addEventListener('click', () => {
         setTopTab('compare');
         renderComparePlot();
