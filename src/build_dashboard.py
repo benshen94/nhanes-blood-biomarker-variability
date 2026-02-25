@@ -284,8 +284,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class=\"wrap\">
     <div class=\"hero\">
       <div>
-        <h1>NHANES __SPECIMEN_TITLE__ Biomarker Variability</h1>
-        <div class=\"sub\">Explore cross-sectional aging trajectories across __SPECIMEN_LOWER__ biomarkers.</div>
+        <h1 id=\"hero-title\">NHANES __SPECIMEN_TITLE__ Biomarker Variability</h1>
+        <div id=\"hero-sub\" class=\"sub\">Explore cross-sectional aging trajectories across __SPECIMEN_LOWER__ biomarkers.</div>
       </div>
       <div id=\"status-chip\" class=\"status-chip\">Loading metadata…</div>
     </div>
@@ -555,6 +555,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const DATA_BASE = '__DATA_BASE__';
     const DATA_VERSION = '__DATA_VERSION__';
     const HAS_CLALIT = __HAS_CLALIT__;
+    const SPECIMEN_TITLE = '__SPECIMEN_TITLE__';
     const SPECIMEN_LABEL = '__SPECIMEN_LOWER__';
 
     const selectEl = document.getElementById('biomarker-select');
@@ -567,6 +568,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
     const statusChip = document.getElementById('status-chip');
+    const heroTitleEl = document.getElementById('hero-title');
+    const heroSubEl = document.getElementById('hero-sub');
 
     const tabCompareBtn = document.getElementById('tab-compare');
     const tabScatterBtn = document.getElementById('tab-scatter');
@@ -715,6 +718,43 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       return 'CV';
     }
 
+    function heroCopy(tabName) {
+      if (tabName === 'compare') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} Compare Rankings`,
+          sub: `Rank ${SPECIMEN_LABEL} biomarkers by age-trend direction and magnitude across cohorts.`,
+        };
+      }
+      if (tabName === 'scatter') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} Scatter View`,
+          sub: `Compare two aging-trend statistics per ${SPECIMEN_LABEL} biomarker in 2D.`,
+        };
+      }
+      if (tabName === 'hist') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} Histogram View`,
+          sub: `Inspect the distribution of Spearman trend coefficients across ${SPECIMEN_LABEL} biomarkers.`,
+        };
+      }
+      if (tabName === 'waterfall') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} Waterfall View`,
+          sub: `Explore full age-stratified value distributions for a selected ${SPECIMEN_LABEL} biomarker.`,
+        };
+      }
+      if (tabName === 'info') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} Info & Methods`,
+          sub: `Review cohort filters, metric definitions, and interpretation notes for the ${SPECIMEN_LABEL} dashboard.`,
+        };
+      }
+      return {
+        title: `NHANES ${SPECIMEN_TITLE} Biomarker Variability`,
+        sub: `Explore cross-sectional aging trajectories across ${SPECIMEN_LABEL} biomarkers.`,
+      };
+    }
+
     function setTopTab(tabName) {
       const isDash = tabName === 'dashboard';
       const isCompare = tabName === 'compare';
@@ -733,6 +773,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       panelHist.classList.toggle('active', isHist);
       panelWaterfall.classList.toggle('active', isWaterfall);
       panelInfo.classList.toggle('active', isInfo);
+      const copy = heroCopy(tabName);
+      if (heroTitleEl) heroTitleEl.textContent = copy.title;
+      if (heroSubEl) heroSubEl.textContent = copy.sub;
     }
 
     async function fetchJson(path) {
