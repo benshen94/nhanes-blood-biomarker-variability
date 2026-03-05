@@ -189,6 +189,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - symmetric trim slider (shared globally)
   - logical combiner: `AND` or `OR`
   - add/remove any number of clauses
+  - searchable multi-select test picker with quick actions (`Select all visible`, `Core clinical only`, `Clear selection`)
   - optional include/exclude environmental-toxicant assays
 - Clause fields:
   - statistic: `CV`, `Standard deviation`, `Mean`, `Skewness`

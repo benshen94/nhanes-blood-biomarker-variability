@@ -277,6 +277,36 @@
       color: var(--muted);
       margin: 8px 0;
     }
+    .filter-test-picker {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .filter-test-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin: 2px 0 8px 0;
+      flex-wrap: wrap;
+    }
+    .filter-test-actions button {
+      border: 1px solid var(--line);
+      background: #f8f5ef;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .filter-test-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    #filter-tests-biomarkers {
+      height: 220px;
+      margin-top: 4px;
+    }
     #compare-plot { width: 100%; height: 640px; }
     #compare-clalit-plot { width: 100%; height: 480px; }
     .scatter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
@@ -648,6 +678,17 @@
           </div>
           <div id="filter-tests-clauses"></div>
         </div>
+        <div class="filter-test-picker">
+          <label for="filter-tests-search">Choose tests to include</label>
+          <input id="filter-tests-search" type="search" placeholder="Search tests..." />
+          <div class="filter-test-actions">
+            <button id="filter-tests-select-all" type="button">Select all visible</button>
+            <button id="filter-tests-select-core" type="button">Core clinical only</button>
+            <button id="filter-tests-clear" type="button">Clear selection</button>
+            <span id="filter-tests-selection-count" class="filter-test-hint"></span>
+          </div>
+          <select id="filter-tests-biomarkers" multiple></select>
+        </div>
         <div id="filter-tests-summary" class="filter-summary"></div>
         <div class="filter-results">
           <table id="filter-tests-table"></table>
@@ -787,6 +828,12 @@
     const filterTestsTrimLabelEl = document.getElementById('filter-tests-trim-label');
     const filterTestsLogicEl = document.getElementById('filter-tests-logic');
     const filterTestsIncludeEnvEl = document.getElementById('filter-tests-include-env');
+    const filterTestsSearchEl = document.getElementById('filter-tests-search');
+    const filterTestsBiomarkersEl = document.getElementById('filter-tests-biomarkers');
+    const filterTestsSelectAllBtn = document.getElementById('filter-tests-select-all');
+    const filterTestsSelectCoreBtn = document.getElementById('filter-tests-select-core');
+    const filterTestsClearBtn = document.getElementById('filter-tests-clear');
+    const filterTestsSelectionCountEl = document.getElementById('filter-tests-selection-count');
     const filterTestsAddClauseBtn = document.getElementById('filter-tests-add-clause');
     const filterTestsRunBtn = document.getElementById('filter-tests-run');
     const filterTestsClausesEl = document.getElementById('filter-tests-clauses');
@@ -835,6 +882,7 @@
       scatterLabels: false,
       waterfallId: null,
       filterClauseNextId: 1,
+      filterTestsSelectionSet: new Set(),
     };
 
     const WATERFALL_AGE_BINS = [
@@ -1189,6 +1237,54 @@
 
     function getHistogramSelectedCategories() {
       return new Set(Array.from(histCategoryEl.selectedOptions).map(o => o.value));
+    }
+
+    function updateFilterTestsSelectionCount() {
+      const visible = Array.from(filterTestsBiomarkersEl.options).filter(o => !o.hidden);
+      const selectedVisible = visible.filter(o => o.selected).length;
+      const selectedTotal = Array.from(filterTestsBiomarkersEl.selectedOptions).length;
+      filterTestsSelectionCountEl.textContent = `${selectedTotal} selected (${selectedVisible}/${visible.length} visible)`;
+    }
+
+    function renderFilterTestsBiomarkerOptions(selectCore=false) {
+      const prev = new Set(state.filterTestsSelectionSet || []);
+      const rows = state.metadata
+        .filter(m => filterTestsIncludeEnvEl.checked || !Boolean(m.is_environmental))
+        .slice()
+        .sort((a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || '')));
+      const coreSet = new Set(
+        rows
+          .filter(m => Boolean(m.is_core_clinical))
+          .map(m => m.biomarker_id)
+      );
+      filterTestsBiomarkersEl.innerHTML = '';
+      const shouldDefaultAll = prev.size === 0 && !selectCore;
+      for (const m of rows) {
+        const opt = document.createElement('option');
+        opt.value = m.biomarker_id;
+        opt.textContent = m.display_name || m.biomarker_name || m.biomarker_id;
+        opt.selected = selectCore ? coreSet.has(m.biomarker_id) : (shouldDefaultAll ? true : prev.has(m.biomarker_id));
+        filterTestsBiomarkersEl.appendChild(opt);
+      }
+      applyFilterTestsSearch();
+      state.filterTestsSelectionSet = new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+      updateFilterTestsSelectionCount();
+    }
+
+    function applyFilterTestsSearch() {
+      const q = (filterTestsSearchEl.value || '').toLowerCase().trim();
+      for (const o of Array.from(filterTestsBiomarkersEl.options)) {
+        if (!q) {
+          o.hidden = false;
+          continue;
+        }
+        o.hidden = !o.textContent.toLowerCase().includes(q);
+      }
+      updateFilterTestsSelectionCount();
+    }
+
+    function getFilterTestsSelectedBiomarkers() {
+      return new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
     }
 
     function renderOptions() {
@@ -2488,10 +2584,22 @@
       const cohort = filterTestsCohortEl.value || 'both';
       const trimMode = trimPctToMode(filterTestsTrimSliderEl.value);
       const logic = (filterTestsLogicEl.value || 'and').toLowerCase() === 'or' ? 'or' : 'and';
-      const rows = getAllMetricsEnriched().filter(r => filterTestsIncludeEnvEl.checked || !r.is_environmental);
+      const selectedBiomarkers = getFilterTestsSelectedBiomarkers();
+      const rows = getAllMetricsEnriched().filter(r => {
+        if (!selectedBiomarkers.has(r.biomarker_id)) return false;
+        if (!filterTestsIncludeEnvEl.checked && r.is_environmental) return false;
+        return true;
+      });
+      state.filterTestsSelectionSet = selectedBiomarkers;
 
       if (!clauses.length) {
         filterTestsSummaryEl.textContent = 'Add at least one valid clause to run filtering.';
+        filterTestsTableEl.innerHTML = '';
+        return;
+      }
+
+      if (!selectedBiomarkers.size) {
+        filterTestsSummaryEl.textContent = 'No tests selected. Pick one or more tests in the selector above.';
         filterTestsTableEl.innerHTML = '';
         return;
       }
@@ -2614,6 +2722,7 @@
       filterTestsLogicEl.value = 'and';
       filterTestsClausesEl.innerHTML = '';
       filterTestsClausesEl.appendChild(createFilterClauseRow({ stat: 'cv', field: 'spearman_rho', op: '<', value: 0.5 }));
+      renderFilterTestsBiomarkerOptions(false);
 
       await refreshDashboardFromFilters();
       renderComparePlot();
@@ -2908,10 +3017,33 @@
         setAllTrimSliders(filterTestsTrimSliderEl.value);
       });
       filterTestsIncludeEnvEl.addEventListener('change', () => {
+        renderFilterTestsBiomarkerOptions(false);
         renderFilterTests();
       });
       filterTestsLogicEl.addEventListener('change', () => {
         renderFilterTests();
+      });
+      filterTestsSearchEl.addEventListener('input', () => {
+        applyFilterTestsSearch();
+      });
+      filterTestsBiomarkersEl.addEventListener('change', () => {
+        state.filterTestsSelectionSet = new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+        updateFilterTestsSelectionCount();
+      });
+      filterTestsSelectAllBtn.addEventListener('click', () => {
+        for (const o of Array.from(filterTestsBiomarkersEl.options)) {
+          if (!o.hidden) o.selected = true;
+        }
+        state.filterTestsSelectionSet = new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+        updateFilterTestsSelectionCount();
+      });
+      filterTestsSelectCoreBtn.addEventListener('click', () => {
+        renderFilterTestsBiomarkerOptions(true);
+      });
+      filterTestsClearBtn.addEventListener('click', () => {
+        for (const o of Array.from(filterTestsBiomarkersEl.options)) o.selected = false;
+        state.filterTestsSelectionSet = new Set();
+        updateFilterTestsSelectionCount();
       });
       waterfallMinNEl.addEventListener('change', () => {
         renderWaterfallPlot(state.waterfallId);
