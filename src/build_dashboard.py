@@ -2823,6 +2823,8 @@ AGE_BINS = list(np.arange(20, 90, 5)) + [200]
 AGE_LABELS = [f"{a}-{a+4}" for a in range(20, 85, 5)] + ["85+"]
 AGE_MIDS = {lab: mid for lab, mid in zip(AGE_LABELS, [a + 2.5 for a in range(20, 85, 5)] + [87.5])}
 TRIM_PCTS = [0, 5, 10, 15, 20, 25]
+DERIVED_NLR_ID = "neutrophil to lymphocyte ratio"
+DERIVED_NLR_NAME = "Neutrophil-to-lymphocyte ratio (NLR)"
 
 
 def trim_mode_key(pct: int) -> str:
@@ -3022,6 +3024,93 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
     return clalit_payload
 
 
+def append_neutrophil_lymphocyte_ratio(
+    long_df: pd.DataFrame | None,
+    catalog_df: pd.DataFrame | None,
+    specimen_kind: str,
+) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
+    """Append a derived neutrophil-to-lymphocyte ratio biomarker to blood inputs."""
+    if specimen_kind != "blood" or long_df is None or long_df.empty:
+        return long_df, catalog_df
+
+    required = {"seqn", "age_years", "sex", "biomarker_id", "value"}
+    if not required.issubset(long_df.columns):
+        return long_df, catalog_df
+
+    key_cols = [c for c in ["seqn", "cycle_start_year", "age_years", "sex"] if c in long_df.columns]
+    use = long_df[key_cols + ["biomarker_id", "value"]].dropna(subset=["biomarker_id", "value"]).copy()
+    use["bid_norm"] = use["biomarker_id"].astype(str).str.strip().str.lower()
+
+    neut = (
+        use[use["bid_norm"] == "segmented neutrophils num"]
+        .groupby(key_cols, observed=True)["value"]
+        .mean()
+        .reset_index(name="neutrophils")
+    )
+    lymph = (
+        use[use["bid_norm"] == "lymphocyte number"]
+        .groupby(key_cols, observed=True)["value"]
+        .mean()
+        .reset_index(name="lymphocytes")
+    )
+    merged = neut.merge(lymph, on=key_cols, how="inner")
+    merged = merged.replace([np.inf, -np.inf], np.nan).dropna(subset=["neutrophils", "lymphocytes"])
+    merged = merged[merged["lymphocytes"] > 0].copy()
+    if merged.empty:
+        return long_df, catalog_df
+
+    merged["value"] = merged["neutrophils"] / merged["lymphocytes"]
+    merged = merged.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"]).copy()
+    if merged.empty:
+        return long_df, catalog_df
+
+    derived = pd.DataFrame(index=np.arange(len(merged)))
+    for c in long_df.columns:
+        derived[c] = np.nan
+    for c in key_cols:
+        derived[c] = merged[c].to_numpy()
+    derived["biomarker_id"] = DERIVED_NLR_ID
+    derived["value"] = merged["value"].to_numpy(dtype=float)
+    if "variable_name" in derived.columns:
+        derived["variable_name"] = DERIVED_NLR_ID
+    if "biomarker_name" in derived.columns:
+        derived["biomarker_name"] = DERIVED_NLR_NAME
+    if "source_data_file" in derived.columns:
+        derived["source_data_file"] = "DERIVED"
+    if "unit" in derived.columns:
+        derived["unit"] = ""
+    if "healthy_flag" in derived.columns:
+        derived["healthy_flag"] = np.nan
+    if "exclusion_reason" in derived.columns:
+        derived["exclusion_reason"] = ""
+
+    long_out = pd.concat([long_df, derived[long_df.columns]], ignore_index=True)
+
+    catalog_out = catalog_df
+    if catalog_out is not None and not catalog_out.empty:
+        has_row = catalog_out["biomarker_id"].astype(str).str.lower().eq(DERIVED_NLR_ID).any()
+        if not has_row:
+            new_row = {c: np.nan for c in catalog_out.columns}
+            new_row["biomarker_id"] = DERIVED_NLR_ID
+            if "variable_name" in new_row:
+                new_row["variable_name"] = DERIVED_NLR_ID
+            if "biomarker_name" in new_row:
+                new_row["biomarker_name"] = DERIVED_NLR_NAME
+            if "unit" in new_row:
+                new_row["unit"] = ""
+            if "source_file_count" in new_row:
+                new_row["source_file_count"] = 2
+            if "source_files" in new_row:
+                new_row["source_files"] = "DERIVED"
+            if "source_variable_count" in new_row:
+                new_row["source_variable_count"] = 2
+            if "source_variables" in new_row:
+                new_row["source_variables"] = "segmented neutrophils num|lymphocyte number"
+            catalog_out = pd.concat([catalog_out, pd.DataFrame([new_row])], ignore_index=True)
+
+    return long_out, catalog_out
+
+
 def build_outputs(
     cv_df: pd.DataFrame,
     metrics_df: pd.DataFrame,
@@ -3035,6 +3124,7 @@ def build_outputs(
     clalit_map: dict | None = None,
 ) -> tuple[pd.DataFrame, list[dict], dict[str, str], dict[str, dict]]:
     cv_df = cv_df.copy()
+    long_df, catalog_df = append_neutrophil_lymphocyte_ratio(long_df, catalog_df, specimen_kind)
     if "variable_name" not in cv_df.columns:
         cv_df["variable_name"] = cv_df["biomarker_id"]
     if "unit" not in cv_df.columns:
@@ -3147,14 +3237,25 @@ def build_outputs(
             raw_counts_by_sex.setdefault(str(r.biomarker_id), {})[str(r.sex_norm)] = int(r.n)
 
         rng = np.random.default_rng(random_seed)
-        for bid, g in use.groupby("biomarker_id", observed=True):
+        by_biomarker = [(str(bid), g) for bid, g in use.groupby("biomarker_id", observed=True)]
+        non_derived_groups = [(bid, g) for bid, g in by_biomarker if bid != DERIVED_NLR_ID]
+        derived_groups = [(bid, g) for bid, g in by_biomarker if bid == DERIVED_NLR_ID]
+        for bid, g in non_derived_groups + derived_groups:
             g_pool = g[["age_years", "value"]].dropna()
             if len(g_pool) > raw_sample_n:
                 idx = rng.choice(len(g_pool), size=raw_sample_n, replace=False)
                 g_pool = g_pool.iloc[idx]
             raw_samples[str(bid)] = [{"age_years": float(r.age_years), "value": float(r.value)} for r in g_pool.itertuples(index=False)]
 
-        for (bid, sex_norm), g in use[use["sex_norm"].isin(["male", "female"])].groupby(["biomarker_id", "sex_norm"], observed=True):
+        by_biomarker_sex = [
+            ((str(bid), str(sex_norm)), g)
+            for (bid, sex_norm), g in use[use["sex_norm"].isin(["male", "female"])].groupby(
+                ["biomarker_id", "sex_norm"], observed=True
+            )
+        ]
+        non_derived_sex_groups = [item for item in by_biomarker_sex if item[0][0] != DERIVED_NLR_ID]
+        derived_sex_groups = [item for item in by_biomarker_sex if item[0][0] == DERIVED_NLR_ID]
+        for (bid, sex_norm), g in non_derived_sex_groups + derived_sex_groups:
             g2 = g[["age_years", "value"]].dropna()
             if len(g2) > raw_sample_n:
                 idx = rng.choice(len(g2), size=raw_sample_n, replace=False)
@@ -3471,7 +3572,10 @@ def main() -> None:
         lg_path = Path(long_path)
         long_df = None
         if lg_path.exists():
-            long_df = pd.read_parquet(lg_path, columns=["biomarker_id", "age_years", "value", "sex"])
+            long_df = pd.read_parquet(
+                lg_path,
+                columns=["seqn", "cycle_start_year", "biomarker_id", "age_years", "value", "sex"],
+            )
         return cv_df, metrics_df, catalog_df, long_df
 
     blood_cv_df, blood_metrics_df, blood_catalog_df, blood_long_df = load_inputs(

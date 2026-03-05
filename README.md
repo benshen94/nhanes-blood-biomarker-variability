@@ -244,6 +244,9 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - duplicate/technical assay fields
   - low-information categorical numeric fields
 - CRP/hs-CRP are included as pooled blood biomarkers.
+- A derived blood biomarker is added during dashboard build:
+  - `Neutrophil-to-lymphocyte ratio (NLR)` = `Segmented neutrophils num (1000 cell/uL)` / `Lymphocyte number (1000 cells/uL)`
+  - computed per participant per cycle from the long table, then passed through all dashboard analyses (pooled, sex-specific, and all trim modes).
 - Screening audit is written to:
   - `data/processed/variable_screening_summary.csv`
   - `data/processed/urine/variable_screening_summary.csv`
