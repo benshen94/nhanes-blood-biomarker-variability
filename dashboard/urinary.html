@@ -206,6 +206,77 @@
     .compare-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
     .compare-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
     .compare-controls select, .compare-controls input { margin: 4px 0 0 0; width: 220px; }
+    .filter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+    .filter-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .filter-controls select, .filter-controls input { margin: 4px 0 0 0; width: 220px; }
+    .clause-builder {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fffdf7;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .clause-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .clause-actions button {
+      border: 1px solid var(--line);
+      background: #f8f5ef;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .clause-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #e8e0cf;
+    }
+    .clause-row:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+    .clause-row label {
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 12px;
+      min-width: 160px;
+    }
+    .clause-row select,
+    .clause-row input {
+      margin: 3px 0 0 0;
+      width: 180px;
+    }
+    .clause-remove-btn {
+      border: 1px solid #f1c6be;
+      background: #fff3f0;
+      color: #9f1239;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .filter-results {
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .filter-summary {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 8px 0;
+    }
     #compare-plot { width: 100%; height: 640px; }
     #compare-clalit-plot { width: 100%; height: 480px; }
     .scatter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
@@ -260,6 +331,7 @@
       .sub { font-size: 15px; }
       #compare-plot { height: 560px; }
       #compare-clalit-plot { height: 480px; }
+      .clause-row label { min-width: 140px; }
       #scatter-plot { height: 560px; }
       #hist-plot { height: 520px; }
       #waterfall-plot { height: 620px; }
@@ -280,6 +352,12 @@
       .compare-controls label { width: 100%; }
       .compare-controls select,
       .compare-controls input { width: 100%; }
+      .filter-controls label { width: 100%; }
+      .filter-controls select,
+      .filter-controls input { width: 100%; }
+      .clause-row label { width: 100%; min-width: 0; }
+      .clause-row select,
+      .clause-row input { width: 100%; }
       .scatter-controls label { width: 100%; }
       .scatter-controls select,
       .scatter-controls input { width: 100%; }
@@ -296,7 +374,7 @@
       .specimen-tabs .tab-btn,
       .view-tabs .tab-btn { flex: 1 1 100%; }
       .mode-buttons { flex-wrap: wrap; }
-      .mode-btn { flex: 1 1 calc(33.333% - 8px); }
+      .mode-btn { flex: 1 1 calc(50% - 8px); }
       #plot { height: 340px; }
       #compare-plot { height: 440px; }
       #compare-clalit-plot { height: 440px; }
@@ -328,6 +406,7 @@
         <div class="view-tabs">
           <button id="tab-dashboard" class="tab-btn active" type="button">Dashboard</button>
           <button id="tab-compare" class="tab-btn" type="button">Compare Rankings</button>
+          <button id="tab-filter-tests" class="tab-btn" type="button">Filter Tests</button>
           <button id="tab-scatter" class="tab-btn" type="button">Scatter Plot</button>
           <button id="tab-hist" class="tab-btn" type="button">Histograms</button>
           <button id="tab-waterfall" class="tab-btn" type="button">Waterfall</button>
@@ -341,6 +420,7 @@
         <div class="card sticky">
           <div class="mode-buttons">
             <button id="mode-cv" class="mode-btn active" type="button">Plot CV</button>
+            <button id="mode-std" class="mode-btn" type="button">Plot SD</button>
             <button id="mode-mean" class="mode-btn" type="button">Plot Median</button>
             <button id="mode-skew" class="mode-btn" type="button">Plot Skewness</button>
           </div>
@@ -395,6 +475,7 @@
           <label>Statistic
             <select id="compare-stat">
               <option value="cv" selected>CV vs age</option>
+              <option value="std">Standard deviation vs age</option>
               <option value="mean">Mean vs age</option>
               <option value="skewness">Skewness vs age</option>
             </select>
@@ -431,6 +512,7 @@
           <label>X axis statistic
             <select id="scatter-x-stat">
               <option value="cv" selected>CV vs age (Spearman rho)</option>
+              <option value="std">Standard deviation vs age (Spearman rho)</option>
               <option value="mean">Mean vs age (Spearman rho)</option>
               <option value="skewness">Skewness vs age (Spearman rho)</option>
             </select>
@@ -438,6 +520,7 @@
           <label>Y axis statistic
             <select id="scatter-y-stat">
               <option value="cv">CV vs age (Spearman rho)</option>
+              <option value="std">Standard deviation vs age (Spearman rho)</option>
               <option value="mean" selected>Mean vs age (Spearman rho)</option>
               <option value="skewness">Skewness vs age (Spearman rho)</option>
             </select>
@@ -475,6 +558,7 @@
           <label>Statistic
             <select id="hist-stat">
               <option value="cv" selected>CV vs age (Spearman rho)</option>
+              <option value="std">Standard deviation vs age (Spearman rho)</option>
               <option value="mean">Mean vs age (Spearman rho)</option>
               <option value="skewness">Skewness vs age (Spearman rho)</option>
             </select>
@@ -535,6 +619,42 @@
       </div>
     </div>
 
+    <div id="panel-filter-tests" class="panel">
+      <div class="card">
+        <div class="filter-controls">
+          <label>Sex group
+            <select id="filter-tests-cohort">
+              <option value="both" selected>Both (Female + Male)</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id="filter-tests-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="filter-tests-trim-label" class="trim-caption">Using all values (0-100)</div>
+          </label>
+          <label>Clause combiner
+            <select id="filter-tests-logic">
+              <option value="and" selected>AND</option>
+              <option value="or">OR</option>
+            </select>
+          </label>
+          <label class="check-label"><input id="filter-tests-include-env" type="checkbox" /> Include environmental/toxicant</label>
+        </div>
+        <div class="clause-builder">
+          <div class="clause-actions">
+            <button id="filter-tests-add-clause" type="button">Add clause</button>
+            <button id="filter-tests-run" type="button">Filter tests</button>
+          </div>
+          <div id="filter-tests-clauses"></div>
+        </div>
+        <div id="filter-tests-summary" class="filter-summary"></div>
+        <div class="filter-results">
+          <table id="filter-tests-table"></table>
+        </div>
+      </div>
+    </div>
+
     <div id="panel-info" class="panel">
       <div class="info-grid">
         <div class="card info-card">
@@ -566,6 +686,7 @@
           <h3>Plot Modes</h3>
           <ul>
             <li><b>Plot CV</b>: age-binned CV trend.</li>
+            <li><b>Plot SD</b>: age-binned standard deviation trend.</li>
             <li><b>Plot Median</b>: age-binned median with interquartile band (25th-75th percentile) and raw scatter sample.</li>
             <li><b>Plot Skewness</b>: age-binned skewness trend (shape/asymmetry of per-bin values).</li>
             <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
@@ -602,6 +723,7 @@
     const hideClalitEl = document.getElementById('hide-clalit');
     const hideClalitWrapEl = document.getElementById('hide-clalit-wrap');
     const modeCvBtn = document.getElementById('mode-cv');
+    const modeStdBtn = document.getElementById('mode-std');
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
     const statusChip = document.getElementById('status-chip');
@@ -610,6 +732,7 @@
 
     const tabDashboardBtn = document.getElementById('tab-dashboard');
     const tabCompareBtn = document.getElementById('tab-compare');
+    const tabFilterTestsBtn = document.getElementById('tab-filter-tests');
     const tabScatterBtn = document.getElementById('tab-scatter');
     const tabHistBtn = document.getElementById('tab-hist');
     const tabWaterfallBtn = document.getElementById('tab-waterfall');
@@ -617,6 +740,7 @@
     const specimenLinks = Array.from(document.querySelectorAll('.specimen-link'));
     const panelDashboard = document.getElementById('panel-dashboard');
     const panelCompare = document.getElementById('panel-compare');
+    const panelFilterTests = document.getElementById('panel-filter-tests');
     const panelScatter = document.getElementById('panel-scatter');
     const panelHist = document.getElementById('panel-hist');
     const panelWaterfall = document.getElementById('panel-waterfall');
@@ -658,6 +782,16 @@
     const histCatCoreBtn = document.getElementById('hist-cat-core');
     const histCatClearBtn = document.getElementById('hist-cat-clear');
     const histSelectionCountEl = document.getElementById('hist-selection-count');
+    const filterTestsCohortEl = document.getElementById('filter-tests-cohort');
+    const filterTestsTrimSliderEl = document.getElementById('filter-tests-trim-slider');
+    const filterTestsTrimLabelEl = document.getElementById('filter-tests-trim-label');
+    const filterTestsLogicEl = document.getElementById('filter-tests-logic');
+    const filterTestsIncludeEnvEl = document.getElementById('filter-tests-include-env');
+    const filterTestsAddClauseBtn = document.getElementById('filter-tests-add-clause');
+    const filterTestsRunBtn = document.getElementById('filter-tests-run');
+    const filterTestsClausesEl = document.getElementById('filter-tests-clauses');
+    const filterTestsSummaryEl = document.getElementById('filter-tests-summary');
+    const filterTestsTableEl = document.getElementById('filter-tests-table');
     const waterfallSearchEl = document.getElementById('waterfall-search');
     const waterfallOptionsEl = document.getElementById('waterfall-biomarker-options');
     const waterfallBiomarkerEl = document.getElementById('waterfall-biomarker');
@@ -700,6 +834,7 @@
       currentId: null,
       scatterLabels: false,
       waterfallId: null,
+      filterClauseNextId: 1,
     };
 
     const WATERFALL_AGE_BINS = [
@@ -714,7 +849,7 @@
     ];
 
     const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
-    const TOP_TABS = ['dashboard', 'compare', 'scatter', 'hist', 'waterfall', 'info'];
+    const TOP_TABS = ['dashboard', 'compare', 'filter-tests', 'scatter', 'hist', 'waterfall', 'info'];
     const TOP_TAB_SET = new Set(TOP_TABS);
 
     function formatNum(v, d=4) {
@@ -748,12 +883,14 @@
     }
 
     function modeToStat(mode) {
+      if (mode === 'std') return 'std';
       if (mode === 'mean') return 'mean';
       if (mode === 'skewness') return 'skewness';
       return 'cv';
     }
 
     function statLabel(statKey) {
+      if (statKey === 'std') return 'Standard deviation';
       if (statKey === 'mean') return 'Mean';
       if (statKey === 'skewness') return 'Skewness';
       return 'CV';
@@ -800,6 +937,12 @@
           sub: `Compare two aging-trend statistics per ${SPECIMEN_LABEL} biomarker in 2D.`,
         };
       }
+      if (tabName === 'filter-tests') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} Filter Tests`,
+          sub: `Build logical clauses to return ${SPECIMEN_LABEL} tests matching multi-condition trend rules.`,
+        };
+      }
       if (tabName === 'hist') {
         return {
           title: `NHANES ${SPECIMEN_TITLE} Histogram View`,
@@ -828,18 +971,21 @@
       const resolved = canonicalTopTab(tabName);
       const isDash = resolved === 'dashboard';
       const isCompare = resolved === 'compare';
+      const isFilterTests = resolved === 'filter-tests';
       const isScatter = resolved === 'scatter';
       const isHist = resolved === 'hist';
       const isWaterfall = resolved === 'waterfall';
       const isInfo = resolved === 'info';
       tabDashboardBtn.classList.toggle('active', isDash);
       tabCompareBtn.classList.toggle('active', isCompare);
+      tabFilterTestsBtn.classList.toggle('active', isFilterTests);
       tabScatterBtn.classList.toggle('active', isScatter);
       tabHistBtn.classList.toggle('active', isHist);
       tabWaterfallBtn.classList.toggle('active', isWaterfall);
       tabInfoBtn.classList.toggle('active', isInfo);
       panelDashboard.classList.toggle('active', isDash);
       panelCompare.classList.toggle('active', isCompare);
+      panelFilterTests.classList.toggle('active', isFilterTests);
       panelScatter.classList.toggle('active', isScatter);
       panelHist.classList.toggle('active', isHist);
       panelWaterfall.classList.toggle('active', isWaterfall);
@@ -858,6 +1004,8 @@
       if (syncHash) setTopTabHash(resolved, replaceHash);
       if (resolved === 'compare') {
         renderComparePlot();
+      } else if (resolved === 'filter-tests') {
+        renderFilterTests();
       } else if (resolved === 'scatter') {
         renderScatterPlot();
       } else if (resolved === 'hist') {
@@ -944,11 +1092,13 @@
             sex_metrics_by_mode: m.sex_metrics || {},
             trends_by_stat: m.trends_by_stat || {
               cv: m.trends || {},
+              std: m.std_trends || {},
               mean: m.mean_trends || {},
               skewness: m.skewness_trends || {},
             },
             sex_metrics_by_stat: m.sex_metrics_by_stat || {
               cv: m.sex_metrics || {},
+              std: m.sex_std_metrics || {},
               mean: m.sex_mean_metrics || {},
               skewness: m.sex_skewness_metrics || {},
             },
@@ -967,12 +1117,14 @@
       scatterTrimSliderEl.value = String(pct);
       histTrimSliderEl.value = String(pct);
       waterfallTrimSliderEl.value = String(pct);
+      filterTestsTrimSliderEl.value = String(pct);
       const txt = trimLabelFromPct(pct);
       trimLabelEl.textContent = txt;
       compareTrimLabelEl.textContent = txt;
       scatterTrimLabelEl.textContent = txt;
       histTrimLabelEl.textContent = txt;
       waterfallTrimLabelEl.textContent = txt;
+      filterTestsTrimLabelEl.textContent = txt;
       return pct;
     }
 
@@ -1179,11 +1331,13 @@
       const statKey = modeToStat(state.mode);
       const trendsByStat = pooled.trends_by_stat || {
         cv: pooled.trends || {},
+        std: pooled.std_trends || {},
         mean: pooled.mean_trends || {},
         skewness: pooled.skewness_trends || {},
       };
       const sexByStat = pooled.sex_metrics_by_stat || {
         cv: pooled.sex_metrics || {},
+        std: pooled.sex_std_metrics || {},
         mean: pooled.sex_mean_metrics || {},
         skewness: pooled.sex_skewness_metrics || {},
       };
@@ -1214,6 +1368,7 @@
     function setMode(mode) {
       state.mode = mode;
       modeCvBtn.classList.toggle('active', mode === 'cv');
+      modeStdBtn.classList.toggle('active', mode === 'std');
       modeMeanBtn.classList.toggle('active', mode === 'mean');
       modeSkewBtn.classList.toggle('active', mode === 'skewness');
     }
@@ -1293,6 +1448,19 @@
           continue;
         }
 
+        if (state.mode === 'std') {
+          points = points.filter(p => p.std !== null && p.std !== undefined && Number.isFinite(Number(p.std)));
+          if (points.length === 0) continue;
+          traces.push(lineTrace(
+            points,
+            COHORT_COLORS[c],
+            `${cohortLabel[c]} SD`,
+            'std',
+            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>std=${formatNum(p.std, 4)}<br>mean=${formatNum(p.mean, 4)}<br>median=${formatNum(p.median, 4)}<br>cv=${formatNum(p.cv, 4)}`
+          ));
+          continue;
+        }
+
         if (state.mode === 'skewness') {
           points = points.filter(p => p.skewness !== null && p.skewness !== undefined && Number.isFinite(Number(p.skewness)));
           if (points.length === 0) continue;
@@ -1355,6 +1523,23 @@
             continue;
           }
 
+          if (state.mode === 'std') {
+            points = points.filter(p => Number.isFinite(p.std));
+            if (points.length === 0) continue;
+            traces.push({
+              x: points.map(p => p.age_mid),
+              y: points.map(p => p.std),
+              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>std=${formatNum(p.std, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+              mode: 'lines+markers',
+              type: 'scatter',
+              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+              hovertemplate: '%{text}<extra></extra>',
+              name: `Clalit ${cohortLabel[c]} SD`
+            });
+            continue;
+          }
+
           if (state.mode === 'skewness') {
             // Clalit data provides log_skewness, which causes sign inversion issues when compared to raw skewness. We skip it.
             continue;
@@ -1391,6 +1576,8 @@
         yaxis: {
           title: state.mode === 'cv'
             ? 'Coefficient of Variation (CV)'
+            : state.mode === 'std'
+              ? 'Standard deviation (binned)'
             : state.mode === 'skewness'
               ? 'Skewness (binned)'
               : 'Median Biomarker Value',
@@ -1411,8 +1598,8 @@
     function metricsForView(rows, cohort, trimMode, statKey='cv') {
       const out = [];
       for (const rec of rows) {
-        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
-        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {} };
+        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {} };
         const trends = trendsByStat[statKey] || {};
         const sexByMode = sexByStat[statKey] || {};
         const tr = trends[trimMode] || trends.all || null;
@@ -1456,8 +1643,8 @@
     }
 
     function metricForRecord(rec, cohort, trimMode, statKey='cv') {
-      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
-      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {} };
+      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {} };
       const trends = trendsByStat[statKey] || {};
       const sexByMode = sexByStat[statKey] || {};
       const tr = trends[trimMode] || trends.all || null;
@@ -2184,6 +2371,185 @@
       }, { responsive: true, displaylogo: false });
     }
 
+    function createFilterClauseRow(initial = {}) {
+      const clauseId = state.filterClauseNextId++;
+      const row = document.createElement('div');
+      row.className = 'clause-row';
+      row.dataset.clauseId = String(clauseId);
+      const statVal = initial.stat || 'cv';
+      const fieldVal = initial.field || 'spearman_rho';
+      const opVal = initial.op || '<';
+      const valueVal = Number.isFinite(Number(initial.value)) ? Number(initial.value) : 0.5;
+      row.innerHTML = `
+        <label>Statistic
+          <select data-part="stat">
+            <option value="cv"${statVal === 'cv' ? ' selected' : ''}>CV</option>
+            <option value="std"${statVal === 'std' ? ' selected' : ''}>Standard deviation</option>
+            <option value="mean"${statVal === 'mean' ? ' selected' : ''}>Mean</option>
+            <option value="skewness"${statVal === 'skewness' ? ' selected' : ''}>Skewness</option>
+          </select>
+        </label>
+        <label>Metric
+          <select data-part="field">
+            <option value="spearman_rho"${fieldVal === 'spearman_rho' ? ' selected' : ''}>Spearman rho</option>
+            <option value="spearman_p"${fieldVal === 'spearman_p' ? ' selected' : ''}>Spearman p-value</option>
+            <option value="n_bins"${fieldVal === 'n_bins' ? ' selected' : ''}>n bins</option>
+            <option value="linear_slope_per_year"${fieldVal === 'linear_slope_per_year' ? ' selected' : ''}>Slope/year</option>
+            <option value="linear_slope_log_per_year"${fieldVal === 'linear_slope_log_per_year' ? ' selected' : ''}>Slope log/year</option>
+          </select>
+        </label>
+        <label>Condition
+          <select data-part="op">
+            <option value="<"${opVal === '<' ? ' selected' : ''}>less than (&lt;)</option>
+            <option value="<="${opVal === '<=' ? ' selected' : ''}>less or equal (&lt;=)</option>
+            <option value=">"${opVal === '>' ? ' selected' : ''}>greater than (&gt;)</option>
+            <option value=">="${opVal === '>=' ? ' selected' : ''}>greater or equal (&gt;=)</option>
+            <option value="=="${opVal === '==' ? ' selected' : ''}>equal (==)</option>
+            <option value="!="${opVal === '!=' ? ' selected' : ''}>not equal (!=)</option>
+          </select>
+        </label>
+        <label>Threshold
+          <input data-part="value" type="number" step="0.01" value="${valueVal}" />
+        </label>
+        <button class="clause-remove-btn" type="button" data-part="remove">Remove</button>
+      `;
+      const removeBtn = row.querySelector('[data-part="remove"]');
+      removeBtn.addEventListener('click', () => {
+        row.remove();
+        if (!filterTestsClausesEl.children.length) {
+          filterTestsClausesEl.appendChild(createFilterClauseRow({}));
+        }
+      });
+      return row;
+    }
+
+    function readFilterClauses() {
+      const clauses = [];
+      for (const row of Array.from(filterTestsClausesEl.querySelectorAll('.clause-row'))) {
+        const stat = row.querySelector('[data-part="stat"]')?.value || 'cv';
+        const field = row.querySelector('[data-part="field"]')?.value || 'spearman_rho';
+        const op = row.querySelector('[data-part="op"]')?.value || '<';
+        const threshold = Number(row.querySelector('[data-part="value"]')?.value);
+        if (!Number.isFinite(threshold)) continue;
+        clauses.push({ stat, field, op, threshold });
+      }
+      return clauses;
+    }
+
+    function metricFieldValue(metric, field) {
+      if (!metric) return Number.NaN;
+      if (field === 'spearman_rho') return Number(metric.spearman_rho);
+      if (field === 'spearman_p') return Number(metric.spearman_p);
+      if (field === 'n_bins') return Number(metric.n_bins);
+      if (field === 'linear_slope_per_year') return Number(metric.linear_slope_per_year ?? metric.linear_slope_cv_per_year);
+      if (field === 'linear_slope_log_per_year') return Number(metric.linear_slope_log_per_year ?? metric.linear_slope_logcv_per_year);
+      return Number.NaN;
+    }
+
+    function metricFieldValueBoth(metricBySex, field) {
+      if (!metricBySex || !metricBySex.female || !metricBySex.male) return Number.NaN;
+      const fv = metricFieldValue(metricBySex.female, field);
+      const mv = metricFieldValue(metricBySex.male, field);
+      if (field === 'n_bins') {
+        if (!Number.isFinite(fv) || !Number.isFinite(mv)) return Number.NaN;
+        return Math.min(fv, mv);
+      }
+      if (!Number.isFinite(fv) || !Number.isFinite(mv)) return Number.NaN;
+      return (fv + mv) / 2;
+    }
+
+    function compareClauseValue(actual, op, threshold) {
+      if (!Number.isFinite(actual) || !Number.isFinite(threshold)) return false;
+      if (op === '<') return actual < threshold;
+      if (op === '<=') return actual <= threshold;
+      if (op === '>') return actual > threshold;
+      if (op === '>=') return actual >= threshold;
+      if (op === '==') return actual === threshold;
+      if (op === '!=') return actual !== threshold;
+      return false;
+    }
+
+    function filterTestsClauseLabel(clause, i) {
+      const stat = statLabel(clause.stat);
+      const field = clause.field === 'spearman_rho'
+        ? 'rho'
+        : clause.field === 'spearman_p'
+          ? 'p'
+          : clause.field === 'n_bins'
+            ? 'n_bins'
+            : clause.field === 'linear_slope_per_year'
+              ? 'slope/year'
+              : 'log-slope/year';
+      return `Clause ${i + 1}: ${stat} ${field} ${clause.op} ${clause.threshold}`;
+    }
+
+    function renderFilterTests() {
+      const clauses = readFilterClauses();
+      const cohort = filterTestsCohortEl.value || 'both';
+      const trimMode = trimPctToMode(filterTestsTrimSliderEl.value);
+      const logic = (filterTestsLogicEl.value || 'and').toLowerCase() === 'or' ? 'or' : 'and';
+      const rows = getAllMetricsEnriched().filter(r => filterTestsIncludeEnvEl.checked || !r.is_environmental);
+
+      if (!clauses.length) {
+        filterTestsSummaryEl.textContent = 'Add at least one valid clause to run filtering.';
+        filterTestsTableEl.innerHTML = '';
+        return;
+      }
+
+      const hits = [];
+      for (const rec of rows) {
+        const clauseValues = [];
+        const clauseMatches = [];
+        for (const clause of clauses) {
+          const metric = metricForRecord(rec, cohort, trimMode, clause.stat);
+          const value = cohort === 'both'
+            ? metricFieldValueBoth(metric, clause.field)
+            : metricFieldValue(metric, clause.field);
+          clauseValues.push(value);
+          clauseMatches.push(compareClauseValue(value, clause.op, clause.threshold));
+        }
+        const pass = logic === 'or' ? clauseMatches.some(Boolean) : clauseMatches.every(Boolean);
+        if (!pass) continue;
+        hits.push({
+          id: rec.biomarker_id,
+          display_name: rec.display_name,
+          category: rec.category || 'Other Clinical',
+          values: clauseValues,
+        });
+      }
+
+      hits.sort((a, b) => a.display_name.localeCompare(b.display_name));
+      filterTestsSummaryEl.textContent = `${hits.length} / ${rows.length} ${SPECIMEN_LABEL} tests matched (${logic.toUpperCase()}, ${trimLabelFromPct(filterTestsTrimSliderEl.value)}, cohort: ${cohort}).`;
+
+      let html = '<thead><tr><th>Biomarker</th><th>Category</th>';
+      for (let i = 0; i < clauses.length; i += 1) {
+        html += `<th>${filterTestsClauseLabel(clauses[i], i)}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+      for (const hit of hits) {
+        html += `<tr data-id="${hit.id}"><td>${hit.display_name}</td><td>${hit.category}</td>`;
+        for (const v of hit.values) html += `<td>${formatNum(v, 4)}</td>`;
+        html += '</tr>';
+      }
+      html += '</tbody>';
+      filterTestsTableEl.innerHTML = html;
+
+      for (const tr of filterTestsTableEl.querySelectorAll('tbody tr')) {
+        tr.style.cursor = 'pointer';
+        tr.onclick = async () => {
+          const id = tr.getAttribute('data-id');
+          if (!id) return;
+          if (Array.from(selectEl.options).some(o => o.value === id)) {
+            selectEl.value = id;
+            state.currentId = id;
+          }
+          await activateTopTab('dashboard', { syncHash: true });
+          renderMetrics(id);
+          await renderPlot(id);
+        };
+      }
+    }
+
     async function applySearch() {
       const q = searchEl.value.toLowerCase().trim();
       if (!q) return;
@@ -2243,9 +2609,15 @@
       renderScatterCategoryOptions(false);
       renderHistogramCategoryOptions(false);
       renderWaterfallOptions();
+      filterTestsCohortEl.value = 'both';
+      filterTestsIncludeEnvEl.checked = false;
+      filterTestsLogicEl.value = 'and';
+      filterTestsClausesEl.innerHTML = '';
+      filterTestsClausesEl.appendChild(createFilterClauseRow({ stat: 'cv', field: 'spearman_rho', op: '<', value: 0.5 }));
 
       await refreshDashboardFromFilters();
       renderComparePlot();
+      renderFilterTests();
       renderScatterPlot();
       renderHistogramPlot();
       await renderWaterfallPlot(state.waterfallId);
@@ -2257,6 +2629,9 @@
       });
       tabCompareBtn.addEventListener('click', () => {
         activateTopTab('compare', { syncHash: true }).catch(console.error);
+      });
+      tabFilterTestsBtn.addEventListener('click', () => {
+        activateTopTab('filter-tests', { syncHash: true }).catch(console.error);
       });
       tabScatterBtn.addEventListener('click', () => {
         activateTopTab('scatter', { syncHash: true }).catch(console.error);
@@ -2284,9 +2659,11 @@
         cohortFilterEl.value = compareCohortEl.value;
         scatterCohortEl.value = compareCohortEl.value;
         histCohortEl.value = compareCohortEl.value;
+        if (compareCohortEl.value !== 'pooled') filterTestsCohortEl.value = compareCohortEl.value;
         if (compareCohortEl.value !== 'both') waterfallCohortEl.value = compareCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (compareCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
@@ -2297,6 +2674,7 @@
         renderRankTable();
         if (state.currentId) renderPlot(state.currentId);
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
@@ -2326,9 +2704,11 @@
         compareCohortEl.value = cohortFilterEl.value;
         scatterCohortEl.value = cohortFilterEl.value;
         histCohortEl.value = cohortFilterEl.value;
+        if (cohortFilterEl.value !== 'pooled') filterTestsCohortEl.value = cohortFilterEl.value;
         if (cohortFilterEl.value !== 'both') waterfallCohortEl.value = cohortFilterEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (cohortFilterEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
@@ -2338,6 +2718,7 @@
         setAllTrimSliders(trimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
@@ -2351,6 +2732,11 @@
       });
       modeCvBtn.addEventListener('click', async () => {
         setMode('cv');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeStdBtn.addEventListener('click', async () => {
+        setMode('std');
         renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });
@@ -2370,9 +2756,11 @@
         cohortFilterEl.value = scatterCohortEl.value;
         compareCohortEl.value = scatterCohortEl.value;
         histCohortEl.value = scatterCohortEl.value;
+        if (scatterCohortEl.value !== 'pooled') filterTestsCohortEl.value = scatterCohortEl.value;
         if (scatterCohortEl.value !== 'both') waterfallCohortEl.value = scatterCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderHistogramPlot();
         if (scatterCohortEl.value !== 'both') renderWaterfallPlot(state.waterfallId);
         if (state.currentId) renderPlot(state.currentId);
@@ -2382,6 +2770,7 @@
         setAllTrimSliders(scatterTrimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
         if (state.currentId) renderPlot(state.currentId);
@@ -2421,9 +2810,11 @@
         cohortFilterEl.value = histCohortEl.value;
         compareCohortEl.value = histCohortEl.value;
         scatterCohortEl.value = histCohortEl.value;
+        if (histCohortEl.value !== 'pooled') filterTestsCohortEl.value = histCohortEl.value;
         if (histCohortEl.value !== 'both') waterfallCohortEl.value = histCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (histCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
@@ -2433,6 +2824,7 @@
         setAllTrimSliders(histTrimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
@@ -2479,8 +2871,10 @@
         compareCohortEl.value = waterfallCohortEl.value;
         scatterCohortEl.value = waterfallCohortEl.value;
         histCohortEl.value = waterfallCohortEl.value;
+        if (waterfallCohortEl.value !== 'pooled') filterTestsCohortEl.value = waterfallCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (state.currentId) await renderPlot(state.currentId);
@@ -2490,10 +2884,34 @@
         setAllTrimSliders(waterfallTrimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (state.currentId) renderPlot(state.currentId);
         renderWaterfallPlot(state.waterfallId);
+      });
+      filterTestsAddClauseBtn.addEventListener('click', () => {
+        filterTestsClausesEl.appendChild(createFilterClauseRow({}));
+      });
+      filterTestsRunBtn.addEventListener('click', () => {
+        renderFilterTests();
+      });
+      filterTestsCohortEl.addEventListener('change', () => {
+        const v = filterTestsCohortEl.value;
+        cohortFilterEl.value = v === 'both' ? 'both' : v;
+        compareCohortEl.value = v === 'both' ? 'both' : v;
+        scatterCohortEl.value = v === 'both' ? 'both' : v;
+        histCohortEl.value = v === 'both' ? 'both' : v;
+        if (v !== 'both') waterfallCohortEl.value = v;
+      });
+      filterTestsTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(filterTestsTrimSliderEl.value);
+      });
+      filterTestsIncludeEnvEl.addEventListener('change', () => {
+        renderFilterTests();
+      });
+      filterTestsLogicEl.addEventListener('change', () => {
+        renderFilterTests();
       });
       waterfallMinNEl.addEventListener('change', () => {
         renderWaterfallPlot(state.waterfallId);

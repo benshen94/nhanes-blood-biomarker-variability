@@ -122,10 +122,10 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ## Navigation model (specimen-first)
 - The dashboard now uses two navigation levels:
   - Row 1 (`Specimen`): `Blood Tests` and `Urinary Tests`
-  - Row 2 (`Analysis View`): `Dashboard`, `Compare Rankings`, `Scatter Plot`, `Histograms`, `Waterfall`, `Info & Methods`
+  - Row 2 (`Analysis View`): `Dashboard`, `Compare Rankings`, `Filter Tests`, `Scatter Plot`, `Histograms`, `Waterfall`, `Info & Methods`
 - `Blood Tests` / `Urinary Tests` are parent context controls, not peer tabs with analysis views.
 - Active analysis view is URL-hash state:
-  - `#dashboard`, `#compare`, `#scatter`, `#hist`, `#waterfall`, `#info`
+  - `#dashboard`, `#compare`, `#filter-tests`, `#scatter`, `#hist`, `#waterfall`, `#info`
 - Switching specimen preserves the current analysis view:
   - `index.html#scatter` -> `urinary.html#scatter`
   - `urinary.html#compare` -> `index.html#compare`
@@ -141,6 +141,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ## Plot modes
 - In `Dashboard` analysis view, use:
   - `Plot CV`: CV vs age.
+  - `Plot SD`: standard deviation vs age.
   - `Plot Median`: median vs age with:
     - interquartile range (IQR) band (25th-75th percentile)
     - raw scatter sample (age vs value) for the selected biomarker
@@ -154,7 +155,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - analysis scope and filtering
   - healthy cohort definition
   - decline flag criteria
-  - interpretation notes for CV and median views
+  - interpretation notes for CV/SD/median/skewness views
 
 ## Healthy Exclusion Rules
 - Adults only (`age >= 20`).
@@ -171,7 +172,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ## Compare tab
 - Use `Compare Rankings` (top tab) to compare biomarkers by Spearman trend quickly.
 - Controls:
-  - statistic: `CV vs age`, `Mean vs age`, or `Skewness vs age`
+  - statistic: `CV vs age`, `Standard deviation vs age`, `Mean vs age`, or `Skewness vs age`
   - sort mode: most negative, most positive, or largest absolute Spearman
   - symmetric trim (% per tail), shared with dashboard outlier mode
   - cohort: pooled, female, male, or both
@@ -181,10 +182,27 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - in `Both` cohort mode, female and male bars are shown side-by-side on the same biomarker list
   - blood dashboard includes a `Clalit vs NHANES Agreement` scatter panel; urinary dashboard keeps the panel but shows a placeholder (no urinary Clalit overlay configured)
 
+## Filter Tests tab
+- Use `Filter Tests` (top tab) to build logical clause filters over trend metrics and return matching tests.
+- Controls:
+  - sex group: `Female`, `Male`, or `Both (Female + Male)`
+  - symmetric trim slider (shared globally)
+  - logical combiner: `AND` or `OR`
+  - add/remove any number of clauses
+  - optional include/exclude environmental-toxicant assays
+- Clause fields:
+  - statistic: `CV`, `Standard deviation`, `Mean`, `Skewness`
+  - metric: `Spearman rho`, `Spearman p-value`, `n bins`, `Slope/year`, `Slope log/year`
+  - comparator: `<`, `<=`, `>`, `>=`, `==`, `!=`
+  - numeric threshold
+- Output:
+  - matching biomarker table for the active specimen page (blood or urinary), with clause values per biomarker
+  - clicking a result opens that biomarker in `Dashboard`
+
 ## Scatter tab
 - Use `Scatter Plot` (top tab) to compare biomarkers in 2D across trend metrics.
 - Axes:
-  - choose X and Y independently from `CV vs age`, `Mean vs age`, `Skewness vs age` (each axis uses Spearman rho of age vs selected statistic)
+  - choose X and Y independently from `CV vs age`, `Standard deviation vs age`, `Mean vs age`, `Skewness vs age` (each axis uses Spearman rho of age vs selected statistic)
 - Controls:
   - cohort: `Pooled`, `Female`, `Male`, `Both (Female + Male)`
   - symmetric trim slider (shared with Dashboard/Compare)
@@ -200,7 +218,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ## Histograms tab
 - Use `Histograms` (top tab) to see the distribution of Spearman rho values across biomarkers.
 - Metric:
-  - choose one metric at a time: `CV vs age`, `Mean vs age`, or `Skewness vs age`
+  - choose one metric at a time: `CV vs age`, `Standard deviation vs age`, `Mean vs age`, or `Skewness vs age`
 - Controls:
   - cohort: `Pooled`, `Female`, `Male`, `Both (Female + Male)`
   - symmetric trim slider (shared with Dashboard/Compare/Scatter)
@@ -226,7 +244,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - hover shows per-bin `n`, `Q1`, `Median`, and `Q3`
 
 ## Trend metrics in rankings
-- Spearman is computed between age-bin midpoint and the selected statistic (`CV`, `Mean`, or `Skewness`) after the selected trim mode.
+- Spearman is computed between age-bin midpoint and the selected statistic (`CV`, `Standard deviation`, `Mean`, or `Skewness`) after the selected trim mode.
 - `Negative trend` flag is true when:
   - `n_bins >= 5`
   - `spearman_rho < 0`
