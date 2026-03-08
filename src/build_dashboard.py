@@ -389,8 +389,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           </select>
 
           <label for=\"trim-slider\">Symmetric Trim Per Tail (%)</label>
-          <input id=\"trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-          <div id=\"trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+          <input id=\"trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"10\" />
+          <div id=\"trim-label\" class=\"trim-caption\">10% each tail kept out -> using 10-90 percentile band</div>
 
           <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
           <label id="hide-clalit-wrap" class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
@@ -436,8 +436,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"compare-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"compare-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id=\"compare-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"10\" />
+            <div id=\"compare-trim-label\" class=\"trim-caption\">10% each tail kept out -> using 10-90 percentile band</div>
           </label>
           <label>Top N
             <input id=\"compare-topn\" type=\"number\" min=\"10\" max=\"200\" step=\"5\" value=\"40\" />
@@ -475,8 +475,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"scatter-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"scatter-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id=\"scatter-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"10\" />
+            <div id=\"scatter-trim-label\" class=\"trim-caption\">10% each tail kept out -> using 10-90 percentile band</div>
           </label>
           <label class=\"check-label\"><input id=\"scatter-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
         </div>
@@ -512,8 +512,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"hist-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"hist-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id=\"hist-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"10\" />
+            <div id=\"hist-trim-label\" class=\"trim-caption\">10% each tail kept out -> using 10-90 percentile band</div>
           </label>
           <label class=\"check-label\"><input id=\"hist-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
         </div>
@@ -547,8 +547,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"waterfall-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"waterfall-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id=\"waterfall-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"10\" />
+            <div id=\"waterfall-trim-label\" class=\"trim-caption\">10% each tail kept out -> using 10-90 percentile band</div>
           </label>
           <label>Min n per age bin
             <input id=\"waterfall-min-n\" type=\"number\" min=\"5\" max=\"100\" step=\"5\" value=\"20\" />
@@ -2261,7 +2261,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (compareClalitTitleEl) compareClalitTitleEl.textContent = 'External Cohort Agreement';
       }
       setScatterLabelsEnabled(false);
-      setAllTrimSliders(0);
+      setAllTrimSliders(10);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
       renderScatterCategoryOptions(false);
