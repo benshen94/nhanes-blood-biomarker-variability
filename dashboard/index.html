@@ -759,7 +759,7 @@
               <h2 class="section-title">Biomarker Selection</h2>
               <div class="section-copy">Search by display name, source code, or file and narrow the selector by clinical category.</div>
               <label for="search">Search Biomarker</label>
-              <input id="search" list="biomarker-options" placeholder="Type name, code, file..." />
+              <input id="search" list="biomarker-options" placeholder="Type name, code, file..." autocomplete="off" spellcheck="false" />
               <datalist id="biomarker-options"></datalist>
 
               <label for="category-filter">Clinical Category</label>
@@ -975,7 +975,7 @@
         </div>
         <div class="waterfall-controls">
           <label>Search biomarker
-            <input id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." />
+            <input id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." autocomplete="off" spellcheck="false" />
             <datalist id="waterfall-biomarker-options"></datalist>
           </label>
           <label>Biomarker
@@ -1116,7 +1116,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1772960957';
+    const DATA_VERSION = '1772962440';
     const HAS_CLALIT = true;
     const SPECIMEN_TITLE = 'Blood';
     const SPECIMEN_LABEL = 'blood';

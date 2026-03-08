@@ -298,6 +298,9 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `data/processed/duplicate_merge_map.csv`
   - `data/processed/duplicate_merge_summary.csv`
   - `data/processed/duplicate_merge_report.md`
+- Blood duplicate pooling now has an explicit downstream compatibility check for Clalit overlays:
+  - `data/clalit_mapping.json` should target the post-merge pooled NHANES biomarker IDs, not the legacy `name__unit` IDs
+  - Clalit mappings can optionally include a `scale_factor` when Clalit is stored in a unit that was merged into a different pooled NHANES display unit (current example: free T4 `pmol/L` -> `ng/dL`)
 - Pooled catalog is written to:
   - `data/processed/biomarker_catalog.parquet`
   - `data/processed/urine/biomarker_catalog.parquet`
@@ -342,4 +345,6 @@ python3 -m http.server 8765 --directory .
 - Mapping scripts (using Jaccard string similarity filtering) live in `scripts/match_clalit_nhanes.py` and manual overrides loop is in `scripts/match_clalit_nhanes_round2.py`.
 - The final JSON index connecting Clalit test keys to NHANES IDs is read from `data/clalit_mapping.json`.
 - `data/clalit_mapping.json` supports mapping one Clalit test code to multiple NHANES biomarker IDs (JSON array) when the same analyte appears under multiple NHANES pooled IDs (for example, CRP aliases).
+- `data/clalit_mapping.json` also supports object targets with `biomarker_id` and `scale_factor`, which are applied before plotting when the Clalit source unit differs from the pooled NHANES unit.
 - A post-build audit of mapping coverage/validity is written to `output/clalit_mapping_audit.csv` (`mapped_valid` vs `unmapped`).
+- The search dropdown uses a browser `datalist`; if native browser history is enabled it can appear as a second block beneath the live biomarker matches, so dashboard search inputs now explicitly disable native autocomplete to avoid stale pre-merge biomarker suggestions.

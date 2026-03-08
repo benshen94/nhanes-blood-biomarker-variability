@@ -370,7 +370,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           </div>
 
           <label for=\"search\">Search Biomarker</label>
-          <input id=\"search\" list=\"biomarker-options\" placeholder=\"Type name, code, file...\" />
+              <input id=\"search\" list=\"biomarker-options\" placeholder=\"Type name, code, file...\" autocomplete=\"off\" spellcheck=\"false\" />
           <datalist id=\"biomarker-options\"></datalist>
 
           <label for=\"category-filter\">Clinical Category</label>
@@ -533,7 +533,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class=\"card\">
         <div class=\"waterfall-controls\">
           <label>Search biomarker
-            <input id=\"waterfall-search\" list=\"waterfall-biomarker-options\" placeholder=\"Type biomarker name...\" />
+            <input id=\"waterfall-search\" list=\"waterfall-biomarker-options\" placeholder=\"Type biomarker name...\" autocomplete=\"off\" spellcheck=\"false\" />
             <datalist id=\"waterfall-biomarker-options\"></datalist>
           </label>
           <label>Biomarker
@@ -2938,6 +2938,53 @@ def trend_from_points(points: list[dict], value_key: str) -> dict:
     return out
 
 
+CLALIT_SCALE_COLUMNS = [
+    "min",
+    "q1",
+    "q25",
+    "median",
+    "mad",
+    "se",
+    "q75",
+    "q3",
+    "max",
+    "mean",
+    "sd",
+    "p10",
+    "p25",
+    "p75",
+    "p90",
+    "geom_mean",
+]
+
+
+def expand_clalit_mapping_target(target: object) -> list[dict[str, object]]:
+    if isinstance(target, list):
+        out: list[dict[str, object]] = []
+        for item in target:
+            out.extend(expand_clalit_mapping_target(item))
+        return out
+
+    if isinstance(target, dict):
+        biomarker_id = str(target.get("biomarker_id") or target.get("id") or "").strip()
+        if not biomarker_id:
+            return []
+        scale_factor = float(target.get("scale_factor", 1.0) or 1.0)
+        scale_reason = str(target.get("scale_reason") or "").strip()
+        return [
+            {
+                "biomarker_id": biomarker_id,
+                "scale_factor": scale_factor,
+                "scale_reason": scale_reason,
+            }
+        ]
+
+    biomarker_id = str(target or "").strip()
+    if not biomarker_id:
+        return []
+    return [{"biomarker_id": biomarker_id, "scale_factor": 1.0, "scale_reason": ""}]
+
+
 def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping: dict) -> dict:
     if clalit_f is None or clalit_m is None or not mapping:
         return {}
@@ -2948,13 +2995,19 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
     df = pd.concat([df_f, df_m], ignore_index=True)
     df['mapped_targets'] = df['test'].map(mapping)
     df = df.dropna(subset=['mapped_targets']).copy()
-    # Allow one Clalit test to map to multiple NHANES biomarker IDs (e.g., CRP aliases).
-    df['mapped_targets'] = df['mapped_targets'].apply(
-        lambda v: v if isinstance(v, list) else [v]
-    )
-    df = df.explode('mapped_targets').rename(columns={'mapped_targets': 'biomarker_id'})
-    df = df.dropna(subset=['biomarker_id']).copy()
-    df['biomarker_id'] = df['biomarker_id'].astype(str)
+    # Allow one Clalit test to map to multiple NHANES biomarker IDs and optional scale factors.
+    df['mapped_targets'] = df['mapped_targets'].apply(expand_clalit_mapping_target)
+    df = df.explode('mapped_targets').copy()
+    df = df[df['mapped_targets'].notna()].copy()
+    df['biomarker_id'] = df['mapped_targets'].apply(lambda v: str(v.get('biomarker_id') or '').strip())
+    df['scale_factor'] = df['mapped_targets'].apply(lambda v: float(v.get('scale_factor', 1.0) or 1.0))
+    df['scale_reason'] = df['mapped_targets'].apply(lambda v: str(v.get('scale_reason') or '').strip())
+    df = df.drop(columns=['mapped_targets'])
+    df = df[df['biomarker_id'] != ""].copy()
+    for col in CLALIT_SCALE_COLUMNS:
+        if col not in df.columns:
+            continue
+        df[col] = pd.to_numeric(df[col], errors='coerce') * df['scale_factor']
     
     df['age_bin'] = pd.cut(df['age'], bins=AGE_BINS, labels=AGE_LABELS, right=False, include_lowest=True)
     df = df.dropna(subset=['age_bin']).copy()
