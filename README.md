@@ -12,6 +12,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data, with candidate selection controlled by `--candidate-column`.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_dashboard.py` builds both static interactive HTML dashboards: blood (`dashboard/index.html`) and urinary (`dashboard/urinary.html`).
+- `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
@@ -118,6 +119,19 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - Open the GitHub Pages site (if enabled in your repo settings):
   - Blood: `https://<github-username>.github.io/<repo-name>/dashboard/index.html`
   - Urinary: `https://<github-username>.github.io/<repo-name>/dashboard/urinary.html`
+
+## Dashboard UI architecture
+- The blood and urinary dashboards share one HTML/CSS/JS shell from `src/templates/dashboard_template.html`.
+- `src/build_dashboard.py` injects specimen-specific metadata, dataset paths, counts, and specimen-switch links into that template, then writes:
+  - `dashboard/index.html`
+  - `dashboard/urinary.html`
+- The redesign keeps the existing static single-page model and DOM IDs used by the inline dashboard logic, while modernizing:
+  - hero/header hierarchy
+  - specimen and analysis navigation
+  - control rails and panel cards
+  - metric summary presentation
+  - focus states, contrast, and responsive behavior
+- Plotly traces and metric semantics are unchanged; only presentation defaults such as fonts, spacing, grid contrast, legends, and empty-state styling were updated.
 
 ## Navigation model (specimen-first)
 - The dashboard now uses two navigation levels:
@@ -282,6 +296,29 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
+
+## Dashboard validation workflow
+- Regenerate both dashboards after UI or metric-surface changes:
+```bash
+python3 src/build_dashboard.py
+```
+- Serve locally for browser validation:
+```bash
+python3 -m http.server 8765 --directory .
+```
+- Playwright/manual validation checklist used for the current redesign:
+  - blood tabs: `#dashboard`, `#compare`, `#filter-tests`, `#scatter`, `#hist`, `#waterfall`, `#info`
+  - urinary spot-checks with preserved hash navigation (for example `urinary.html#compare` and switch back to `index.html#compare`)
+  - representative interactions:
+    - dashboard mode, cohort, and trim changes
+    - compare statistic, sort, cohort, and top-N changes
+    - scatter X/Y metrics, category filtering, and label toggle
+    - histogram metric, cohort, and category filtering
+    - waterfall biomarker search/selection, cohort, and minimum-n changes
+    - filter-tests clause editing and execution
+  - keyboard focus visibility across specimen links, top tabs, and form controls
+  - mobile-width spot checks for stacked navigation and control layouts
+- Example screenshots from the current pass were written to `output/playwright/`.
 
 ## Clalit Data Integration
 - We map Israeli Clalit clinical data to NHANES biomarkers to allow direct visual overlay of age-trajectory statistics on the dashboard.

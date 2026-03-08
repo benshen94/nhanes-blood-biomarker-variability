@@ -7,85 +7,165 @@
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {
-      --bg: #f6f3eb;
-      --card: #ffffff;
-      --ink: #1f2937;
-      --muted: #5f6b7a;
+      --bg: #edf3f7;
+      --bg-accent: #d7e7f0;
+      --surface: rgba(255, 255, 255, 0.94);
+      --surface-strong: #ffffff;
+      --surface-muted: #f4f8fb;
+      --surface-accent: #edf8f6;
+      --ink: #102a43;
+      --ink-soft: #486581;
+      --ink-muted: #6b7c93;
+      --border: rgba(16, 42, 67, 0.12);
+      --border-strong: rgba(16, 42, 67, 0.2);
       --accent: #0f766e;
-      --accent-soft: #c9ebe5;
+      --accent-strong: #0b5c56;
+      --accent-soft: rgba(15, 118, 110, 0.12);
+      --danger-soft: rgba(209, 73, 91, 0.14);
       --warn: #b45309;
-      --line: #ddd6c8;
-      --chip: #f4efe5;
-      --tab: #efe7d8;
-      --tab-active: #0f766e;
+      --focus: #0ea5e9;
+      --shadow-sm: 0 12px 30px rgba(16, 42, 67, 0.06);
+      --shadow-md: 0 18px 48px rgba(16, 42, 67, 0.1);
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 28px;
+      --control-h: 44px;
+      --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: var(--font-sans);
       color: var(--ink);
-      background: radial-gradient(circle at 8% 10%, #fff9e8, var(--bg));
+      background:
+        radial-gradient(circle at top left, rgba(215, 231, 240, 0.95), transparent 32%),
+        radial-gradient(circle at top right, rgba(15, 118, 110, 0.09), transparent 26%),
+        linear-gradient(180deg, #f7fbfd 0%, var(--bg) 54%, #e5eef4 100%);
+      line-height: 1.45;
     }
-    .wrap { max-width: 1320px; margin: 0 auto; padding: 20px; }
+    a { color: inherit; }
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+    button {
+      border: 0;
+      background: none;
+    }
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .wrap { max-width: 1460px; margin: 0 auto; padding: 28px 24px 40px; }
     .hero {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
-      gap: 16px;
-      margin-bottom: 14px;
+      align-items: stretch;
+      gap: 18px;
+      margin-bottom: 18px;
+      padding: 26px 28px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(240,248,252,0.92) 58%, rgba(228,243,240,0.9) 100%);
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
     }
-    h1 { margin: 0; font-size: 34px; letter-spacing: 0.2px; }
-    .sub { color: var(--muted); margin-top: 6px; }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -38% auto;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(15,118,110,0.12), transparent 65%);
+      pointer-events: none;
+    }
+    .hero-copy {
+      display: grid;
+      gap: 10px;
+      max-width: 760px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent-strong);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+      max-width: 12ch;
+    }
+    .sub {
+      color: var(--ink-soft);
+      margin: 0;
+      font-size: 1rem;
+      max-width: 62ch;
+    }
     .status-chip {
-      background: var(--chip);
-      border: 1px solid var(--line);
+      align-self: flex-start;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 8px 12px;
+      padding: 11px 16px;
       font-size: 13px;
-      color: var(--muted);
+      color: var(--ink-soft);
       white-space: nowrap;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 20px rgba(16, 42, 67, 0.08);
+      position: relative;
+      z-index: 1;
     }
     .nav-stack {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-bottom: 14px;
+      gap: 12px;
+      margin-bottom: 18px;
     }
     .nav-row {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(10px);
     }
     .nav-label {
       font-size: 11px;
-      color: var(--muted);
+      color: var(--ink-muted);
       text-transform: uppercase;
-      letter-spacing: 0.7px;
+      letter-spacing: 0.12em;
       font-weight: 700;
-      min-width: 96px;
-    }
-    .specimen-row {
-      background: #fffdf7;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
+      min-width: 112px;
     }
     .specimen-row .nav-label {
-      color: #0b5f58;
+      color: var(--accent-strong);
     }
     .specimen-tabs,
     .view-tabs {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       flex-wrap: wrap;
       flex: 1 1 auto;
     }
     .tab-btn {
-      border: 1px solid var(--line);
-      background: var(--tab);
-      border-radius: 10px;
-      padding: 8px 12px;
+      border: 1px solid transparent;
+      background: var(--surface-muted);
+      border-radius: 999px;
+      padding: 10px 15px;
       cursor: pointer;
       font-size: 14px;
       font-weight: 600;
@@ -94,127 +174,345 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+    .tab-btn:hover {
+      border-color: var(--border-strong);
+      background: #f8fbfd;
+      transform: translateY(-1px);
     }
     .tab-btn.active {
-      background: var(--tab-active);
-      border-color: var(--tab-active);
+      background: var(--accent);
+      border-color: var(--accent);
       color: #fff;
+      box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
     }
     .specimen-tabs .tab-btn {
-      padding: 10px 16px;
-      border-radius: 999px;
-      font-size: 15px;
+      padding: 11px 18px;
+      font-size: 14px;
       font-weight: 700;
-      background: #e6f2f0;
-      border-color: #cde2de;
+      background: var(--surface-accent);
     }
     .specimen-tabs .tab-btn.active {
-      box-shadow: 0 1px 2px rgba(15, 118, 110, 0.28);
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
     }
     .panel { display: none; }
     .panel.active { display: block; }
-
-    .grid { display: grid; grid-template-columns: 330px 1fr; gap: 16px; }
+    .grid { display: grid; grid-template-columns: minmax(320px, 360px) minmax(0, 1fr); gap: 18px; align-items: start; }
     .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(8px);
     }
-    .sticky { position: sticky; top: 12px; }
-
+    .sticky { position: sticky; top: 14px; }
+    .control-rail {
+      display: grid;
+      gap: 14px;
+    }
+    .control-section {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(16, 42, 67, 0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(244,248,251,0.88) 100%);
+    }
+    .section-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .section-copy {
+      margin: -4px 0 2px;
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
     input[type="text"],
     input[type="search"],
     input[type="number"],
     input[type="range"],
     select {
       width: 100%;
-      padding: 8px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      min-height: var(--control-h);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
       font-size: 14px;
-      margin: 6px 0 10px 0;
-      background: #fff;
+      margin: 6px 0 0;
+      background: var(--surface-strong);
+      color: var(--ink);
+      box-shadow: inset 0 1px 2px rgba(16, 42, 67, 0.03);
     }
+    select[multiple] { min-height: 180px; }
+    input::placeholder { color: #8aa0b8; }
+    input:hover,
+    select:hover { border-color: var(--border-strong); }
     label {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--ink-soft);
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.08em;
+      font-weight: 700;
     }
     input[type="checkbox"] {
       width: auto;
       margin: 0;
       accent-color: var(--accent);
+      transform: scale(1.1);
     }
     input[type="range"] {
       padding: 0;
       border: 0;
+      min-height: auto;
       margin: 8px 0 2px 0;
       accent-color: var(--accent);
       background: transparent;
+      box-shadow: none;
     }
     .trim-caption {
       font-size: 12px;
-      color: var(--muted);
-      margin: 2px 0 10px 0;
+      color: var(--ink-muted);
+      margin: 2px 0 0;
     }
     .check-label {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 6px 0 10px 0;
+      gap: 10px;
+      margin: 0;
+      min-height: var(--control-h);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      font-size: 13px;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 600;
     }
-    .mode-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
+    .mode-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .mode-btn {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
-      border-radius: 8px;
-      padding: 7px 10px;
+      min-height: 52px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      border-radius: 14px;
+      padding: 10px 12px;
       cursor: pointer;
       font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+    .mode-btn:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-muted);
     }
     .mode-btn.active {
       background: var(--accent);
       color: #fff;
       border-color: var(--accent);
+      box-shadow: 0 12px 22px rgba(15, 118, 110, 0.22);
     }
-
-    #plot { width: 100%; height: 540px; }
-    .metric { font-size: 14px; margin: 6px 0; }
-    .flag-true { color: var(--accent); font-weight: 700; }
-    .flag-false { color: var(--warn); }
-
+    .analysis-shell {
+      display: grid;
+      gap: 16px;
+    }
+    .canvas-card {
+      padding: 20px;
+    }
+    .plot-card-header,
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .panel-title {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+    }
+    .panel-copy {
+      margin: 4px 0 0;
+      color: var(--ink-muted);
+      font-size: 13px;
+    }
+    #plot { width: 100%; height: 600px; }
+    #metrics {
+      margin-top: 0;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(237, 248, 246, 0.92), rgba(255,255,255,0.94));
+    }
+    .metric-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .metric-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(16, 42, 67, 0.08);
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .metric-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .metric-block {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(16, 42, 67, 0.08);
+      background: rgba(255,255,255,0.86);
+    }
+    .metric-block-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .metric-flag {
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .flag-true {
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      font-weight: 800;
+    }
+    .flag-false {
+      color: var(--warn);
+      background: rgba(180, 83, 9, 0.12);
+      font-weight: 800;
+    }
+    .metric-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric-stat {
+      min-width: 0;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--surface-muted);
+      border: 1px solid rgba(16, 42, 67, 0.06);
+    }
+    .metric-label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      word-break: break-word;
+    }
     .table-wrap {
-      max-height: 320px;
+      max-height: 360px;
       overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-top: 12px;
+      background: var(--surface-strong);
     }
-    table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th, td { border-bottom: 1px solid #eee7da; padding: 6px; text-align: left; }
-    th { position: sticky; top: 0; background: #fffaf0; z-index: 1; }
-
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .info-card h3 { margin: 2px 0 8px 0; font-size: 18px; }
-    .info-card p { margin: 0 0 8px 0; color: var(--muted); }
-    .info-card ul { margin: 8px 0 0 18px; padding: 0; }
-    .info-card li { margin: 6px 0; }
-    .mono { font-family: Menlo, Monaco, 'Courier New', monospace; font-size: 12px; color: var(--muted); }
-    .compare-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .compare-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .compare-controls select, .compare-controls input { margin: 4px 0 0 0; width: 220px; }
-    .filter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .filter-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .filter-controls select, .filter-controls input { margin: 4px 0 0 0; width: 220px; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; table-layout: fixed; }
+    th, td {
+      border-bottom: 1px solid rgba(16, 42, 67, 0.08);
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: top;
+      color: var(--ink-soft);
+      overflow-wrap: anywhere;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f7fbfd;
+      z-index: 1;
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    tbody tr:hover {
+      background: rgba(15,118,110,0.06);
+    }
+    .info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .info-card h3 { margin: 0 0 8px; font-size: 1.05rem; letter-spacing: -0.01em; }
+    .info-card p { margin: 0 0 10px; color: var(--ink-soft); }
+    .info-card ul { margin: 8px 0 0 18px; padding: 0; color: var(--ink-soft); }
+    .info-card li { margin: 8px 0; }
+    .mono { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+    .compare-controls,
+    .filter-controls,
+    .scatter-controls,
+    .hist-controls,
+    .waterfall-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 14px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.94));
+    }
+    .compare-controls label,
+    .filter-controls label,
+    .scatter-controls label,
+    .hist-controls label,
+    .waterfall-controls label {
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+    .compare-controls select, .compare-controls input,
+    .filter-controls select, .filter-controls input,
+    .scatter-controls select, .scatter-controls input,
+    .hist-controls select, .hist-controls input,
+    .waterfall-controls select, .waterfall-controls input {
+      margin: 6px 0 0;
+      width: 100%;
+    }
     .clause-builder {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #fffdf7;
-      padding: 10px;
-      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.96));
+      padding: 14px;
+      margin-bottom: 12px;
     }
     .clause-actions {
       display: flex;
@@ -224,12 +522,14 @@
       margin-bottom: 8px;
     }
     .clause-actions button {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
-      border-radius: 8px;
-      padding: 6px 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      border-radius: 10px;
+      padding: 8px 12px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
     }
     .clause-row {
       display: flex;
@@ -238,7 +538,7 @@
       align-items: end;
       margin-bottom: 8px;
       padding-bottom: 8px;
-      border-bottom: 1px dashed #e8e0cf;
+      border-bottom: 1px dashed rgba(16, 42, 67, 0.12);
     }
     .clause-row:last-child {
       margin-bottom: 0;
@@ -258,7 +558,7 @@
     }
     .clause-remove-btn {
       border: 1px solid #f1c6be;
-      background: #fff3f0;
+      background: #fff4f3;
       color: #9f1239;
       border-radius: 8px;
       padding: 6px 10px;
@@ -268,21 +568,22 @@
     .filter-results {
       max-height: 520px;
       overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-top: 12px;
+      background: var(--surface-strong);
     }
     .filter-summary {
       font-size: 13px;
-      color: var(--muted);
-      margin: 8px 0;
+      color: var(--ink-soft);
+      margin: 10px 0;
     }
     .filter-test-picker {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #fff;
-      padding: 10px;
-      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface-strong);
+      padding: 14px;
+      margin-bottom: 12px;
     }
     .filter-test-actions {
       display: flex;
@@ -292,16 +593,17 @@
       flex-wrap: wrap;
     }
     .filter-test-actions button {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
-      border-radius: 8px;
-      padding: 6px 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      border-radius: 10px;
+      padding: 8px 12px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 700;
     }
     .filter-test-hint {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--ink-muted);
     }
     #filter-tests-biomarkers {
       height: 220px;
@@ -309,56 +611,47 @@
     }
     #compare-plot { width: 100%; height: 640px; }
     #compare-clalit-plot { width: 100%; height: 480px; }
-    .scatter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .scatter-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .scatter-controls select, .scatter-controls input { margin: 4px 0 0 0; width: 220px; }
     #scatter-category { height: 160px; }
-    .scatter-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
-    .scatter-actions button {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
-      border-radius: 8px;
-      padding: 6px 10px;
+    .scatter-actions,
+    .hist-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 10px 0;
+      flex-wrap: wrap;
+    }
+    .scatter-actions button,
+    .hist-actions button {
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      border-radius: 10px;
+      padding: 8px 12px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
     }
-    .scatter-hint { font-size: 12px; color: var(--muted); }
+    .scatter-hint { font-size: 12px; color: var(--ink-muted); }
     #scatter-plot { width: 100%; height: 640px; }
     .toggle-btn-active {
       background: var(--accent) !important;
       color: #fff !important;
       border-color: var(--accent) !important;
     }
-    .hist-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .hist-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .hist-controls select, .hist-controls input { margin: 4px 0 0 0; width: 220px; }
     #hist-category { height: 160px; }
-    .hist-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
-    .hist-actions button {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
-      border-radius: 8px;
-      padding: 6px 10px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .hist-hint { font-size: 12px; color: var(--muted); }
+    .hist-hint { font-size: 12px; color: var(--ink-muted); }
     #hist-plot { width: 100%; height: 600px; }
-    .waterfall-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .waterfall-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .waterfall-controls select, .waterfall-controls input { margin: 4px 0 0 0; width: 260px; }
-    .waterfall-caption { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .waterfall-caption { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
     #waterfall-plot { width: 100%; height: 760px; }
 
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
       .sticky { position: static; }
-      #plot { height: 430px; }
+      #plot { height: 470px; }
       .info-grid { grid-template-columns: 1fr; }
-      .hero { flex-direction: column; align-items: flex-start; }
-      .wrap { padding: 14px; }
-      h1 { font-size: 28px; }
-      .sub { font-size: 15px; }
+      .hero { flex-direction: column; align-items: flex-start; padding: 24px 22px; }
+      .wrap { padding: 18px 16px 32px; }
+      .status-chip { align-self: stretch; }
       #compare-plot { height: 560px; }
       #compare-clalit-plot { height: 480px; }
       .clause-row label { min-width: 140px; }
@@ -367,7 +660,7 @@
       #waterfall-plot { height: 620px; }
     }
     @media (max-width: 760px) {
-      .nav-row { align-items: flex-start; }
+      .nav-row { align-items: flex-start; padding: 14px; }
       .nav-label { min-width: 100%; margin-bottom: 2px; }
       .specimen-tabs .tab-btn,
       .view-tabs .tab-btn { flex: 1 1 calc(50% - 8px); text-align: center; }
@@ -376,6 +669,7 @@
         overflow-x: auto;
       }
       table { font-size: 12px; min-width: 560px; }
+      .metric-stat-grid { grid-template-columns: 1fr; }
       #plot { height: 380px; }
       #compare-plot { height: 500px; }
       #compare-clalit-plot { height: 440px; }
@@ -403,8 +697,8 @@
     @media (max-width: 520px) {
       .specimen-tabs .tab-btn,
       .view-tabs .tab-btn { flex: 1 1 100%; }
-      .mode-buttons { flex-wrap: wrap; }
-      .mode-btn { flex: 1 1 calc(50% - 8px); }
+      .hero { padding: 20px 18px; }
+      .mode-buttons { grid-template-columns: 1fr; }
       #plot { height: 340px; }
       #compare-plot { height: 440px; }
       #compare-clalit-plot { height: 440px; }
@@ -417,7 +711,8 @@
 <body>
   <div class="wrap">
     <div class="hero">
-      <div>
+      <div class="hero-copy">
+        <div class="hero-eyebrow">Healthy Aging Explorer</div>
         <h1 id="hero-title">nhanes-biomarker-dashboard</h1>
         <div id="hero-sub" class="sub">Explore cross-sectional aging trajectories across urinary biomarkers.</div>
       </div>
@@ -448,52 +743,91 @@
     <div id="panel-dashboard" class="panel active">
       <div class="grid">
         <div class="card sticky">
-          <div class="mode-buttons">
-            <button id="mode-cv" class="mode-btn active" type="button">Plot CV</button>
-            <button id="mode-std" class="mode-btn" type="button">Plot SD</button>
-            <button id="mode-mean" class="mode-btn" type="button">Plot Median</button>
-            <button id="mode-skew" class="mode-btn" type="button">Plot Skewness</button>
+          <div class="control-rail">
+            <div class="control-section">
+              <h2 class="section-title">Metric View</h2>
+              <div class="section-copy">Switch between spread, central tendency, and shape while keeping the same selected biomarker.</div>
+              <div class="mode-buttons" role="group" aria-label="Metric mode">
+                <button id="mode-cv" class="mode-btn active" type="button">Plot CV</button>
+                <button id="mode-std" class="mode-btn" type="button">Plot SD</button>
+                <button id="mode-mean" class="mode-btn" type="button">Plot Median</button>
+                <button id="mode-skew" class="mode-btn" type="button">Plot Skewness</button>
+              </div>
+            </div>
+
+            <div class="control-section">
+              <h2 class="section-title">Biomarker Selection</h2>
+              <div class="section-copy">Search by display name, source code, or file and narrow the selector by clinical category.</div>
+              <label for="search">Search Biomarker</label>
+              <input id="search" list="biomarker-options" placeholder="Type name, code, file..." />
+              <datalist id="biomarker-options"></datalist>
+
+              <label for="category-filter">Clinical Category</label>
+              <select id="category-filter"></select>
+              <label class="check-label"><input id="include-env" type="checkbox" /> Include environmental/toxicant assays</label>
+
+              <label for="biomarker-select">Select Biomarker</label>
+              <select id="biomarker-select"></select>
+            </div>
+
+            <div class="control-section">
+              <h2 class="section-title">Cohort And Trimming</h2>
+              <div class="section-copy">Apply the same cohort and outlier treatment used by the ranking, scatter, histogram, and waterfall views.</div>
+              <label for="cohort-filter">Sex Group</label>
+              <select id="cohort-filter">
+                <option value="pooled" selected>Pooled</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="both">Both (Female + Male)</option>
+              </select>
+
+              <label for="trim-slider">Symmetric Trim Per Tail (%)</label>
+              <input id="trim-slider" type="range" min="0" max="25" step="5" value="0" />
+              <div id="trim-label" class="trim-caption">Using all values (0-100)</div>
+            </div>
+
+            <div class="control-section">
+              <h2 class="section-title">Display Options</h2>
+              <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
+              <label id="hide-clalit-wrap" class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
+            </div>
+
+            <div id="metrics" class="card" aria-live="polite"></div>
           </div>
-
-          <label for="search">Search Biomarker</label>
-          <input id="search" list="biomarker-options" placeholder="Type name, code, file..." />
-          <datalist id="biomarker-options"></datalist>
-
-          <label for="category-filter">Clinical Category</label>
-          <select id="category-filter"></select>
-          <label class="check-label"><input id="include-env" type="checkbox" /> Include environmental/toxicant assays</label>
-
-          <label for="biomarker-select">Select Biomarker</label>
-          <select id="biomarker-select"></select>
-
-          <label for="cohort-filter">Sex Group</label>
-          <select id="cohort-filter">
-            <option value="pooled" selected>Pooled</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="both">Both (Female + Male)</option>
-          </select>
-
-          <label for="trim-slider">Symmetric Trim Per Tail (%)</label>
-          <input id="trim-slider" type="range" min="0" max="25" step="5" value="0" />
-          <div id="trim-label" class="trim-caption">Using all values (0-100)</div>
-
-          <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
-          <label id="hide-clalit-wrap" class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
-
-          <div id="metrics" class="card" style="margin-top:10px;"></div>
         </div>
 
-        <div class="card">
-          <div id="plot"></div>
-          <h3 id="rank-title">Biomarkers Ranked by Most Negative Spearman Rho (CV vs age)</h3>
-          <div class="table-wrap"><table id="rank-table"></table></div>
+        <div class="analysis-shell">
+          <div class="card canvas-card">
+            <div class="plot-card-header">
+              <div>
+                <h2 class="panel-title">Trajectory Plot</h2>
+                <p class="panel-copy">The main chart stays focused on one biomarker while the control rail changes cohort, trimming, and metric interpretation.</p>
+              </div>
+            </div>
+            <div id="plot"></div>
+          </div>
+
+          <div class="card">
+            <div class="panel-header">
+              <div>
+                <h3 id="rank-title" class="panel-title">Biomarkers Ranked by Most Negative Spearman Rho (CV vs age)</h3>
+                <p class="panel-copy">Click any row to jump the dashboard plot to that biomarker with the current filters preserved.</p>
+              </div>
+            </div>
+            <div class="table-wrap"><table id="rank-table"></table></div>
+          </div>
         </div>
       </div>
     </div>
 
     <div id="panel-compare" class="panel">
       <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Compare Rankings</h2>
+            <p class="panel-copy">Sort biomarkers by age trend direction or magnitude, then compare NHANES against the external cohort when available.</p>
+          </div>
+        </div>
         <div class="compare-controls">
           <label>Sort
             <select id="compare-sort">
@@ -531,13 +865,19 @@
           </label>
         </div>
         <div id="compare-plot"></div>
-        <h3 id="compare-clalit-title" style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
+        <h3 id="compare-clalit-title" class="panel-title" style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
         <div id="compare-clalit-plot"></div>
       </div>
     </div>
 
     <div id="panel-scatter" class="panel">
       <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Scatter Plot</h2>
+            <p class="panel-copy">Compare two age-trend statistics in one view and click any point to open that biomarker in the main dashboard.</p>
+          </div>
+        </div>
         <div class="scatter-controls">
           <label>X axis statistic
             <select id="scatter-x-stat">
@@ -584,6 +924,12 @@
 
     <div id="panel-hist" class="panel">
       <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Histograms</h2>
+            <p class="panel-copy">Inspect how the selected trend metric is distributed across the currently visible biomarker set.</p>
+          </div>
+        </div>
         <div class="hist-controls">
           <label>Statistic
             <select id="hist-stat">
@@ -621,6 +967,12 @@
 
     <div id="panel-waterfall" class="panel">
       <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Waterfall Distribution View</h2>
+            <p class="panel-copy">Age-stratified ridgeline densities reveal how a biomarker’s full distribution shifts across the adult lifespan.</p>
+          </div>
+        </div>
         <div class="waterfall-controls">
           <label>Search biomarker
             <input id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." />
@@ -651,6 +1003,12 @@
 
     <div id="panel-filter-tests" class="panel">
       <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Filter Tests</h2>
+            <p class="panel-copy">Build multi-clause trend filters, limit the candidate list, and open any matching biomarker back in the dashboard plot.</p>
+          </div>
+        </div>
         <div class="filter-controls">
           <label>Sex group
             <select id="filter-tests-cohort">
@@ -697,6 +1055,12 @@
     </div>
 
     <div id="panel-info" class="panel">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Info And Methods</h2>
+          <p class="panel-copy">Interpret the dashboard with the healthy-cohort definition, metric semantics, and decline criteria visible in one place.</p>
+        </div>
+      </div>
       <div class="info-grid">
         <div class="card info-card">
           <h3>What This Analysis Does</h3>
@@ -752,7 +1116,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1772717833';
+    const DATA_VERSION = '1772953785';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -1015,6 +1379,47 @@
       };
     }
 
+    function setButtonState(button, isActive) {
+      if (!button) return;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      button.setAttribute('tabindex', isActive ? '0' : '-1');
+    }
+
+    function applyPlotTheme(layout, mobile = false) {
+      return {
+        font: { family: '"Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif', color: '#102a43', size: mobile ? 11 : 12 },
+        paper_bgcolor: 'rgba(255,255,255,0.96)',
+        plot_bgcolor: '#ffffff',
+        margin: mobile ? { t: 68, l: 54, r: 12, b: 52 } : { t: 72, l: 72, r: 18, b: 58 },
+        legend: {
+          orientation: 'h',
+          y: 1.12,
+          yanchor: 'bottom',
+          x: 0,
+          font: { size: mobile ? 10 : 12 },
+          bgcolor: 'rgba(255,255,255,0.78)',
+        },
+        xaxis: {
+          showgrid: true,
+          gridcolor: 'rgba(16, 42, 67, 0.08)',
+          zerolinecolor: 'rgba(16, 42, 67, 0.18)',
+          linecolor: 'rgba(16, 42, 67, 0.12)',
+          tickfont: { size: mobile ? 10 : 12 },
+          titlefont: { size: mobile ? 12 : 13, color: '#486581' },
+        },
+        yaxis: {
+          showgrid: true,
+          gridcolor: 'rgba(16, 42, 67, 0.08)',
+          zerolinecolor: 'rgba(16, 42, 67, 0.18)',
+          linecolor: 'rgba(16, 42, 67, 0.12)',
+          tickfont: { size: mobile ? 10 : 12 },
+          titlefont: { size: mobile ? 12 : 13, color: '#486581' },
+        },
+        ...layout,
+      };
+    }
+
     function setTopTab(tabName) {
       const resolved = canonicalTopTab(tabName);
       const isDash = resolved === 'dashboard';
@@ -1024,13 +1429,13 @@
       const isHist = resolved === 'hist';
       const isWaterfall = resolved === 'waterfall';
       const isInfo = resolved === 'info';
-      tabDashboardBtn.classList.toggle('active', isDash);
-      tabCompareBtn.classList.toggle('active', isCompare);
-      tabFilterTestsBtn.classList.toggle('active', isFilterTests);
-      tabScatterBtn.classList.toggle('active', isScatter);
-      tabHistBtn.classList.toggle('active', isHist);
-      tabWaterfallBtn.classList.toggle('active', isWaterfall);
-      tabInfoBtn.classList.toggle('active', isInfo);
+      setButtonState(tabDashboardBtn, isDash);
+      setButtonState(tabCompareBtn, isCompare);
+      setButtonState(tabFilterTestsBtn, isFilterTests);
+      setButtonState(tabScatterBtn, isScatter);
+      setButtonState(tabHistBtn, isHist);
+      setButtonState(tabWaterfallBtn, isWaterfall);
+      setButtonState(tabInfoBtn, isInfo);
       panelDashboard.classList.toggle('active', isDash);
       panelCompare.classList.toggle('active', isCompare);
       panelFilterTests.classList.toggle('active', isFilterTests);
@@ -1038,6 +1443,13 @@
       panelHist.classList.toggle('active', isHist);
       panelWaterfall.classList.toggle('active', isWaterfall);
       panelInfo.classList.toggle('active', isInfo);
+      panelDashboard.setAttribute('aria-hidden', isDash ? 'false' : 'true');
+      panelCompare.setAttribute('aria-hidden', isCompare ? 'false' : 'true');
+      panelFilterTests.setAttribute('aria-hidden', isFilterTests ? 'false' : 'true');
+      panelScatter.setAttribute('aria-hidden', isScatter ? 'false' : 'true');
+      panelHist.setAttribute('aria-hidden', isHist ? 'false' : 'true');
+      panelWaterfall.setAttribute('aria-hidden', isWaterfall ? 'false' : 'true');
+      panelInfo.setAttribute('aria-hidden', isInfo ? 'false' : 'true');
       const copy = heroCopy(resolved);
       if (heroTitleEl) heroTitleEl.textContent = copy.title;
       if (heroSubEl) heroSubEl.textContent = copy.sub;
@@ -1398,18 +1810,31 @@
     }
 
     function renderMetricRows(title, m, rawTotal, rawCap, statKey) {
-      if (!m) return `<div class="metric"><b>${title}:</b> no metrics</div>`;
+      if (!m) {
+        return `
+          <section class="metric-block">
+            <div class="metric-block-title">${title}<span class="metric-flag flag-false">No metrics</span></div>
+          </section>
+        `;
+      }
       const isNegative = Boolean(m.negative_flag ?? m.decline_flag);
       const flagCls = isNegative ? 'flag-true' : 'flag-false';
       const stat = statLabel(statKey);
       return `
-        <div class="metric"><b>${title} bins:</b> ${m.n_bins ?? 'NA'}</div>
-        <div class="metric"><b>${title} Spearman rho (${stat} vs age):</b> ${formatNum(m.spearman_rho, 4)}</div>
-        <div class="metric"><b>${title} Spearman p:</b> ${formatNum(m.spearman_p, 5)}</div>
-        <div class="metric"><b>${title} Slope ${stat}/year:</b> ${formatNum(m.linear_slope_per_year ?? m.linear_slope_cv_per_year, 6)}</div>
-        <div class="metric"><b>${title} Slope log(${stat})/year:</b> ${formatNum(m.linear_slope_log_per_year ?? m.linear_slope_logcv_per_year, 6)}</div>
-        <div class="metric"><b>${title} Raw points:</b> up to ${rawCap ?? 'NA'} sampled of ${rawTotal ?? 'NA'} total</div>
-        <div class="metric"><b>${title} Negative-trend flag:</b> <span class="${flagCls}">${isNegative}</span></div>
+        <section class="metric-block">
+          <div class="metric-block-title">
+            ${title}
+            <span class="metric-flag ${flagCls}">${isNegative ? 'Negative trend' : 'Not negative'}</span>
+          </div>
+          <div class="metric-stat-grid">
+            <div class="metric-stat"><span class="metric-label">Bins</span><span class="metric-value">${m.n_bins ?? 'NA'}</span></div>
+            <div class="metric-stat"><span class="metric-label">Spearman rho</span><span class="metric-value">${formatNum(m.spearman_rho, 4)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Spearman p</span><span class="metric-value">${formatNum(m.spearman_p, 5)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Slope ${stat}/year</span><span class="metric-value">${formatNum(m.linear_slope_per_year ?? m.linear_slope_cv_per_year, 6)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Slope log(${stat})/year</span><span class="metric-value">${formatNum(m.linear_slope_log_per_year ?? m.linear_slope_logcv_per_year, 6)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Raw points</span><span class="metric-value">up to ${rawCap ?? 'NA'} sampled of ${rawTotal ?? 'NA'}</span></div>
+          </div>
+        </section>
       `;
     }
 
@@ -1446,9 +1871,11 @@
       const trimLabel = trimLabelFromPct(trimSliderEl.value);
       const stat = statLabel(statKey);
 
-      let html = `<div class="metric"><b>Category:</b> ${md.category || 'Other Clinical'}</div>`;
-      html += `<div class="metric"><b>Outlier mode:</b> ${trimLabel}</div>`;
-      html += `<div class="metric"><b>Ranking/stat view:</b> ${stat} vs age</div>`;
+      let html = `<div class="metric-header">`;
+      html += `<span class="metric-pill">Category: ${md.category || 'Other Clinical'}</span>`;
+      html += `<span class="metric-pill">Outliers: ${trimLabel}</span>`;
+      html += `<span class="metric-pill">View: ${stat} vs age</span>`;
+      html += `</div><div class="metric-grid">`;
       if (cohort === 'both') {
         html += renderMetricRows('Female', sexMetrics.female || null, rawBySex.female ?? 'NA', rawCap, statKey);
         html += renderMetricRows('Male', sexMetrics.male || null, rawBySex.male ?? 'NA', rawCap, statKey);
@@ -1458,6 +1885,7 @@
       } else {
         html += renderMetricRows('Pooled', pooledMetric, md.raw_total_n ?? 'NA', rawCap, statKey);
       }
+      html += '</div>';
       box.innerHTML = html;
     }
 
@@ -1467,6 +1895,10 @@
       modeStdBtn.classList.toggle('active', mode === 'std');
       modeMeanBtn.classList.toggle('active', mode === 'mean');
       modeSkewBtn.classList.toggle('active', mode === 'skewness');
+      modeCvBtn.setAttribute('aria-pressed', mode === 'cv' ? 'true' : 'false');
+      modeStdBtn.setAttribute('aria-pressed', mode === 'std' ? 'true' : 'false');
+      modeMeanBtn.setAttribute('aria-pressed', mode === 'mean' ? 'true' : 'false');
+      modeSkewBtn.setAttribute('aria-pressed', mode === 'skewness' ? 'true' : 'false');
     }
 
     function pickPointsByCohort(s, cohort, trimMode) {
@@ -1666,9 +2098,9 @@
 
       renderMetrics(id, s);
       const mobile = window.matchMedia('(max-width: 760px)').matches;
-      Plotly.newPlot('plot', traces, {
+      Plotly.newPlot('plot', traces, applyPlotTheme({
         title,
-        xaxis: { title: 'Age (years)', tickfont: { size: mobile ? 10 : 12 } },
+        xaxis: { title: 'Age (years)' },
         yaxis: {
           title: state.mode === 'cv'
             ? 'Coefficient of Variation (CV)'
@@ -1676,19 +2108,15 @@
               ? 'Standard deviation (binned)'
             : state.mode === 'skewness'
               ? 'Skewness (binned)'
-              : 'Median Biomarker Value',
-          tickfont: { size: mobile ? 10 : 12 }
+              : 'Median Biomarker Value'
         },
-        margin: mobile ? { t: 52, l: 46, r: 10, b: 44 } : { t: 56, l: 64, r: 18, b: 54 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
         legend: {
           orientation: 'h',
-          y: 1.08,
+          y: 1.12,
           font: { size: mobile ? 10 : 12 },
           itemwidth: mobile ? 38 : undefined
         }
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
     }
 
     function metricsForView(rows, cohort, trimMode, statKey='cv') {
@@ -1818,13 +2246,11 @@
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       const scatterDiv = document.getElementById('scatter-plot');
       if (!points.length) {
-        Plotly.newPlot('scatter-plot', [], {
+        Plotly.newPlot('scatter-plot', [], applyPlotTheme({
           title: 'No biomarkers match current scatter filters',
           xaxis: { title: `Spearman rho (Age vs ${xLabel})` },
           yaxis: { title: `Spearman rho (Age vs ${yLabel})` },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
@@ -1878,7 +2304,7 @@
         }];
       }
 
-      Plotly.newPlot('scatter-plot', traces, {
+      Plotly.newPlot('scatter-plot', traces, applyPlotTheme({
         title: `Biomarker Scatter: ${xLabel} vs ${yLabel} Spearman`,
         annotations: [{
           xref: 'paper',
@@ -1892,21 +2318,14 @@
         xaxis: {
           title: `Spearman rho (Age vs ${xLabel})`,
           zeroline: true,
-          zerolinecolor: '#c2c8d0',
           range: [-1, 1],
-          tickfont: { size: mobile ? 10 : 12 },
         },
         yaxis: {
           title: `Spearman rho (Age vs ${yLabel})`,
           zeroline: true,
-          zerolinecolor: '#c2c8d0',
           range: [-1, 1],
-          tickfont: { size: mobile ? 10 : 12 },
         },
-        margin: mobile ? { t: 62, l: 52, r: 10, b: 52 } : { t: 64, l: 70, r: 14, b: 60 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
 
       if (scatterDiv && scatterDiv.removeAllListeners) {
         scatterDiv.removeAllListeners('plotly_click');
@@ -2056,17 +2475,15 @@
 
       const noData = traces.every(t => !t.x || t.x.length === 0);
       if (noData) {
-        Plotly.newPlot('hist-plot', [], {
+        Plotly.newPlot('hist-plot', [], applyPlotTheme({
           title: 'No biomarkers match current histogram filters',
           xaxis: { title: `Spearman rho (Age vs ${stat})`, range: [-1, 1] },
           yaxis: { title: 'Count of biomarkers' },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
-      Plotly.newPlot('hist-plot', traces, {
+      Plotly.newPlot('hist-plot', traces, applyPlotTheme({
         title: `Histogram of Spearman rho: ${stat} vs age`,
         barmode: 'overlay',
         annotations: [{
@@ -2081,19 +2498,11 @@
         xaxis: {
           title: `Spearman rho (Age vs ${stat})`,
           range: [-1, 1],
-          tickfont: { size: mobile ? 10 : 12 },
           zeroline: true,
-          zerolinecolor: '#c2c8d0',
         },
-        yaxis: {
-          title: 'Count of biomarkers',
-          tickfont: { size: mobile ? 10 : 12 },
-        },
+        yaxis: { title: 'Count of biomarkers' },
         legend: { orientation: 'h' },
-        margin: mobile ? { t: 66, l: 52, r: 10, b: 52 } : { t: 68, l: 70, r: 14, b: 60 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
     }
 
     async function applyWaterfallSearch() {
@@ -2160,13 +2569,11 @@
       }
 
       if (!rows.length) {
-        Plotly.newPlot('waterfall-plot', [], {
+        Plotly.newPlot('waterfall-plot', [], applyPlotTheme({
           title: 'No age bins pass minimum n for this biomarker/cohort',
           xaxis: { title: s.display_name || s.biomarker_name || id },
           yaxis: { title: 'Age bin' },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
@@ -2240,7 +2647,7 @@
         });
       }
 
-      Plotly.newPlot('waterfall-plot', traces, {
+      Plotly.newPlot('waterfall-plot', traces, applyPlotTheme({
         title: `${s.display_name || s.biomarker_name} — age-stratified waterfall (${cohort})`,
         annotations: [{
           xref: 'paper',
@@ -2251,19 +2658,15 @@
           text: `Outliers: ${trimLabelFromPct(trimPct)}, min n/bin: ${minN}, bins shown: ${withDensity.length}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
-        xaxis: { title: 'Biomarker value', tickfont: { size: mobile ? 10 : 12 } },
+        xaxis: { title: 'Biomarker value' },
         yaxis: {
           title: 'Age bin',
           tickmode: 'array',
           tickvals: yPos,
           ticktext: withDensity.map(r => r.label),
-          tickfont: { size: mobile ? 10 : 12 },
         },
         legend: { orientation: 'v', title: { text: 'Quartiles' } },
-        margin: mobile ? { t: 72, l: 72, r: 12, b: 52 } : { t: 72, l: 88, r: 16, b: 60 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
     }
 
     function renderRankTable() {
@@ -2366,7 +2769,7 @@
       }
 
       const mobile = window.matchMedia('(max-width: 760px)').matches;
-      Plotly.newPlot('compare-plot', traces, {
+      Plotly.newPlot('compare-plot', traces, applyPlotTheme({
         title: mode === 'negative' ? `Top ${topN} Most Negative Spearman Biomarkers (${stat} vs age)` :
                mode === 'positive' ? `Top ${topN} Most Positive Spearman Biomarkers (${stat} vs age)` :
                `Top ${topN} Largest |Spearman| Biomarkers (${stat} vs age)`,
@@ -2380,22 +2783,18 @@
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
         barmode: cohort === 'both' ? 'group' : 'relative',
-        xaxis: { title: xTitle, tickfont: { size: mobile ? 10 : 12 } },
-        yaxis: { automargin: true, tickfont: { size: mobile ? 10 : 12 } },
-        margin: mobile ? { t: 64, l: 150, r: 10, b: 44 } : { t: 56, l: 260, r: 16, b: 54 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+        xaxis: { title: xTitle },
+        yaxis: { automargin: true },
+        margin: mobile ? { t: 72, l: 150, r: 10, b: 46 } : { t: 72, l: 280, r: 18, b: 58 },
+      }, mobile), { responsive: true, displaylogo: false });
 
       if (!HAS_CLALIT) {
-        Plotly.newPlot('compare-clalit-plot', [], {
+        Plotly.newPlot('compare-clalit-plot', [], applyPlotTheme({
           title: 'No external cohort overlay configured for this specimen',
           xaxis: { visible: false },
           yaxis: { visible: false },
-          margin: mobile ? { t: 44, l: 20, r: 10, b: 20 } : { t: 44, l: 30, r: 16, b: 28 },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+          margin: mobile ? { t: 52, l: 20, r: 10, b: 20 } : { t: 56, l: 30, r: 16, b: 28 },
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
@@ -2456,15 +2855,12 @@
         hoverinfo: 'none'
       });
 
-      Plotly.newPlot('compare-clalit-plot', cTraces, {
+      Plotly.newPlot('compare-clalit-plot', cTraces, applyPlotTheme({
         title: `Clalit vs NHANES Spearman rho (${stat} vs age)`,
         xaxis: { title: `NHANES Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
         yaxis: { title: `Clalit Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
-        margin: mobile ? { t: 40, l: 52, r: 10, b: 44 } : { t: 40, l: 60, r: 16, b: 54 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
         showlegend: false,
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
     }
 
     function createFilterClauseRow(initial = {}) {
@@ -2680,7 +3076,8 @@
       renderRankTable();
       if (!id) {
         document.getElementById('metrics').innerHTML = '<div class="metric">No biomarkers match current filters.</div>';
-        Plotly.newPlot('plot', [], { title: 'No biomarkers match current filters' }, { responsive: true, displaylogo: false });
+        const mobile = window.matchMedia('(max-width: 760px)').matches;
+        Plotly.newPlot('plot', [], applyPlotTheme({ title: 'No biomarkers match current filters' }, mobile), { responsive: true, displaylogo: false });
         return;
       }
       renderMetrics(id);
@@ -2710,6 +3107,23 @@
         if (hideClalitWrapEl) hideClalitWrapEl.style.display = 'none';
         if (compareClalitTitleEl) compareClalitTitleEl.textContent = 'External Cohort Agreement';
       }
+      const tabPairs = [
+        [tabDashboardBtn, panelDashboard],
+        [tabCompareBtn, panelCompare],
+        [tabFilterTestsBtn, panelFilterTests],
+        [tabScatterBtn, panelScatter],
+        [tabHistBtn, panelHist],
+        [tabWaterfallBtn, panelWaterfall],
+        [tabInfoBtn, panelInfo],
+      ];
+      for (const [btn, panel] of tabPairs) {
+        if (!btn || !panel) continue;
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-controls', panel.id);
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', btn.id);
+      }
+      setMode('cv');
       setScatterLabelsEnabled(false);
       setAllTrimSliders(0);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');

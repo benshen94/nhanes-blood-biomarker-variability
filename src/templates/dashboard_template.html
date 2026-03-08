@@ -1,115 +1,171 @@
-#!/usr/bin/env python3
-"""Build a static interactive HTML dashboard with lazy-loaded biomarker series."""
-
-from __future__ import annotations
-
-import argparse
-import hashlib
-import json
-import os
-import re
-import time
-from pathlib import Path
-
-import numpy as np
-import pandas as pd
-from scipy.stats import skew as scipy_skew
-from scipy.stats import spearmanr
-
-from nhanes_common import ensure_dir
-
-
-TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "dashboard_template.html"
-
-
-HTML_TEMPLATE = """<!DOCTYPE html>
-<html lang=\"en\">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>nhanes-biomarker-dashboard - __SPECIMEN_TITLE__</title>
-  <script src=\"https://cdn.plot.ly/plotly-2.35.2.min.js\"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {
-      --bg: #f6f3eb;
-      --card: #ffffff;
-      --ink: #1f2937;
-      --muted: #5f6b7a;
+      --bg: #edf3f7;
+      --bg-accent: #d7e7f0;
+      --surface: rgba(255, 255, 255, 0.94);
+      --surface-strong: #ffffff;
+      --surface-muted: #f4f8fb;
+      --surface-accent: #edf8f6;
+      --ink: #102a43;
+      --ink-soft: #486581;
+      --ink-muted: #6b7c93;
+      --border: rgba(16, 42, 67, 0.12);
+      --border-strong: rgba(16, 42, 67, 0.2);
       --accent: #0f766e;
-      --accent-soft: #c9ebe5;
+      --accent-strong: #0b5c56;
+      --accent-soft: rgba(15, 118, 110, 0.12);
+      --danger-soft: rgba(209, 73, 91, 0.14);
       --warn: #b45309;
-      --line: #ddd6c8;
-      --chip: #f4efe5;
-      --tab: #efe7d8;
-      --tab-active: #0f766e;
+      --focus: #0ea5e9;
+      --shadow-sm: 0 12px 30px rgba(16, 42, 67, 0.06);
+      --shadow-md: 0 18px 48px rgba(16, 42, 67, 0.1);
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 28px;
+      --control-h: 44px;
+      --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: var(--font-sans);
       color: var(--ink);
-      background: radial-gradient(circle at 8% 10%, #fff9e8, var(--bg));
+      background:
+        radial-gradient(circle at top left, rgba(215, 231, 240, 0.95), transparent 32%),
+        radial-gradient(circle at top right, rgba(15, 118, 110, 0.09), transparent 26%),
+        linear-gradient(180deg, #f7fbfd 0%, var(--bg) 54%, #e5eef4 100%);
+      line-height: 1.45;
     }
-    .wrap { max-width: 1320px; margin: 0 auto; padding: 20px; }
+    a { color: inherit; }
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+    button {
+      border: 0;
+      background: none;
+    }
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .wrap { max-width: 1460px; margin: 0 auto; padding: 28px 24px 40px; }
     .hero {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
-      gap: 16px;
-      margin-bottom: 14px;
+      align-items: stretch;
+      gap: 18px;
+      margin-bottom: 18px;
+      padding: 26px 28px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(240,248,252,0.92) 58%, rgba(228,243,240,0.9) 100%);
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
     }
-    h1 { margin: 0; font-size: 34px; letter-spacing: 0.2px; }
-    .sub { color: var(--muted); margin-top: 6px; }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -38% auto;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(15,118,110,0.12), transparent 65%);
+      pointer-events: none;
+    }
+    .hero-copy {
+      display: grid;
+      gap: 10px;
+      max-width: 760px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent-strong);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+      max-width: 12ch;
+    }
+    .sub {
+      color: var(--ink-soft);
+      margin: 0;
+      font-size: 1rem;
+      max-width: 62ch;
+    }
     .status-chip {
-      background: var(--chip);
-      border: 1px solid var(--line);
+      align-self: flex-start;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 8px 12px;
+      padding: 11px 16px;
       font-size: 13px;
-      color: var(--muted);
+      color: var(--ink-soft);
       white-space: nowrap;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 20px rgba(16, 42, 67, 0.08);
+      position: relative;
+      z-index: 1;
     }
     .nav-stack {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-bottom: 14px;
+      gap: 12px;
+      margin-bottom: 18px;
     }
     .nav-row {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(10px);
     }
     .nav-label {
       font-size: 11px;
-      color: var(--muted);
+      color: var(--ink-muted);
       text-transform: uppercase;
-      letter-spacing: 0.7px;
+      letter-spacing: 0.12em;
       font-weight: 700;
-      min-width: 96px;
-    }
-    .specimen-row {
-      background: #fffdf7;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
+      min-width: 112px;
     }
     .specimen-row .nav-label {
-      color: #0b5f58;
+      color: var(--accent-strong);
     }
     .specimen-tabs,
     .view-tabs {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       flex-wrap: wrap;
       flex: 1 1 auto;
     }
     .tab-btn {
-      border: 1px solid var(--line);
-      background: var(--tab);
-      border-radius: 10px;
-      padding: 8px 12px;
+      border: 1px solid transparent;
+      background: var(--surface-muted);
+      border-radius: 999px;
+      padding: 10px 15px;
       cursor: pointer;
       font-size: 14px;
       font-weight: 600;
@@ -118,178 +174,493 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+    .tab-btn:hover {
+      border-color: var(--border-strong);
+      background: #f8fbfd;
+      transform: translateY(-1px);
     }
     .tab-btn.active {
-      background: var(--tab-active);
-      border-color: var(--tab-active);
+      background: var(--accent);
+      border-color: var(--accent);
       color: #fff;
+      box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
     }
     .specimen-tabs .tab-btn {
-      padding: 10px 16px;
-      border-radius: 999px;
-      font-size: 15px;
+      padding: 11px 18px;
+      font-size: 14px;
       font-weight: 700;
-      background: #e6f2f0;
-      border-color: #cde2de;
+      background: var(--surface-accent);
     }
     .specimen-tabs .tab-btn.active {
-      box-shadow: 0 1px 2px rgba(15, 118, 110, 0.28);
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
     }
     .panel { display: none; }
     .panel.active { display: block; }
-
-    .grid { display: grid; grid-template-columns: 330px 1fr; gap: 16px; }
+    .grid { display: grid; grid-template-columns: minmax(320px, 360px) minmax(0, 1fr); gap: 18px; align-items: start; }
     .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(8px);
     }
-    .sticky { position: sticky; top: 12px; }
-
+    .sticky { position: sticky; top: 14px; }
+    .control-rail {
+      display: grid;
+      gap: 14px;
+    }
+    .control-section {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(16, 42, 67, 0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(244,248,251,0.88) 100%);
+    }
+    .section-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .section-copy {
+      margin: -4px 0 2px;
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
     input[type="text"],
     input[type="search"],
     input[type="number"],
     input[type="range"],
     select {
       width: 100%;
-      padding: 8px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      min-height: var(--control-h);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
       font-size: 14px;
-      margin: 6px 0 10px 0;
-      background: #fff;
+      margin: 6px 0 0;
+      background: var(--surface-strong);
+      color: var(--ink);
+      box-shadow: inset 0 1px 2px rgba(16, 42, 67, 0.03);
     }
+    select[multiple] { min-height: 180px; }
+    input::placeholder { color: #8aa0b8; }
+    input:hover,
+    select:hover { border-color: var(--border-strong); }
     label {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--ink-soft);
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.08em;
+      font-weight: 700;
     }
     input[type="checkbox"] {
       width: auto;
       margin: 0;
       accent-color: var(--accent);
+      transform: scale(1.1);
     }
     input[type="range"] {
       padding: 0;
       border: 0;
+      min-height: auto;
       margin: 8px 0 2px 0;
       accent-color: var(--accent);
       background: transparent;
+      box-shadow: none;
     }
     .trim-caption {
       font-size: 12px;
-      color: var(--muted);
-      margin: 2px 0 10px 0;
+      color: var(--ink-muted);
+      margin: 2px 0 0;
     }
     .check-label {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 6px 0 10px 0;
+      gap: 10px;
+      margin: 0;
+      min-height: var(--control-h);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      font-size: 13px;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 600;
     }
-    .mode-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
+    .mode-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .mode-btn {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
-      border-radius: 8px;
-      padding: 7px 10px;
+      min-height: 52px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      border-radius: 14px;
+      padding: 10px 12px;
       cursor: pointer;
       font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+    .mode-btn:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-muted);
     }
     .mode-btn.active {
       background: var(--accent);
       color: #fff;
       border-color: var(--accent);
+      box-shadow: 0 12px 22px rgba(15, 118, 110, 0.22);
     }
-
-    #plot { width: 100%; height: 540px; }
-    .metric { font-size: 14px; margin: 6px 0; }
-    .flag-true { color: var(--accent); font-weight: 700; }
-    .flag-false { color: var(--warn); }
-
+    .analysis-shell {
+      display: grid;
+      gap: 16px;
+    }
+    .canvas-card {
+      padding: 20px;
+    }
+    .plot-card-header,
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .panel-title {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+    }
+    .panel-copy {
+      margin: 4px 0 0;
+      color: var(--ink-muted);
+      font-size: 13px;
+    }
+    #plot { width: 100%; height: 600px; }
+    #metrics {
+      margin-top: 0;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(237, 248, 246, 0.92), rgba(255,255,255,0.94));
+    }
+    .metric-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .metric-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(16, 42, 67, 0.08);
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .metric-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .metric-block {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(16, 42, 67, 0.08);
+      background: rgba(255,255,255,0.86);
+    }
+    .metric-block-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .metric-flag {
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .flag-true {
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      font-weight: 800;
+    }
+    .flag-false {
+      color: var(--warn);
+      background: rgba(180, 83, 9, 0.12);
+      font-weight: 800;
+    }
+    .metric-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric-stat {
+      min-width: 0;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--surface-muted);
+      border: 1px solid rgba(16, 42, 67, 0.06);
+    }
+    .metric-label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      word-break: break-word;
+    }
     .table-wrap {
-      max-height: 320px;
+      max-height: 360px;
       overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-top: 12px;
+      background: var(--surface-strong);
     }
-    table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th, td { border-bottom: 1px solid #eee7da; padding: 6px; text-align: left; }
-    th { position: sticky; top: 0; background: #fffaf0; z-index: 1; }
-
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .info-card h3 { margin: 2px 0 8px 0; font-size: 18px; }
-    .info-card p { margin: 0 0 8px 0; color: var(--muted); }
-    .info-card ul { margin: 8px 0 0 18px; padding: 0; }
-    .info-card li { margin: 6px 0; }
-    .mono { font-family: Menlo, Monaco, 'Courier New', monospace; font-size: 12px; color: var(--muted); }
-    .compare-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .compare-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .compare-controls select, .compare-controls input { margin: 4px 0 0 0; width: 220px; }
-    #compare-plot { width: 100%; height: 640px; }
-    #compare-clalit-plot { width: 100%; height: 480px; }
-    .scatter-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .scatter-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .scatter-controls select, .scatter-controls input { margin: 4px 0 0 0; width: 220px; }
-    #scatter-category { height: 160px; }
-    .scatter-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
-    .scatter-actions button {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
+    table { border-collapse: collapse; width: 100%; font-size: 13px; table-layout: fixed; }
+    th, td {
+      border-bottom: 1px solid rgba(16, 42, 67, 0.08);
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: top;
+      color: var(--ink-soft);
+      overflow-wrap: anywhere;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f7fbfd;
+      z-index: 1;
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    tbody tr:hover {
+      background: rgba(15,118,110,0.06);
+    }
+    .info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .info-card h3 { margin: 0 0 8px; font-size: 1.05rem; letter-spacing: -0.01em; }
+    .info-card p { margin: 0 0 10px; color: var(--ink-soft); }
+    .info-card ul { margin: 8px 0 0 18px; padding: 0; color: var(--ink-soft); }
+    .info-card li { margin: 8px 0; }
+    .mono { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+    .compare-controls,
+    .filter-controls,
+    .scatter-controls,
+    .hist-controls,
+    .waterfall-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 14px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.94));
+    }
+    .compare-controls label,
+    .filter-controls label,
+    .scatter-controls label,
+    .hist-controls label,
+    .waterfall-controls label {
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+    .compare-controls select, .compare-controls input,
+    .filter-controls select, .filter-controls input,
+    .scatter-controls select, .scatter-controls input,
+    .hist-controls select, .hist-controls input,
+    .waterfall-controls select, .waterfall-controls input {
+      margin: 6px 0 0;
+      width: 100%;
+    }
+    .clause-builder {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.96));
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .clause-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .clause-actions button {
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+    .clause-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed rgba(16, 42, 67, 0.12);
+    }
+    .clause-row:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+    .clause-row label {
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 12px;
+      min-width: 160px;
+    }
+    .clause-row select,
+    .clause-row input {
+      margin: 3px 0 0 0;
+      width: 180px;
+    }
+    .clause-remove-btn {
+      border: 1px solid #f1c6be;
+      background: #fff4f3;
+      color: #9f1239;
       border-radius: 8px;
       padding: 6px 10px;
       cursor: pointer;
       font-size: 12px;
     }
-    .scatter-hint { font-size: 12px; color: var(--muted); }
+    .filter-results {
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-top: 12px;
+      background: var(--surface-strong);
+    }
+    .filter-summary {
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin: 10px 0;
+    }
+    .filter-test-picker {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface-strong);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .filter-test-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin: 2px 0 8px 0;
+      flex-wrap: wrap;
+    }
+    .filter-test-actions button {
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .filter-test-hint {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+    #filter-tests-biomarkers {
+      height: 220px;
+      margin-top: 4px;
+    }
+    #compare-plot { width: 100%; height: 640px; }
+    #compare-clalit-plot { width: 100%; height: 480px; }
+    #scatter-category { height: 160px; }
+    .scatter-actions,
+    .hist-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 10px 0;
+      flex-wrap: wrap;
+    }
+    .scatter-actions button,
+    .hist-actions button {
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+    .scatter-hint { font-size: 12px; color: var(--ink-muted); }
     #scatter-plot { width: 100%; height: 640px; }
     .toggle-btn-active {
       background: var(--accent) !important;
       color: #fff !important;
       border-color: var(--accent) !important;
     }
-    .hist-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .hist-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .hist-controls select, .hist-controls input { margin: 4px 0 0 0; width: 220px; }
     #hist-category { height: 160px; }
-    .hist-actions { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px 0; flex-wrap: wrap; }
-    .hist-actions button {
-      border: 1px solid var(--line);
-      background: #f8f5ef;
-      border-radius: 8px;
-      padding: 6px 10px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .hist-hint { font-size: 12px; color: var(--muted); }
+    .hist-hint { font-size: 12px; color: var(--ink-muted); }
     #hist-plot { width: 100%; height: 600px; }
-    .waterfall-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
-    .waterfall-controls label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .waterfall-controls select, .waterfall-controls input { margin: 4px 0 0 0; width: 260px; }
-    .waterfall-caption { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .waterfall-caption { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
     #waterfall-plot { width: 100%; height: 760px; }
 
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
       .sticky { position: static; }
-      #plot { height: 430px; }
+      #plot { height: 470px; }
       .info-grid { grid-template-columns: 1fr; }
-      .hero { flex-direction: column; align-items: flex-start; }
-      .wrap { padding: 14px; }
-      h1 { font-size: 28px; }
-      .sub { font-size: 15px; }
+      .hero { flex-direction: column; align-items: flex-start; padding: 24px 22px; }
+      .wrap { padding: 18px 16px 32px; }
+      .status-chip { align-self: stretch; }
       #compare-plot { height: 560px; }
       #compare-clalit-plot { height: 480px; }
+      .clause-row label { min-width: 140px; }
       #scatter-plot { height: 560px; }
       #hist-plot { height: 520px; }
       #waterfall-plot { height: 620px; }
     }
     @media (max-width: 760px) {
-      .nav-row { align-items: flex-start; }
+      .nav-row { align-items: flex-start; padding: 14px; }
       .nav-label { min-width: 100%; margin-bottom: 2px; }
       .specimen-tabs .tab-btn,
       .view-tabs .tab-btn { flex: 1 1 calc(50% - 8px); text-align: center; }
@@ -298,12 +669,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         overflow-x: auto;
       }
       table { font-size: 12px; min-width: 560px; }
+      .metric-stat-grid { grid-template-columns: 1fr; }
       #plot { height: 380px; }
       #compare-plot { height: 500px; }
       #compare-clalit-plot { height: 440px; }
       .compare-controls label { width: 100%; }
       .compare-controls select,
       .compare-controls input { width: 100%; }
+      .filter-controls label { width: 100%; }
+      .filter-controls select,
+      .filter-controls input { width: 100%; }
+      .clause-row label { width: 100%; min-width: 0; }
+      .clause-row select,
+      .clause-row input { width: 100%; }
       .scatter-controls label { width: 100%; }
       .scatter-controls select,
       .scatter-controls input { width: 100%; }
@@ -319,8 +697,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     @media (max-width: 520px) {
       .specimen-tabs .tab-btn,
       .view-tabs .tab-btn { flex: 1 1 100%; }
-      .mode-buttons { flex-wrap: wrap; }
-      .mode-btn { flex: 1 1 calc(33.333% - 8px); }
+      .hero { padding: 20px 18px; }
+      .mode-buttons { grid-template-columns: 1fr; }
       #plot { height: 340px; }
       #compare-plot { height: 440px; }
       #compare-clalit-plot { height: 440px; }
@@ -331,237 +709,360 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <div class=\"wrap\">
-    <div class=\"hero\">
-      <div>
-        <h1 id=\"hero-title\">nhanes-biomarker-dashboard</h1>
-        <div id=\"hero-sub\" class=\"sub\">Explore cross-sectional aging trajectories across __SPECIMEN_LOWER__ biomarkers.</div>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-copy">
+        <div class="hero-eyebrow">Healthy Aging Explorer</div>
+        <h1 id="hero-title">nhanes-biomarker-dashboard</h1>
+        <div id="hero-sub" class="sub">Explore cross-sectional aging trajectories across __SPECIMEN_LOWER__ biomarkers.</div>
       </div>
-      <div id=\"status-chip\" class=\"status-chip\">Loading metadata…</div>
+      <div id="status-chip" class="status-chip">Loading metadata…</div>
     </div>
 
-    <div class=\"nav-stack\" aria-label=\"Dashboard navigation\">
-      <div class=\"nav-row specimen-row\" role=\"navigation\" aria-label=\"Specimen\">
-        <div class=\"nav-label\">Specimen</div>
-        <div class=\"specimen-tabs\">
+    <div class="nav-stack" aria-label="Dashboard navigation">
+      <div class="nav-row specimen-row" role="navigation" aria-label="Specimen">
+        <div class="nav-label">Specimen</div>
+        <div class="specimen-tabs">
           __SPECIMEN_SWITCH_LINK__
         </div>
       </div>
-      <div class=\"nav-row view-row\" role=\"tablist\" aria-label=\"Analysis View\">
-        <div class=\"nav-label\">Analysis View</div>
-        <div class=\"view-tabs\">
-          <button id=\"tab-dashboard\" class=\"tab-btn active\" type=\"button\">Dashboard</button>
-          <button id=\"tab-compare\" class=\"tab-btn\" type=\"button\">Compare Rankings</button>
-          <button id=\"tab-scatter\" class=\"tab-btn\" type=\"button\">Scatter Plot</button>
-          <button id=\"tab-hist\" class=\"tab-btn\" type=\"button\">Histograms</button>
-          <button id=\"tab-waterfall\" class=\"tab-btn\" type=\"button\">Waterfall</button>
-          <button id=\"tab-info\" class=\"tab-btn\" type=\"button\">Info & Methods</button>
+      <div class="nav-row view-row" role="tablist" aria-label="Analysis View">
+        <div class="nav-label">Analysis View</div>
+        <div class="view-tabs">
+          <button id="tab-dashboard" class="tab-btn active" type="button">Dashboard</button>
+          <button id="tab-compare" class="tab-btn" type="button">Compare Rankings</button>
+          <button id="tab-filter-tests" class="tab-btn" type="button">Filter Tests</button>
+          <button id="tab-scatter" class="tab-btn" type="button">Scatter Plot</button>
+          <button id="tab-hist" class="tab-btn" type="button">Histograms</button>
+          <button id="tab-waterfall" class="tab-btn" type="button">Waterfall</button>
+          <button id="tab-info" class="tab-btn" type="button">Info & Methods</button>
         </div>
       </div>
     </div>
 
-    <div id=\"panel-dashboard\" class=\"panel active\">
-      <div class=\"grid\">
-        <div class=\"card sticky\">
-          <div class=\"mode-buttons\">
-            <button id=\"mode-cv\" class=\"mode-btn active\" type=\"button\">Plot CV</button>
-            <button id=\"mode-mean\" class=\"mode-btn\" type=\"button\">Plot Median</button>
-            <button id=\"mode-skew\" class=\"mode-btn\" type=\"button\">Plot Skewness</button>
+    <div id="panel-dashboard" class="panel active">
+      <div class="grid">
+        <div class="card sticky">
+          <div class="control-rail">
+            <div class="control-section">
+              <h2 class="section-title">Metric View</h2>
+              <div class="section-copy">Switch between spread, central tendency, and shape while keeping the same selected biomarker.</div>
+              <div class="mode-buttons" role="group" aria-label="Metric mode">
+                <button id="mode-cv" class="mode-btn active" type="button">Plot CV</button>
+                <button id="mode-std" class="mode-btn" type="button">Plot SD</button>
+                <button id="mode-mean" class="mode-btn" type="button">Plot Median</button>
+                <button id="mode-skew" class="mode-btn" type="button">Plot Skewness</button>
+              </div>
+            </div>
+
+            <div class="control-section">
+              <h2 class="section-title">Biomarker Selection</h2>
+              <div class="section-copy">Search by display name, source code, or file and narrow the selector by clinical category.</div>
+              <label for="search">Search Biomarker</label>
+              <input id="search" list="biomarker-options" placeholder="Type name, code, file..." />
+              <datalist id="biomarker-options"></datalist>
+
+              <label for="category-filter">Clinical Category</label>
+              <select id="category-filter"></select>
+              <label class="check-label"><input id="include-env" type="checkbox" /> Include environmental/toxicant assays</label>
+
+              <label for="biomarker-select">Select Biomarker</label>
+              <select id="biomarker-select"></select>
+            </div>
+
+            <div class="control-section">
+              <h2 class="section-title">Cohort And Trimming</h2>
+              <div class="section-copy">Apply the same cohort and outlier treatment used by the ranking, scatter, histogram, and waterfall views.</div>
+              <label for="cohort-filter">Sex Group</label>
+              <select id="cohort-filter">
+                <option value="pooled" selected>Pooled</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="both">Both (Female + Male)</option>
+              </select>
+
+              <label for="trim-slider">Symmetric Trim Per Tail (%)</label>
+              <input id="trim-slider" type="range" min="0" max="25" step="5" value="0" />
+              <div id="trim-label" class="trim-caption">Using all values (0-100)</div>
+            </div>
+
+            <div class="control-section">
+              <h2 class="section-title">Display Options</h2>
+              <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
+              <label id="hide-clalit-wrap" class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
+            </div>
+
+            <div id="metrics" class="card" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="analysis-shell">
+          <div class="card canvas-card">
+            <div class="plot-card-header">
+              <div>
+                <h2 class="panel-title">Trajectory Plot</h2>
+                <p class="panel-copy">The main chart stays focused on one biomarker while the control rail changes cohort, trimming, and metric interpretation.</p>
+              </div>
+            </div>
+            <div id="plot"></div>
           </div>
 
-          <label for=\"search\">Search Biomarker</label>
-          <input id=\"search\" list=\"biomarker-options\" placeholder=\"Type name, code, file...\" />
-          <datalist id=\"biomarker-options\"></datalist>
-
-          <label for=\"category-filter\">Clinical Category</label>
-          <select id=\"category-filter\"></select>
-          <label class=\"check-label\"><input id=\"include-env\" type=\"checkbox\" /> Include environmental/toxicant assays</label>
-
-          <label for=\"biomarker-select\">Select Biomarker</label>
-          <select id=\"biomarker-select\"></select>
-
-          <label for=\"cohort-filter\">Sex Group</label>
-          <select id=\"cohort-filter\">
-            <option value=\"pooled\" selected>Pooled</option>
-            <option value=\"female\">Female</option>
-            <option value=\"male\">Male</option>
-            <option value=\"both\">Both (Female + Male)</option>
-          </select>
-
-          <label for=\"trim-slider\">Symmetric Trim Per Tail (%)</label>
-          <input id=\"trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-          <div id=\"trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
-
-          <label class="check-label"><input id="show-low-n" type="checkbox" checked /> Show low-n bins (&lt;30)</label>
-          <label id="hide-clalit-wrap" class="check-label"><input id="hide-clalit" type="checkbox" /> Hide Clalit data</label>
-
-          <div id=\"metrics\" class=\"card\" style=\"margin-top:10px;\"></div>
-        </div>
-
-        <div class=\"card\">
-          <div id=\"plot\"></div>
-          <h3 id=\"rank-title\">Biomarkers Ranked by Most Negative Spearman Rho (CV vs age)</h3>
-          <div class=\"table-wrap\"><table id=\"rank-table\"></table></div>
+          <div class="card">
+            <div class="panel-header">
+              <div>
+                <h3 id="rank-title" class="panel-title">Biomarkers Ranked by Most Negative Spearman Rho (CV vs age)</h3>
+                <p class="panel-copy">Click any row to jump the dashboard plot to that biomarker with the current filters preserved.</p>
+              </div>
+            </div>
+            <div class="table-wrap"><table id="rank-table"></table></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div id=\"panel-compare\" class=\"panel\">
-      <div class=\"card\">
-        <div class=\"compare-controls\">
+    <div id="panel-compare" class="panel">
+      <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Compare Rankings</h2>
+            <p class="panel-copy">Sort biomarkers by age trend direction or magnitude, then compare NHANES against the external cohort when available.</p>
+          </div>
+        </div>
+        <div class="compare-controls">
           <label>Sort
-            <select id=\"compare-sort\">
-              <option value=\"negative\" selected>Most Negative Spearman</option>
-              <option value=\"positive\">Most Positive Spearman</option>
-              <option value=\"absolute\">Largest Absolute Spearman</option>
+            <select id="compare-sort">
+              <option value="negative" selected>Most Negative Spearman</option>
+              <option value="positive">Most Positive Spearman</option>
+              <option value="absolute">Largest Absolute Spearman</option>
             </select>
           </label>
           <label>Statistic
-            <select id=\"compare-stat\">
-              <option value=\"cv\" selected>CV vs age</option>
-              <option value=\"mean\">Mean vs age</option>
-              <option value=\"skewness\">Skewness vs age</option>
+            <select id="compare-stat">
+              <option value="cv" selected>CV vs age</option>
+              <option value="std">Standard deviation vs age</option>
+              <option value="mean">Mean vs age</option>
+              <option value="skewness">Skewness vs age</option>
             </select>
           </label>
           <label>Category
-            <select id=\"compare-category\"></select>
+            <select id="compare-category"></select>
           </label>
-          <label class=\"check-label\"><input id=\"compare-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
+          <label class="check-label"><input id="compare-include-env" type="checkbox" /> Include environmental/toxicant</label>
           <label>Cohort
-            <select id=\"compare-cohort\">
-              <option value=\"pooled\" selected>Pooled</option>
-              <option value=\"female\">Female</option>
-              <option value=\"male\">Male</option>
-              <option value=\"both\">Both (Female + Male)</option>
+            <select id="compare-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="both">Both (Female + Male)</option>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"compare-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"compare-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id="compare-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="compare-trim-label" class="trim-caption">Using all values (0-100)</div>
           </label>
           <label>Top N
-            <input id=\"compare-topn\" type=\"number\" min=\"10\" max=\"200\" step=\"5\" value=\"40\" />
+            <input id="compare-topn" type="number" min="10" max="200" step="5" value="40" />
           </label>
         </div>
         <div id="compare-plot"></div>
-        <h3 id="compare-clalit-title" style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
+        <h3 id="compare-clalit-title" class="panel-title" style="margin-top: 24px;">Clalit vs NHANES Agreement</h3>
         <div id="compare-clalit-plot"></div>
       </div>
     </div>
 
-    <div id=\"panel-scatter\" class=\"panel\">
-      <div class=\"card\">
-        <div class=\"scatter-controls\">
+    <div id="panel-scatter" class="panel">
+      <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Scatter Plot</h2>
+            <p class="panel-copy">Compare two age-trend statistics in one view and click any point to open that biomarker in the main dashboard.</p>
+          </div>
+        </div>
+        <div class="scatter-controls">
           <label>X axis statistic
-            <select id=\"scatter-x-stat\">
-              <option value=\"cv\" selected>CV vs age (Spearman rho)</option>
-              <option value=\"mean\">Mean vs age (Spearman rho)</option>
-              <option value=\"skewness\">Skewness vs age (Spearman rho)</option>
+            <select id="scatter-x-stat">
+              <option value="cv" selected>CV vs age (Spearman rho)</option>
+              <option value="std">Standard deviation vs age (Spearman rho)</option>
+              <option value="mean">Mean vs age (Spearman rho)</option>
+              <option value="skewness">Skewness vs age (Spearman rho)</option>
             </select>
           </label>
           <label>Y axis statistic
-            <select id=\"scatter-y-stat\">
-              <option value=\"cv\">CV vs age (Spearman rho)</option>
-              <option value=\"mean\" selected>Mean vs age (Spearman rho)</option>
-              <option value=\"skewness\">Skewness vs age (Spearman rho)</option>
+            <select id="scatter-y-stat">
+              <option value="cv">CV vs age (Spearman rho)</option>
+              <option value="std">Standard deviation vs age (Spearman rho)</option>
+              <option value="mean" selected>Mean vs age (Spearman rho)</option>
+              <option value="skewness">Skewness vs age (Spearman rho)</option>
             </select>
           </label>
           <label>Cohort
-            <select id=\"scatter-cohort\">
-              <option value=\"pooled\" selected>Pooled</option>
-              <option value=\"female\">Female</option>
-              <option value=\"male\">Male</option>
-              <option value=\"both\">Both (Female + Male)</option>
+            <select id="scatter-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="both">Both (Female + Male)</option>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"scatter-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"scatter-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id="scatter-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="scatter-trim-label" class="trim-caption">Using all values (0-100)</div>
           </label>
-          <label class=\"check-label\"><input id=\"scatter-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
+          <label class="check-label"><input id="scatter-include-env" type="checkbox" /> Include environmental/toxicant</label>
         </div>
         <label>Categories (multi-select)</label>
-        <div class=\"scatter-actions\">
-          <button id=\"scatter-cat-all\" type=\"button\">Select all visible</button>
-          <button id=\"scatter-cat-core\" type=\"button\">Clinical/core only</button>
-          <button id=\"scatter-cat-clear\" type=\"button\">Clear</button>
-          <button id=\"scatter-label-toggle\" type=\"button\">Show labels</button>
-          <span id=\"scatter-selection-count\" class=\"scatter-hint\"></span>
+        <div class="scatter-actions">
+          <button id="scatter-cat-all" type="button">Select all visible</button>
+          <button id="scatter-cat-core" type="button">Clinical/core only</button>
+          <button id="scatter-cat-clear" type="button">Clear</button>
+          <button id="scatter-label-toggle" type="button">Show labels</button>
+          <span id="scatter-selection-count" class="scatter-hint"></span>
         </div>
-        <select id=\"scatter-category\" multiple></select>
-        <div id=\"scatter-plot\"></div>
+        <select id="scatter-category" multiple></select>
+        <div id="scatter-plot"></div>
       </div>
     </div>
 
-    <div id=\"panel-hist\" class=\"panel\">
-      <div class=\"card\">
-        <div class=\"hist-controls\">
+    <div id="panel-hist" class="panel">
+      <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Histograms</h2>
+            <p class="panel-copy">Inspect how the selected trend metric is distributed across the currently visible biomarker set.</p>
+          </div>
+        </div>
+        <div class="hist-controls">
           <label>Statistic
-            <select id=\"hist-stat\">
-              <option value=\"cv\" selected>CV vs age (Spearman rho)</option>
-              <option value=\"mean\">Mean vs age (Spearman rho)</option>
-              <option value=\"skewness\">Skewness vs age (Spearman rho)</option>
+            <select id="hist-stat">
+              <option value="cv" selected>CV vs age (Spearman rho)</option>
+              <option value="std">Standard deviation vs age (Spearman rho)</option>
+              <option value="mean">Mean vs age (Spearman rho)</option>
+              <option value="skewness">Skewness vs age (Spearman rho)</option>
             </select>
           </label>
           <label>Cohort
-            <select id=\"hist-cohort\">
-              <option value=\"pooled\" selected>Pooled</option>
-              <option value=\"female\">Female</option>
-              <option value=\"male\">Male</option>
-              <option value=\"both\">Both (Female + Male)</option>
+            <select id="hist-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="both">Both (Female + Male)</option>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"hist-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"hist-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id="hist-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="hist-trim-label" class="trim-caption">Using all values (0-100)</div>
           </label>
-          <label class=\"check-label\"><input id=\"hist-include-env\" type=\"checkbox\" /> Include environmental/toxicant</label>
+          <label class="check-label"><input id="hist-include-env" type="checkbox" /> Include environmental/toxicant</label>
         </div>
         <label>Categories (multi-select)</label>
-        <div class=\"hist-actions\">
-          <button id=\"hist-cat-all\" type=\"button\">Select all visible</button>
-          <button id=\"hist-cat-core\" type=\"button\">Clinical/core only</button>
-          <button id=\"hist-cat-clear\" type=\"button\">Clear</button>
-          <span id=\"hist-selection-count\" class=\"hist-hint\"></span>
+        <div class="hist-actions">
+          <button id="hist-cat-all" type="button">Select all visible</button>
+          <button id="hist-cat-core" type="button">Clinical/core only</button>
+          <button id="hist-cat-clear" type="button">Clear</button>
+          <span id="hist-selection-count" class="hist-hint"></span>
         </div>
-        <select id=\"hist-category\" multiple></select>
-        <div id=\"hist-plot\"></div>
+        <select id="hist-category" multiple></select>
+        <div id="hist-plot"></div>
       </div>
     </div>
 
-    <div id=\"panel-waterfall\" class=\"panel\">
-      <div class=\"card\">
-        <div class=\"waterfall-controls\">
+    <div id="panel-waterfall" class="panel">
+      <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Waterfall Distribution View</h2>
+            <p class="panel-copy">Age-stratified ridgeline densities reveal how a biomarker’s full distribution shifts across the adult lifespan.</p>
+          </div>
+        </div>
+        <div class="waterfall-controls">
           <label>Search biomarker
-            <input id=\"waterfall-search\" list=\"waterfall-biomarker-options\" placeholder=\"Type biomarker name...\" />
-            <datalist id=\"waterfall-biomarker-options\"></datalist>
+            <input id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." />
+            <datalist id="waterfall-biomarker-options"></datalist>
           </label>
           <label>Biomarker
-            <select id=\"waterfall-biomarker\"></select>
+            <select id="waterfall-biomarker"></select>
           </label>
           <label>Cohort
-            <select id=\"waterfall-cohort\">
-              <option value=\"pooled\" selected>Pooled</option>
-              <option value=\"female\">Female</option>
-              <option value=\"male\">Male</option>
+            <select id="waterfall-cohort">
+              <option value="pooled" selected>Pooled</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
             </select>
           </label>
           <label>Symmetric trim (% per tail)
-            <input id=\"waterfall-trim-slider\" type=\"range\" min=\"0\" max=\"25\" step=\"5\" value=\"0\" />
-            <div id=\"waterfall-trim-label\" class=\"trim-caption\">Using all values (0-100)</div>
+            <input id="waterfall-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="waterfall-trim-label" class="trim-caption">Using all values (0-100)</div>
           </label>
           <label>Min n per age bin
-            <input id=\"waterfall-min-n\" type=\"number\" min=\"5\" max=\"100\" step=\"5\" value=\"20\" />
-            <div class=\"waterfall-caption\">Bins below this n are hidden from waterfall.</div>
+            <input id="waterfall-min-n" type="number" min="5" max="100" step="5" value="20" />
+            <div class="waterfall-caption">Bins below this n are hidden from waterfall.</div>
           </label>
         </div>
-        <div id=\"waterfall-plot\"></div>
+        <div id="waterfall-plot"></div>
       </div>
     </div>
 
-    <div id=\"panel-info\" class=\"panel\">
-      <div class=\"info-grid\">
-        <div class=\"card info-card\">
+    <div id="panel-filter-tests" class="panel">
+      <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Filter Tests</h2>
+            <p class="panel-copy">Build multi-clause trend filters, limit the candidate list, and open any matching biomarker back in the dashboard plot.</p>
+          </div>
+        </div>
+        <div class="filter-controls">
+          <label>Sex group
+            <select id="filter-tests-cohort">
+              <option value="both" selected>Both (Female + Male)</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </label>
+          <label>Symmetric trim (% per tail)
+            <input id="filter-tests-trim-slider" type="range" min="0" max="25" step="5" value="0" />
+            <div id="filter-tests-trim-label" class="trim-caption">Using all values (0-100)</div>
+          </label>
+          <label>Clause combiner
+            <select id="filter-tests-logic">
+              <option value="and" selected>AND</option>
+              <option value="or">OR</option>
+            </select>
+          </label>
+          <label class="check-label"><input id="filter-tests-include-env" type="checkbox" /> Include environmental/toxicant</label>
+        </div>
+        <div class="clause-builder">
+          <div class="clause-actions">
+            <button id="filter-tests-add-clause" type="button">Add clause</button>
+            <button id="filter-tests-run" type="button">Filter tests</button>
+          </div>
+          <div id="filter-tests-clauses"></div>
+        </div>
+        <div class="filter-test-picker">
+          <label for="filter-tests-search">Choose tests to include</label>
+          <input id="filter-tests-search" type="search" placeholder="Search tests..." />
+          <div class="filter-test-actions">
+            <button id="filter-tests-select-all" type="button">Select all visible</button>
+            <button id="filter-tests-select-core" type="button">Core clinical only</button>
+            <button id="filter-tests-clear" type="button">Clear selection</button>
+            <span id="filter-tests-selection-count" class="filter-test-hint"></span>
+          </div>
+          <select id="filter-tests-biomarkers" multiple></select>
+        </div>
+        <div id="filter-tests-summary" class="filter-summary"></div>
+        <div class="filter-results">
+          <table id="filter-tests-table"></table>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-info" class="panel">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Info And Methods</h2>
+          <p class="panel-copy">Interpret the dashboard with the healthy-cohort definition, metric semantics, and decline criteria visible in one place.</p>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="card info-card">
           <h3>What This Analysis Does</h3>
           <p>For each __SPECIMEN_LOWER__ biomarker test, this dashboard pools all NHANES cycles/files into one trajectory.</p>
           <ul>
@@ -574,22 +1075,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           </ul>
         </div>
 
-        <div class=\"card info-card\">
+        <div class="card info-card">
           <h3>Healthy Filter</h3>
           <p>Participants are excluded when available fields indicate:</p>
           <ul>
-            <li>Pregnancy (<span class=\"mono\">RIDEXPRG==1</span>)</li>
-            <li>Diagnosed diabetes (<span class=\"mono\">DIQ010==1</span>)</li>
-            <li>CVD history (<span class=\"mono\">MCQ160b/c/d/e/f</span> or legacy uppercase equivalents)</li>
-            <li>Cancer history (<span class=\"mono\">MCQ220==1</span>)</li>
-            <li>Weak/failing kidneys (<span class=\"mono\">KIQ022==1</span>)</li>
+            <li>Pregnancy (<span class="mono">RIDEXPRG==1</span>)</li>
+            <li>Diagnosed diabetes (<span class="mono">DIQ010==1</span>)</li>
+            <li>CVD history (<span class="mono">MCQ160b/c/d/e/f</span> or legacy uppercase equivalents)</li>
+            <li>Cancer history (<span class="mono">MCQ220==1</span>)</li>
+            <li>Weak/failing kidneys (<span class="mono">KIQ022==1</span>)</li>
           </ul>
         </div>
 
-        <div class=\"card info-card\">
+        <div class="card info-card">
           <h3>Plot Modes</h3>
           <ul>
             <li><b>Plot CV</b>: age-binned CV trend.</li>
+            <li><b>Plot SD</b>: age-binned standard deviation trend.</li>
             <li><b>Plot Median</b>: age-binned median with interquartile band (25th-75th percentile) and raw scatter sample.</li>
             <li><b>Plot Skewness</b>: age-binned skewness trend (shape/asymmetry of per-bin values).</li>
             <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
@@ -598,14 +1100,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           </ul>
         </div>
 
-        <div class=\"card info-card\">
+        <div class="card info-card">
           <h3>Decline Criteria</h3>
           <p>A biomarker is flagged as declining variability when all conditions hold:</p>
           <ul>
-            <li><span class=\"mono\">n_bins &gt;= 5</span></li>
-            <li><span class=\"mono\">Spearman rho &lt; 0</span></li>
-            <li><span class=\"mono\">Spearman p &lt; 0.05</span></li>
-            <li><span class=\"mono\">linear_slope_cv_per_year &lt; 0</span></li>
+            <li><span class="mono">n_bins &gt;= 5</span></li>
+            <li><span class="mono">Spearman rho &lt; 0</span></li>
+            <li><span class="mono">Spearman p &lt; 0.05</span></li>
+            <li><span class="mono">linear_slope_cv_per_year &lt; 0</span></li>
           </ul>
         </div>
       </div>
@@ -626,6 +1128,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const hideClalitEl = document.getElementById('hide-clalit');
     const hideClalitWrapEl = document.getElementById('hide-clalit-wrap');
     const modeCvBtn = document.getElementById('mode-cv');
+    const modeStdBtn = document.getElementById('mode-std');
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
     const statusChip = document.getElementById('status-chip');
@@ -634,6 +1137,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     const tabDashboardBtn = document.getElementById('tab-dashboard');
     const tabCompareBtn = document.getElementById('tab-compare');
+    const tabFilterTestsBtn = document.getElementById('tab-filter-tests');
     const tabScatterBtn = document.getElementById('tab-scatter');
     const tabHistBtn = document.getElementById('tab-hist');
     const tabWaterfallBtn = document.getElementById('tab-waterfall');
@@ -641,6 +1145,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const specimenLinks = Array.from(document.querySelectorAll('.specimen-link'));
     const panelDashboard = document.getElementById('panel-dashboard');
     const panelCompare = document.getElementById('panel-compare');
+    const panelFilterTests = document.getElementById('panel-filter-tests');
     const panelScatter = document.getElementById('panel-scatter');
     const panelHist = document.getElementById('panel-hist');
     const panelWaterfall = document.getElementById('panel-waterfall');
@@ -682,6 +1187,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const histCatCoreBtn = document.getElementById('hist-cat-core');
     const histCatClearBtn = document.getElementById('hist-cat-clear');
     const histSelectionCountEl = document.getElementById('hist-selection-count');
+    const filterTestsCohortEl = document.getElementById('filter-tests-cohort');
+    const filterTestsTrimSliderEl = document.getElementById('filter-tests-trim-slider');
+    const filterTestsTrimLabelEl = document.getElementById('filter-tests-trim-label');
+    const filterTestsLogicEl = document.getElementById('filter-tests-logic');
+    const filterTestsIncludeEnvEl = document.getElementById('filter-tests-include-env');
+    const filterTestsSearchEl = document.getElementById('filter-tests-search');
+    const filterTestsBiomarkersEl = document.getElementById('filter-tests-biomarkers');
+    const filterTestsSelectAllBtn = document.getElementById('filter-tests-select-all');
+    const filterTestsSelectCoreBtn = document.getElementById('filter-tests-select-core');
+    const filterTestsClearBtn = document.getElementById('filter-tests-clear');
+    const filterTestsSelectionCountEl = document.getElementById('filter-tests-selection-count');
+    const filterTestsAddClauseBtn = document.getElementById('filter-tests-add-clause');
+    const filterTestsRunBtn = document.getElementById('filter-tests-run');
+    const filterTestsClausesEl = document.getElementById('filter-tests-clauses');
+    const filterTestsSummaryEl = document.getElementById('filter-tests-summary');
+    const filterTestsTableEl = document.getElementById('filter-tests-table');
     const waterfallSearchEl = document.getElementById('waterfall-search');
     const waterfallOptionsEl = document.getElementById('waterfall-biomarker-options');
     const waterfallBiomarkerEl = document.getElementById('waterfall-biomarker');
@@ -724,6 +1245,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       currentId: null,
       scatterLabels: false,
       waterfallId: null,
+      filterClauseNextId: 1,
+      filterTestsSelectionSet: new Set(),
     };
 
     const WATERFALL_AGE_BINS = [
@@ -738,7 +1261,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     ];
 
     const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
-    const TOP_TABS = ['dashboard', 'compare', 'scatter', 'hist', 'waterfall', 'info'];
+    const TOP_TABS = ['dashboard', 'compare', 'filter-tests', 'scatter', 'hist', 'waterfall', 'info'];
     const TOP_TAB_SET = new Set(TOP_TABS);
 
     function formatNum(v, d=4) {
@@ -772,12 +1295,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     function modeToStat(mode) {
+      if (mode === 'std') return 'std';
       if (mode === 'mean') return 'mean';
       if (mode === 'skewness') return 'skewness';
       return 'cv';
     }
 
     function statLabel(statKey) {
+      if (statKey === 'std') return 'Standard deviation';
       if (statKey === 'mean') return 'Mean';
       if (statKey === 'skewness') return 'Skewness';
       return 'CV';
@@ -824,6 +1349,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           sub: `Compare two aging-trend statistics per ${SPECIMEN_LABEL} biomarker in 2D.`,
         };
       }
+      if (tabName === 'filter-tests') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} Filter Tests`,
+          sub: `Build logical clauses to return ${SPECIMEN_LABEL} tests matching multi-condition trend rules.`,
+        };
+      }
       if (tabName === 'hist') {
         return {
           title: `NHANES ${SPECIMEN_TITLE} Histogram View`,
@@ -848,26 +1379,77 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       };
     }
 
+    function setButtonState(button, isActive) {
+      if (!button) return;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      button.setAttribute('tabindex', isActive ? '0' : '-1');
+    }
+
+    function applyPlotTheme(layout, mobile = false) {
+      return {
+        font: { family: '"Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif', color: '#102a43', size: mobile ? 11 : 12 },
+        paper_bgcolor: 'rgba(255,255,255,0.96)',
+        plot_bgcolor: '#ffffff',
+        margin: mobile ? { t: 68, l: 54, r: 12, b: 52 } : { t: 72, l: 72, r: 18, b: 58 },
+        legend: {
+          orientation: 'h',
+          y: 1.12,
+          yanchor: 'bottom',
+          x: 0,
+          font: { size: mobile ? 10 : 12 },
+          bgcolor: 'rgba(255,255,255,0.78)',
+        },
+        xaxis: {
+          showgrid: true,
+          gridcolor: 'rgba(16, 42, 67, 0.08)',
+          zerolinecolor: 'rgba(16, 42, 67, 0.18)',
+          linecolor: 'rgba(16, 42, 67, 0.12)',
+          tickfont: { size: mobile ? 10 : 12 },
+          titlefont: { size: mobile ? 12 : 13, color: '#486581' },
+        },
+        yaxis: {
+          showgrid: true,
+          gridcolor: 'rgba(16, 42, 67, 0.08)',
+          zerolinecolor: 'rgba(16, 42, 67, 0.18)',
+          linecolor: 'rgba(16, 42, 67, 0.12)',
+          tickfont: { size: mobile ? 10 : 12 },
+          titlefont: { size: mobile ? 12 : 13, color: '#486581' },
+        },
+        ...layout,
+      };
+    }
+
     function setTopTab(tabName) {
       const resolved = canonicalTopTab(tabName);
       const isDash = resolved === 'dashboard';
       const isCompare = resolved === 'compare';
+      const isFilterTests = resolved === 'filter-tests';
       const isScatter = resolved === 'scatter';
       const isHist = resolved === 'hist';
       const isWaterfall = resolved === 'waterfall';
       const isInfo = resolved === 'info';
-      tabDashboardBtn.classList.toggle('active', isDash);
-      tabCompareBtn.classList.toggle('active', isCompare);
-      tabScatterBtn.classList.toggle('active', isScatter);
-      tabHistBtn.classList.toggle('active', isHist);
-      tabWaterfallBtn.classList.toggle('active', isWaterfall);
-      tabInfoBtn.classList.toggle('active', isInfo);
+      setButtonState(tabDashboardBtn, isDash);
+      setButtonState(tabCompareBtn, isCompare);
+      setButtonState(tabFilterTestsBtn, isFilterTests);
+      setButtonState(tabScatterBtn, isScatter);
+      setButtonState(tabHistBtn, isHist);
+      setButtonState(tabWaterfallBtn, isWaterfall);
+      setButtonState(tabInfoBtn, isInfo);
       panelDashboard.classList.toggle('active', isDash);
       panelCompare.classList.toggle('active', isCompare);
+      panelFilterTests.classList.toggle('active', isFilterTests);
       panelScatter.classList.toggle('active', isScatter);
       panelHist.classList.toggle('active', isHist);
       panelWaterfall.classList.toggle('active', isWaterfall);
       panelInfo.classList.toggle('active', isInfo);
+      panelDashboard.setAttribute('aria-hidden', isDash ? 'false' : 'true');
+      panelCompare.setAttribute('aria-hidden', isCompare ? 'false' : 'true');
+      panelFilterTests.setAttribute('aria-hidden', isFilterTests ? 'false' : 'true');
+      panelScatter.setAttribute('aria-hidden', isScatter ? 'false' : 'true');
+      panelHist.setAttribute('aria-hidden', isHist ? 'false' : 'true');
+      panelWaterfall.setAttribute('aria-hidden', isWaterfall ? 'false' : 'true');
+      panelInfo.setAttribute('aria-hidden', isInfo ? 'false' : 'true');
       const copy = heroCopy(resolved);
       if (heroTitleEl) heroTitleEl.textContent = copy.title;
       if (heroSubEl) heroSubEl.textContent = copy.sub;
@@ -882,6 +1464,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       if (syncHash) setTopTabHash(resolved, replaceHash);
       if (resolved === 'compare') {
         renderComparePlot();
+      } else if (resolved === 'filter-tests') {
+        renderFilterTests();
       } else if (resolved === 'scatter') {
         renderScatterPlot();
       } else if (resolved === 'hist') {
@@ -968,11 +1552,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             sex_metrics_by_mode: m.sex_metrics || {},
             trends_by_stat: m.trends_by_stat || {
               cv: m.trends || {},
+              std: m.std_trends || {},
               mean: m.mean_trends || {},
               skewness: m.skewness_trends || {},
             },
             sex_metrics_by_stat: m.sex_metrics_by_stat || {
               cv: m.sex_metrics || {},
+              std: m.sex_std_metrics || {},
               mean: m.sex_mean_metrics || {},
               skewness: m.sex_skewness_metrics || {},
             },
@@ -991,12 +1577,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       scatterTrimSliderEl.value = String(pct);
       histTrimSliderEl.value = String(pct);
       waterfallTrimSliderEl.value = String(pct);
+      filterTestsTrimSliderEl.value = String(pct);
       const txt = trimLabelFromPct(pct);
       trimLabelEl.textContent = txt;
       compareTrimLabelEl.textContent = txt;
       scatterTrimLabelEl.textContent = txt;
       histTrimLabelEl.textContent = txt;
       waterfallTrimLabelEl.textContent = txt;
+      filterTestsTrimLabelEl.textContent = txt;
       return pct;
     }
 
@@ -1061,6 +1649,54 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     function getHistogramSelectedCategories() {
       return new Set(Array.from(histCategoryEl.selectedOptions).map(o => o.value));
+    }
+
+    function updateFilterTestsSelectionCount() {
+      const visible = Array.from(filterTestsBiomarkersEl.options).filter(o => !o.hidden);
+      const selectedVisible = visible.filter(o => o.selected).length;
+      const selectedTotal = Array.from(filterTestsBiomarkersEl.selectedOptions).length;
+      filterTestsSelectionCountEl.textContent = `${selectedTotal} selected (${selectedVisible}/${visible.length} visible)`;
+    }
+
+    function renderFilterTestsBiomarkerOptions(selectCore=false) {
+      const prev = new Set(state.filterTestsSelectionSet || []);
+      const rows = state.metadata
+        .filter(m => filterTestsIncludeEnvEl.checked || !Boolean(m.is_environmental))
+        .slice()
+        .sort((a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || '')));
+      const coreSet = new Set(
+        rows
+          .filter(m => Boolean(m.is_core_clinical))
+          .map(m => m.biomarker_id)
+      );
+      filterTestsBiomarkersEl.innerHTML = '';
+      const shouldDefaultAll = prev.size === 0 && !selectCore;
+      for (const m of rows) {
+        const opt = document.createElement('option');
+        opt.value = m.biomarker_id;
+        opt.textContent = m.display_name || m.biomarker_name || m.biomarker_id;
+        opt.selected = selectCore ? coreSet.has(m.biomarker_id) : (shouldDefaultAll ? true : prev.has(m.biomarker_id));
+        filterTestsBiomarkersEl.appendChild(opt);
+      }
+      applyFilterTestsSearch();
+      state.filterTestsSelectionSet = new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+      updateFilterTestsSelectionCount();
+    }
+
+    function applyFilterTestsSearch() {
+      const q = (filterTestsSearchEl.value || '').toLowerCase().trim();
+      for (const o of Array.from(filterTestsBiomarkersEl.options)) {
+        if (!q) {
+          o.hidden = false;
+          continue;
+        }
+        o.hidden = !o.textContent.toLowerCase().includes(q);
+      }
+      updateFilterTestsSelectionCount();
+    }
+
+    function getFilterTestsSelectedBiomarkers() {
+      return new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
     }
 
     function renderOptions() {
@@ -1174,18 +1810,31 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     function renderMetricRows(title, m, rawTotal, rawCap, statKey) {
-      if (!m) return `<div class="metric"><b>${title}:</b> no metrics</div>`;
+      if (!m) {
+        return `
+          <section class="metric-block">
+            <div class="metric-block-title">${title}<span class="metric-flag flag-false">No metrics</span></div>
+          </section>
+        `;
+      }
       const isNegative = Boolean(m.negative_flag ?? m.decline_flag);
       const flagCls = isNegative ? 'flag-true' : 'flag-false';
       const stat = statLabel(statKey);
       return `
-        <div class="metric"><b>${title} bins:</b> ${m.n_bins ?? 'NA'}</div>
-        <div class="metric"><b>${title} Spearman rho (${stat} vs age):</b> ${formatNum(m.spearman_rho, 4)}</div>
-        <div class="metric"><b>${title} Spearman p:</b> ${formatNum(m.spearman_p, 5)}</div>
-        <div class="metric"><b>${title} Slope ${stat}/year:</b> ${formatNum(m.linear_slope_per_year ?? m.linear_slope_cv_per_year, 6)}</div>
-        <div class="metric"><b>${title} Slope log(${stat})/year:</b> ${formatNum(m.linear_slope_log_per_year ?? m.linear_slope_logcv_per_year, 6)}</div>
-        <div class="metric"><b>${title} Raw points:</b> up to ${rawCap ?? 'NA'} sampled of ${rawTotal ?? 'NA'} total</div>
-        <div class="metric"><b>${title} Negative-trend flag:</b> <span class="${flagCls}">${isNegative}</span></div>
+        <section class="metric-block">
+          <div class="metric-block-title">
+            ${title}
+            <span class="metric-flag ${flagCls}">${isNegative ? 'Negative trend' : 'Not negative'}</span>
+          </div>
+          <div class="metric-stat-grid">
+            <div class="metric-stat"><span class="metric-label">Bins</span><span class="metric-value">${m.n_bins ?? 'NA'}</span></div>
+            <div class="metric-stat"><span class="metric-label">Spearman rho</span><span class="metric-value">${formatNum(m.spearman_rho, 4)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Spearman p</span><span class="metric-value">${formatNum(m.spearman_p, 5)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Slope ${stat}/year</span><span class="metric-value">${formatNum(m.linear_slope_per_year ?? m.linear_slope_cv_per_year, 6)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Slope log(${stat})/year</span><span class="metric-value">${formatNum(m.linear_slope_log_per_year ?? m.linear_slope_logcv_per_year, 6)}</span></div>
+            <div class="metric-stat"><span class="metric-label">Raw points</span><span class="metric-value">up to ${rawCap ?? 'NA'} sampled of ${rawTotal ?? 'NA'}</span></div>
+          </div>
+        </section>
       `;
     }
 
@@ -1203,11 +1852,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const statKey = modeToStat(state.mode);
       const trendsByStat = pooled.trends_by_stat || {
         cv: pooled.trends || {},
+        std: pooled.std_trends || {},
         mean: pooled.mean_trends || {},
         skewness: pooled.skewness_trends || {},
       };
       const sexByStat = pooled.sex_metrics_by_stat || {
         cv: pooled.sex_metrics || {},
+        std: pooled.sex_std_metrics || {},
         mean: pooled.sex_mean_metrics || {},
         skewness: pooled.sex_skewness_metrics || {},
       };
@@ -1220,9 +1871,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const trimLabel = trimLabelFromPct(trimSliderEl.value);
       const stat = statLabel(statKey);
 
-      let html = `<div class="metric"><b>Category:</b> ${md.category || 'Other Clinical'}</div>`;
-      html += `<div class="metric"><b>Outlier mode:</b> ${trimLabel}</div>`;
-      html += `<div class="metric"><b>Ranking/stat view:</b> ${stat} vs age</div>`;
+      let html = `<div class="metric-header">`;
+      html += `<span class="metric-pill">Category: ${md.category || 'Other Clinical'}</span>`;
+      html += `<span class="metric-pill">Outliers: ${trimLabel}</span>`;
+      html += `<span class="metric-pill">View: ${stat} vs age</span>`;
+      html += `</div><div class="metric-grid">`;
       if (cohort === 'both') {
         html += renderMetricRows('Female', sexMetrics.female || null, rawBySex.female ?? 'NA', rawCap, statKey);
         html += renderMetricRows('Male', sexMetrics.male || null, rawBySex.male ?? 'NA', rawCap, statKey);
@@ -1232,14 +1885,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       } else {
         html += renderMetricRows('Pooled', pooledMetric, md.raw_total_n ?? 'NA', rawCap, statKey);
       }
+      html += '</div>';
       box.innerHTML = html;
     }
 
     function setMode(mode) {
       state.mode = mode;
       modeCvBtn.classList.toggle('active', mode === 'cv');
+      modeStdBtn.classList.toggle('active', mode === 'std');
       modeMeanBtn.classList.toggle('active', mode === 'mean');
       modeSkewBtn.classList.toggle('active', mode === 'skewness');
+      modeCvBtn.setAttribute('aria-pressed', mode === 'cv' ? 'true' : 'false');
+      modeStdBtn.setAttribute('aria-pressed', mode === 'std' ? 'true' : 'false');
+      modeMeanBtn.setAttribute('aria-pressed', mode === 'mean' ? 'true' : 'false');
+      modeSkewBtn.setAttribute('aria-pressed', mode === 'skewness' ? 'true' : 'false');
     }
 
     function pickPointsByCohort(s, cohort, trimMode) {
@@ -1317,6 +1976,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           continue;
         }
 
+        if (state.mode === 'std') {
+          points = points.filter(p => p.std !== null && p.std !== undefined && Number.isFinite(Number(p.std)));
+          if (points.length === 0) continue;
+          traces.push(lineTrace(
+            points,
+            COHORT_COLORS[c],
+            `${cohortLabel[c]} SD`,
+            'std',
+            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>std=${formatNum(p.std, 4)}<br>mean=${formatNum(p.mean, 4)}<br>median=${formatNum(p.median, 4)}<br>cv=${formatNum(p.cv, 4)}`
+          ));
+          continue;
+        }
+
         if (state.mode === 'skewness') {
           points = points.filter(p => p.skewness !== null && p.skewness !== undefined && Number.isFinite(Number(p.skewness)));
           if (points.length === 0) continue;
@@ -1379,6 +2051,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             continue;
           }
 
+          if (state.mode === 'std') {
+            points = points.filter(p => Number.isFinite(p.std));
+            if (points.length === 0) continue;
+            traces.push({
+              x: points.map(p => p.age_mid),
+              y: points.map(p => p.std),
+              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>std=${formatNum(p.std, 4)}<br>mean=${formatNum(p.mean, 4)}`),
+              mode: 'lines+markers',
+              type: 'scatter',
+              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+              hovertemplate: '%{text}<extra></extra>',
+              name: `Clalit ${cohortLabel[c]} SD`
+            });
+            continue;
+          }
+
           if (state.mode === 'skewness') {
             // Clalit data provides log_skewness, which causes sign inversion issues when compared to raw skewness. We skip it.
             continue;
@@ -1409,34 +2098,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       renderMetrics(id, s);
       const mobile = window.matchMedia('(max-width: 760px)').matches;
-      Plotly.newPlot('plot', traces, {
+      Plotly.newPlot('plot', traces, applyPlotTheme({
         title,
-        xaxis: { title: 'Age (years)', tickfont: { size: mobile ? 10 : 12 } },
+        xaxis: { title: 'Age (years)' },
         yaxis: {
           title: state.mode === 'cv'
             ? 'Coefficient of Variation (CV)'
+            : state.mode === 'std'
+              ? 'Standard deviation (binned)'
             : state.mode === 'skewness'
               ? 'Skewness (binned)'
-              : 'Median Biomarker Value',
-          tickfont: { size: mobile ? 10 : 12 }
+              : 'Median Biomarker Value'
         },
-        margin: mobile ? { t: 52, l: 46, r: 10, b: 44 } : { t: 56, l: 64, r: 18, b: 54 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
         legend: {
           orientation: 'h',
-          y: 1.08,
+          y: 1.12,
           font: { size: mobile ? 10 : 12 },
           itemwidth: mobile ? 38 : undefined
         }
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
     }
 
     function metricsForView(rows, cohort, trimMode, statKey='cv') {
       const out = [];
       for (const rec of rows) {
-        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
-        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {} };
+        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {} };
         const trends = trendsByStat[statKey] || {};
         const sexByMode = sexByStat[statKey] || {};
         const tr = trends[trimMode] || trends.all || null;
@@ -1480,8 +2167,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     function metricForRecord(rec, cohort, trimMode, statKey='cv') {
-      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, mean: {}, skewness: {} };
-      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, mean: {}, skewness: {} };
+      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {} };
+      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {} };
       const trends = trendsByStat[statKey] || {};
       const sexByMode = sexByStat[statKey] || {};
       const tr = trends[trimMode] || trends.all || null;
@@ -1559,13 +2246,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       const scatterDiv = document.getElementById('scatter-plot');
       if (!points.length) {
-        Plotly.newPlot('scatter-plot', [], {
+        Plotly.newPlot('scatter-plot', [], applyPlotTheme({
           title: 'No biomarkers match current scatter filters',
           xaxis: { title: `Spearman rho (Age vs ${xLabel})` },
           yaxis: { title: `Spearman rho (Age vs ${yLabel})` },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
@@ -1619,7 +2304,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }];
       }
 
-      Plotly.newPlot('scatter-plot', traces, {
+      Plotly.newPlot('scatter-plot', traces, applyPlotTheme({
         title: `Biomarker Scatter: ${xLabel} vs ${yLabel} Spearman`,
         annotations: [{
           xref: 'paper',
@@ -1633,21 +2318,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         xaxis: {
           title: `Spearman rho (Age vs ${xLabel})`,
           zeroline: true,
-          zerolinecolor: '#c2c8d0',
           range: [-1, 1],
-          tickfont: { size: mobile ? 10 : 12 },
         },
         yaxis: {
           title: `Spearman rho (Age vs ${yLabel})`,
           zeroline: true,
-          zerolinecolor: '#c2c8d0',
           range: [-1, 1],
-          tickfont: { size: mobile ? 10 : 12 },
         },
-        margin: mobile ? { t: 62, l: 52, r: 10, b: 52 } : { t: 64, l: 70, r: 14, b: 60 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
 
       if (scatterDiv && scatterDiv.removeAllListeners) {
         scatterDiv.removeAllListeners('plotly_click');
@@ -1797,17 +2475,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       const noData = traces.every(t => !t.x || t.x.length === 0);
       if (noData) {
-        Plotly.newPlot('hist-plot', [], {
+        Plotly.newPlot('hist-plot', [], applyPlotTheme({
           title: 'No biomarkers match current histogram filters',
           xaxis: { title: `Spearman rho (Age vs ${stat})`, range: [-1, 1] },
           yaxis: { title: 'Count of biomarkers' },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
-      Plotly.newPlot('hist-plot', traces, {
+      Plotly.newPlot('hist-plot', traces, applyPlotTheme({
         title: `Histogram of Spearman rho: ${stat} vs age`,
         barmode: 'overlay',
         annotations: [{
@@ -1822,19 +2498,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         xaxis: {
           title: `Spearman rho (Age vs ${stat})`,
           range: [-1, 1],
-          tickfont: { size: mobile ? 10 : 12 },
           zeroline: true,
-          zerolinecolor: '#c2c8d0',
         },
-        yaxis: {
-          title: 'Count of biomarkers',
-          tickfont: { size: mobile ? 10 : 12 },
-        },
+        yaxis: { title: 'Count of biomarkers' },
         legend: { orientation: 'h' },
-        margin: mobile ? { t: 66, l: 52, r: 10, b: 52 } : { t: 68, l: 70, r: 14, b: 60 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
     }
 
     async function applyWaterfallSearch() {
@@ -1901,13 +2569,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       }
 
       if (!rows.length) {
-        Plotly.newPlot('waterfall-plot', [], {
+        Plotly.newPlot('waterfall-plot', [], applyPlotTheme({
           title: 'No age bins pass minimum n for this biomarker/cohort',
           xaxis: { title: s.display_name || s.biomarker_name || id },
           yaxis: { title: 'Age bin' },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
@@ -1981,7 +2647,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         });
       }
 
-      Plotly.newPlot('waterfall-plot', traces, {
+      Plotly.newPlot('waterfall-plot', traces, applyPlotTheme({
         title: `${s.display_name || s.biomarker_name} — age-stratified waterfall (${cohort})`,
         annotations: [{
           xref: 'paper',
@@ -1992,19 +2658,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           text: `Outliers: ${trimLabelFromPct(trimPct)}, min n/bin: ${minN}, bins shown: ${withDensity.length}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
-        xaxis: { title: 'Biomarker value', tickfont: { size: mobile ? 10 : 12 } },
+        xaxis: { title: 'Biomarker value' },
         yaxis: {
           title: 'Age bin',
           tickmode: 'array',
           tickvals: yPos,
           ticktext: withDensity.map(r => r.label),
-          tickfont: { size: mobile ? 10 : 12 },
         },
         legend: { orientation: 'v', title: { text: 'Quartiles' } },
-        margin: mobile ? { t: 72, l: 72, r: 12, b: 52 } : { t: 72, l: 88, r: 16, b: 60 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
     }
 
     function renderRankTable() {
@@ -2107,7 +2769,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       }
 
       const mobile = window.matchMedia('(max-width: 760px)').matches;
-      Plotly.newPlot('compare-plot', traces, {
+      Plotly.newPlot('compare-plot', traces, applyPlotTheme({
         title: mode === 'negative' ? `Top ${topN} Most Negative Spearman Biomarkers (${stat} vs age)` :
                mode === 'positive' ? `Top ${topN} Most Positive Spearman Biomarkers (${stat} vs age)` :
                `Top ${topN} Largest |Spearman| Biomarkers (${stat} vs age)`,
@@ -2121,22 +2783,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
         barmode: cohort === 'both' ? 'group' : 'relative',
-        xaxis: { title: xTitle, tickfont: { size: mobile ? 10 : 12 } },
-        yaxis: { automargin: true, tickfont: { size: mobile ? 10 : 12 } },
-        margin: mobile ? { t: 64, l: 150, r: 10, b: 44 } : { t: 56, l: 260, r: 16, b: 54 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-      }, { responsive: true, displaylogo: false });
+        xaxis: { title: xTitle },
+        yaxis: { automargin: true },
+        margin: mobile ? { t: 72, l: 150, r: 10, b: 46 } : { t: 72, l: 280, r: 18, b: 58 },
+      }, mobile), { responsive: true, displaylogo: false });
 
       if (!HAS_CLALIT) {
-        Plotly.newPlot('compare-clalit-plot', [], {
+        Plotly.newPlot('compare-clalit-plot', [], applyPlotTheme({
           title: 'No external cohort overlay configured for this specimen',
           xaxis: { visible: false },
           yaxis: { visible: false },
-          margin: mobile ? { t: 44, l: 20, r: 10, b: 20 } : { t: 44, l: 30, r: 16, b: 28 },
-          paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#ffffff',
-        }, { responsive: true, displaylogo: false });
+          margin: mobile ? { t: 52, l: 20, r: 10, b: 20 } : { t: 56, l: 30, r: 16, b: 28 },
+        }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
@@ -2197,15 +2855,203 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         hoverinfo: 'none'
       });
 
-      Plotly.newPlot('compare-clalit-plot', cTraces, {
+      Plotly.newPlot('compare-clalit-plot', cTraces, applyPlotTheme({
         title: `Clalit vs NHANES Spearman rho (${stat} vs age)`,
         xaxis: { title: `NHANES Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
         yaxis: { title: `Clalit Spearman rho (${stat})`, range: [-1, 1], zeroline: true },
-        margin: mobile ? { t: 40, l: 52, r: 10, b: 44 } : { t: 40, l: 60, r: 16, b: 54 },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
         showlegend: false,
-      }, { responsive: true, displaylogo: false });
+      }, mobile), { responsive: true, displaylogo: false });
+    }
+
+    function createFilterClauseRow(initial = {}) {
+      const clauseId = state.filterClauseNextId++;
+      const row = document.createElement('div');
+      row.className = 'clause-row';
+      row.dataset.clauseId = String(clauseId);
+      const statVal = initial.stat || 'cv';
+      const fieldVal = initial.field || 'spearman_rho';
+      const opVal = initial.op || '<';
+      const valueVal = Number.isFinite(Number(initial.value)) ? Number(initial.value) : 0.5;
+      row.innerHTML = `
+        <label>Statistic
+          <select data-part="stat">
+            <option value="cv"${statVal === 'cv' ? ' selected' : ''}>CV</option>
+            <option value="std"${statVal === 'std' ? ' selected' : ''}>Standard deviation</option>
+            <option value="mean"${statVal === 'mean' ? ' selected' : ''}>Mean</option>
+            <option value="skewness"${statVal === 'skewness' ? ' selected' : ''}>Skewness</option>
+          </select>
+        </label>
+        <label>Metric
+          <select data-part="field">
+            <option value="spearman_rho"${fieldVal === 'spearman_rho' ? ' selected' : ''}>Spearman rho</option>
+            <option value="spearman_p"${fieldVal === 'spearman_p' ? ' selected' : ''}>Spearman p-value</option>
+            <option value="n_bins"${fieldVal === 'n_bins' ? ' selected' : ''}>n bins</option>
+            <option value="linear_slope_per_year"${fieldVal === 'linear_slope_per_year' ? ' selected' : ''}>Slope/year</option>
+            <option value="linear_slope_log_per_year"${fieldVal === 'linear_slope_log_per_year' ? ' selected' : ''}>Slope log/year</option>
+          </select>
+        </label>
+        <label>Condition
+          <select data-part="op">
+            <option value="<"${opVal === '<' ? ' selected' : ''}>less than (&lt;)</option>
+            <option value="<="${opVal === '<=' ? ' selected' : ''}>less or equal (&lt;=)</option>
+            <option value=">"${opVal === '>' ? ' selected' : ''}>greater than (&gt;)</option>
+            <option value=">="${opVal === '>=' ? ' selected' : ''}>greater or equal (&gt;=)</option>
+            <option value="=="${opVal === '==' ? ' selected' : ''}>equal (==)</option>
+            <option value="!="${opVal === '!=' ? ' selected' : ''}>not equal (!=)</option>
+          </select>
+        </label>
+        <label>Threshold
+          <input data-part="value" type="number" step="0.01" value="${valueVal}" />
+        </label>
+        <button class="clause-remove-btn" type="button" data-part="remove">Remove</button>
+      `;
+      const removeBtn = row.querySelector('[data-part="remove"]');
+      removeBtn.addEventListener('click', () => {
+        row.remove();
+        if (!filterTestsClausesEl.children.length) {
+          filterTestsClausesEl.appendChild(createFilterClauseRow({}));
+        }
+      });
+      return row;
+    }
+
+    function readFilterClauses() {
+      const clauses = [];
+      for (const row of Array.from(filterTestsClausesEl.querySelectorAll('.clause-row'))) {
+        const stat = row.querySelector('[data-part="stat"]')?.value || 'cv';
+        const field = row.querySelector('[data-part="field"]')?.value || 'spearman_rho';
+        const op = row.querySelector('[data-part="op"]')?.value || '<';
+        const threshold = Number(row.querySelector('[data-part="value"]')?.value);
+        if (!Number.isFinite(threshold)) continue;
+        clauses.push({ stat, field, op, threshold });
+      }
+      return clauses;
+    }
+
+    function metricFieldValue(metric, field) {
+      if (!metric) return Number.NaN;
+      if (field === 'spearman_rho') return Number(metric.spearman_rho);
+      if (field === 'spearman_p') return Number(metric.spearman_p);
+      if (field === 'n_bins') return Number(metric.n_bins);
+      if (field === 'linear_slope_per_year') return Number(metric.linear_slope_per_year ?? metric.linear_slope_cv_per_year);
+      if (field === 'linear_slope_log_per_year') return Number(metric.linear_slope_log_per_year ?? metric.linear_slope_logcv_per_year);
+      return Number.NaN;
+    }
+
+    function metricFieldValueBoth(metricBySex, field) {
+      if (!metricBySex || !metricBySex.female || !metricBySex.male) return Number.NaN;
+      const fv = metricFieldValue(metricBySex.female, field);
+      const mv = metricFieldValue(metricBySex.male, field);
+      if (field === 'n_bins') {
+        if (!Number.isFinite(fv) || !Number.isFinite(mv)) return Number.NaN;
+        return Math.min(fv, mv);
+      }
+      if (!Number.isFinite(fv) || !Number.isFinite(mv)) return Number.NaN;
+      return (fv + mv) / 2;
+    }
+
+    function compareClauseValue(actual, op, threshold) {
+      if (!Number.isFinite(actual) || !Number.isFinite(threshold)) return false;
+      if (op === '<') return actual < threshold;
+      if (op === '<=') return actual <= threshold;
+      if (op === '>') return actual > threshold;
+      if (op === '>=') return actual >= threshold;
+      if (op === '==') return actual === threshold;
+      if (op === '!=') return actual !== threshold;
+      return false;
+    }
+
+    function filterTestsClauseLabel(clause, i) {
+      const stat = statLabel(clause.stat);
+      const field = clause.field === 'spearman_rho'
+        ? 'rho'
+        : clause.field === 'spearman_p'
+          ? 'p'
+          : clause.field === 'n_bins'
+            ? 'n_bins'
+            : clause.field === 'linear_slope_per_year'
+              ? 'slope/year'
+              : 'log-slope/year';
+      return `Clause ${i + 1}: ${stat} ${field} ${clause.op} ${clause.threshold}`;
+    }
+
+    function renderFilterTests() {
+      const clauses = readFilterClauses();
+      const cohort = filterTestsCohortEl.value || 'both';
+      const trimMode = trimPctToMode(filterTestsTrimSliderEl.value);
+      const logic = (filterTestsLogicEl.value || 'and').toLowerCase() === 'or' ? 'or' : 'and';
+      const selectedBiomarkers = getFilterTestsSelectedBiomarkers();
+      const rows = getAllMetricsEnriched().filter(r => {
+        if (!selectedBiomarkers.has(r.biomarker_id)) return false;
+        if (!filterTestsIncludeEnvEl.checked && r.is_environmental) return false;
+        return true;
+      });
+      state.filterTestsSelectionSet = selectedBiomarkers;
+
+      if (!clauses.length) {
+        filterTestsSummaryEl.textContent = 'Add at least one valid clause to run filtering.';
+        filterTestsTableEl.innerHTML = '';
+        return;
+      }
+
+      if (!selectedBiomarkers.size) {
+        filterTestsSummaryEl.textContent = 'No tests selected. Pick one or more tests in the selector above.';
+        filterTestsTableEl.innerHTML = '';
+        return;
+      }
+
+      const hits = [];
+      for (const rec of rows) {
+        const clauseValues = [];
+        const clauseMatches = [];
+        for (const clause of clauses) {
+          const metric = metricForRecord(rec, cohort, trimMode, clause.stat);
+          const value = cohort === 'both'
+            ? metricFieldValueBoth(metric, clause.field)
+            : metricFieldValue(metric, clause.field);
+          clauseValues.push(value);
+          clauseMatches.push(compareClauseValue(value, clause.op, clause.threshold));
+        }
+        const pass = logic === 'or' ? clauseMatches.some(Boolean) : clauseMatches.every(Boolean);
+        if (!pass) continue;
+        hits.push({
+          id: rec.biomarker_id,
+          display_name: rec.display_name,
+          category: rec.category || 'Other Clinical',
+          values: clauseValues,
+        });
+      }
+
+      hits.sort((a, b) => a.display_name.localeCompare(b.display_name));
+      filterTestsSummaryEl.textContent = `${hits.length} / ${rows.length} ${SPECIMEN_LABEL} tests matched (${logic.toUpperCase()}, ${trimLabelFromPct(filterTestsTrimSliderEl.value)}, cohort: ${cohort}).`;
+
+      let html = '<thead><tr><th>Biomarker</th><th>Category</th>';
+      for (let i = 0; i < clauses.length; i += 1) {
+        html += `<th>${filterTestsClauseLabel(clauses[i], i)}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+      for (const hit of hits) {
+        html += `<tr data-id="${hit.id}"><td>${hit.display_name}</td><td>${hit.category}</td>`;
+        for (const v of hit.values) html += `<td>${formatNum(v, 4)}</td>`;
+        html += '</tr>';
+      }
+      html += '</tbody>';
+      filterTestsTableEl.innerHTML = html;
+
+      for (const tr of filterTestsTableEl.querySelectorAll('tbody tr')) {
+        tr.style.cursor = 'pointer';
+        tr.onclick = async () => {
+          const id = tr.getAttribute('data-id');
+          if (!id) return;
+          if (Array.from(selectEl.options).some(o => o.value === id)) {
+            selectEl.value = id;
+            state.currentId = id;
+          }
+          await activateTopTab('dashboard', { syncHash: true });
+          renderMetrics(id);
+          await renderPlot(id);
+        };
+      }
     }
 
     async function applySearch() {
@@ -2230,7 +3076,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       renderRankTable();
       if (!id) {
         document.getElementById('metrics').innerHTML = '<div class="metric">No biomarkers match current filters.</div>';
-        Plotly.newPlot('plot', [], { title: 'No biomarkers match current filters' }, { responsive: true, displaylogo: false });
+        const mobile = window.matchMedia('(max-width: 760px)').matches;
+        Plotly.newPlot('plot', [], applyPlotTheme({ title: 'No biomarkers match current filters' }, mobile), { responsive: true, displaylogo: false });
         return;
       }
       renderMetrics(id);
@@ -2260,6 +3107,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (hideClalitWrapEl) hideClalitWrapEl.style.display = 'none';
         if (compareClalitTitleEl) compareClalitTitleEl.textContent = 'External Cohort Agreement';
       }
+      const tabPairs = [
+        [tabDashboardBtn, panelDashboard],
+        [tabCompareBtn, panelCompare],
+        [tabFilterTestsBtn, panelFilterTests],
+        [tabScatterBtn, panelScatter],
+        [tabHistBtn, panelHist],
+        [tabWaterfallBtn, panelWaterfall],
+        [tabInfoBtn, panelInfo],
+      ];
+      for (const [btn, panel] of tabPairs) {
+        if (!btn || !panel) continue;
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-controls', panel.id);
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', btn.id);
+      }
+      setMode('cv');
       setScatterLabelsEnabled(false);
       setAllTrimSliders(0);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
@@ -2267,9 +3131,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       renderScatterCategoryOptions(false);
       renderHistogramCategoryOptions(false);
       renderWaterfallOptions();
+      filterTestsCohortEl.value = 'both';
+      filterTestsIncludeEnvEl.checked = false;
+      filterTestsLogicEl.value = 'and';
+      filterTestsClausesEl.innerHTML = '';
+      filterTestsClausesEl.appendChild(createFilterClauseRow({ stat: 'cv', field: 'spearman_rho', op: '<', value: 0.5 }));
+      renderFilterTestsBiomarkerOptions(false);
 
       await refreshDashboardFromFilters();
       renderComparePlot();
+      renderFilterTests();
       renderScatterPlot();
       renderHistogramPlot();
       await renderWaterfallPlot(state.waterfallId);
@@ -2281,6 +3152,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       });
       tabCompareBtn.addEventListener('click', () => {
         activateTopTab('compare', { syncHash: true }).catch(console.error);
+      });
+      tabFilterTestsBtn.addEventListener('click', () => {
+        activateTopTab('filter-tests', { syncHash: true }).catch(console.error);
       });
       tabScatterBtn.addEventListener('click', () => {
         activateTopTab('scatter', { syncHash: true }).catch(console.error);
@@ -2308,9 +3182,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         cohortFilterEl.value = compareCohortEl.value;
         scatterCohortEl.value = compareCohortEl.value;
         histCohortEl.value = compareCohortEl.value;
+        if (compareCohortEl.value !== 'pooled') filterTestsCohortEl.value = compareCohortEl.value;
         if (compareCohortEl.value !== 'both') waterfallCohortEl.value = compareCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (compareCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
@@ -2321,6 +3197,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         renderRankTable();
         if (state.currentId) renderPlot(state.currentId);
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
@@ -2350,9 +3227,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         compareCohortEl.value = cohortFilterEl.value;
         scatterCohortEl.value = cohortFilterEl.value;
         histCohortEl.value = cohortFilterEl.value;
+        if (cohortFilterEl.value !== 'pooled') filterTestsCohortEl.value = cohortFilterEl.value;
         if (cohortFilterEl.value !== 'both') waterfallCohortEl.value = cohortFilterEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (cohortFilterEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
@@ -2362,6 +3241,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         setAllTrimSliders(trimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
@@ -2375,6 +3255,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       });
       modeCvBtn.addEventListener('click', async () => {
         setMode('cv');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeStdBtn.addEventListener('click', async () => {
+        setMode('std');
         renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });
@@ -2394,9 +3279,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         cohortFilterEl.value = scatterCohortEl.value;
         compareCohortEl.value = scatterCohortEl.value;
         histCohortEl.value = scatterCohortEl.value;
+        if (scatterCohortEl.value !== 'pooled') filterTestsCohortEl.value = scatterCohortEl.value;
         if (scatterCohortEl.value !== 'both') waterfallCohortEl.value = scatterCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderHistogramPlot();
         if (scatterCohortEl.value !== 'both') renderWaterfallPlot(state.waterfallId);
         if (state.currentId) renderPlot(state.currentId);
@@ -2406,6 +3293,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         setAllTrimSliders(scatterTrimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
         if (state.currentId) renderPlot(state.currentId);
@@ -2445,9 +3333,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         cohortFilterEl.value = histCohortEl.value;
         compareCohortEl.value = histCohortEl.value;
         scatterCohortEl.value = histCohortEl.value;
+        if (histCohortEl.value !== 'pooled') filterTestsCohortEl.value = histCohortEl.value;
         if (histCohortEl.value !== 'both') waterfallCohortEl.value = histCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (histCohortEl.value !== 'both') await renderWaterfallPlot(state.waterfallId);
@@ -2457,6 +3347,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         setAllTrimSliders(histTrimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         renderWaterfallPlot(state.waterfallId);
@@ -2503,8 +3394,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         compareCohortEl.value = waterfallCohortEl.value;
         scatterCohortEl.value = waterfallCohortEl.value;
         histCohortEl.value = waterfallCohortEl.value;
+        if (waterfallCohortEl.value !== 'pooled') filterTestsCohortEl.value = waterfallCohortEl.value;
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (state.currentId) await renderPlot(state.currentId);
@@ -2514,10 +3407,57 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         setAllTrimSliders(waterfallTrimSliderEl.value);
         renderRankTable();
         renderComparePlot();
+        renderFilterTests();
         renderScatterPlot();
         renderHistogramPlot();
         if (state.currentId) renderPlot(state.currentId);
         renderWaterfallPlot(state.waterfallId);
+      });
+      filterTestsAddClauseBtn.addEventListener('click', () => {
+        filterTestsClausesEl.appendChild(createFilterClauseRow({}));
+      });
+      filterTestsRunBtn.addEventListener('click', () => {
+        renderFilterTests();
+      });
+      filterTestsCohortEl.addEventListener('change', () => {
+        const v = filterTestsCohortEl.value;
+        cohortFilterEl.value = v === 'both' ? 'both' : v;
+        compareCohortEl.value = v === 'both' ? 'both' : v;
+        scatterCohortEl.value = v === 'both' ? 'both' : v;
+        histCohortEl.value = v === 'both' ? 'both' : v;
+        if (v !== 'both') waterfallCohortEl.value = v;
+      });
+      filterTestsTrimSliderEl.addEventListener('input', () => {
+        setAllTrimSliders(filterTestsTrimSliderEl.value);
+      });
+      filterTestsIncludeEnvEl.addEventListener('change', () => {
+        renderFilterTestsBiomarkerOptions(false);
+        renderFilterTests();
+      });
+      filterTestsLogicEl.addEventListener('change', () => {
+        renderFilterTests();
+      });
+      filterTestsSearchEl.addEventListener('input', () => {
+        applyFilterTestsSearch();
+      });
+      filterTestsBiomarkersEl.addEventListener('change', () => {
+        state.filterTestsSelectionSet = new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+        updateFilterTestsSelectionCount();
+      });
+      filterTestsSelectAllBtn.addEventListener('click', () => {
+        for (const o of Array.from(filterTestsBiomarkersEl.options)) {
+          if (!o.hidden) o.selected = true;
+        }
+        state.filterTestsSelectionSet = new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+        updateFilterTestsSelectionCount();
+      });
+      filterTestsSelectCoreBtn.addEventListener('click', () => {
+        renderFilterTestsBiomarkerOptions(true);
+      });
+      filterTestsClearBtn.addEventListener('click', () => {
+        for (const o of Array.from(filterTestsBiomarkersEl.options)) o.selected = false;
+        state.filterTestsSelectionSet = new Set();
+        updateFilterTestsSelectionCount();
       });
       waterfallMinNEl.addEventListener('change', () => {
         renderWaterfallPlot(state.waterfallId);
@@ -2552,1147 +3492,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     init().catch(err => {
       console.error(err);
       const plot = document.getElementById('plot');
-      plot.innerHTML = `<div style=\"padding:16px;color:#b45309;\">Failed to load dashboard data. Open via local server (not file://). Error: ${err.message}</div>`;
+      plot.innerHTML = `<div style="padding:16px;color:#b45309;">Failed to load dashboard data. Open via local server (not file://). Error: ${err.message}</div>`;
       statusChip.textContent = 'Load failed';
     });
   </script>
 </body>
 </html>
-"""
-
-
-def safe_series_filename(biomarker_id: str) -> str:
-    slug = re.sub(r"[^A-Za-z0-9_-]+", "_", biomarker_id)[:80].strip("_")
-    h = hashlib.sha1(biomarker_id.encode("utf-8")).hexdigest()[:10]
-    return f"series/{slug}__{h}.json"
-
-
-def clean_display_base(name: str) -> str:
-    s = str(name or "").strip()
-    s = re.sub(r"^\s*(?:\d+[a-z]?[’']?(?:,\s*\d+[a-z]?[’']?){1,20})\s*,?\s*-\s*", "", s)
-    s = re.sub(
-        r"\s*\(([a-z0-9_-]{2,16})\)",
-        lambda m: "" if "/" not in m.group(1) and "%" not in m.group(1) else m.group(0),
-        s,
-    )
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
-
-
-def clean_urinary_ui_base(name: str) -> str:
-    s = str(name or "").strip()
-    orig = s
-    # Remove leading chemistry locants for UI readability in urinary list labels.
-    s = re.sub(r"^\s*(?:\d+[a-z]?(?:\s*,\s*\d+[a-z]?){0,6})\s*-\s*", "", s)
-    s = re.sub(r"^\s*#\d+\s*", "", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    s = s or orig
-    if s and s[0].islower():
-        s = s[0].upper() + s[1:]
-    return s
-
-
-def parse_terminal_unit(label: str) -> tuple[str, str]:
-    s = str(label or "").strip()
-    m = re.search(r"\(([^()]*)\)\s*$", s)
-    if not m:
-        return s, ""
-    unit = m.group(1).strip()
-    base = s[: m.start()].strip().rstrip(",")
-    return base, unit
-
-
-def make_display_name(name: str, unit: str, specimen_kind: str = "blood") -> str:
-    base = clean_display_base(name)
-    if specimen_kind == "urine":
-        base = clean_urinary_ui_base(base)
-    u = str(unit or "").strip()
-    if not u:
-        _, parsed_unit = parse_terminal_unit(name)
-        if parsed_unit and ("/" in parsed_unit or "%" in parsed_unit):
-            u = parsed_unit
-    if u and not re.search(rf"\(\s*{re.escape(u)}\s*\)\s*$", base, flags=re.IGNORECASE):
-        base = f"{base} ({u})"
-    return base
-
-
-def normalize_text(s: str) -> str:
-    x = str(s or "").lower()
-    x = x.replace("μ", "u").replace("µ", "u")
-    x = re.sub(r"[^a-z0-9]+", " ", x)
-    return re.sub(r"\s+", " ", x).strip()
-
-
-CORE_CATEGORY_SET = {
-    "Routine - CBC",
-    "Routine - CMP",
-    "Cardiometabolic - Lipid",
-    "Cardiometabolic - Glycemic",
-    "Organ - Thyroid",
-    "Organ - Renal",
-    "Organ - Hepatic",
-    "Specialized - Coagulation",
-    "Specialized - Nutritional/Vitamin",
-    "Specialized - Inflammatory",
-}
-
-CATEGORY_ORDER = {
-    "Routine - CBC": 1,
-    "Routine - CMP": 2,
-    "Cardiometabolic - Lipid": 3,
-    "Cardiometabolic - Glycemic": 4,
-    "Organ - Thyroid": 5,
-    "Organ - Renal": 6,
-    "Organ - Hepatic": 7,
-    "Specialized - Coagulation": 8,
-    "Specialized - Nutritional/Vitamin": 9,
-    "Specialized - Inflammatory": 10,
-    "Hormones/Reproductive": 11,
-    "Infectious/Serology": 12,
-    "Other Clinical": 13,
-    "Environmental/Toxicant": 14,
-}
-
-
-def is_environmental_marker(name: str, variable_name: str, source_files: str) -> bool:
-    txt = normalize_text(f"{name} {variable_name} {source_files}")
-    patterns = [
-        r"\bdioxin\b",
-        r"\bdibenzofuran\b",
-        r"\bpolychlorinated biphenyl\b",
-        r"\bpcb\d*\b",
-        r"\bperfluoro\b",
-        r"\bpfos\b|\bpfoa\b|\bpfna\b|\bpfda\b|\bpfua\b|\bpfhx\b",
-        r"\bbromodiphenyl\b",
-        r"\bheptachlor\b|\bendrin\b|\baldrin\b|\bmirex\b|\bnonachlor\b|\bchlordane\b|\bdieldrin\b",
-        r"\bbenzene\b|\btoluene\b|\bxylene\b|\bchloroform\b|\bbromoform\b",
-        r"\btrichloroethene\b|\btetrachloroethene\b|\btrichloroethane\b",
-        r"\bdichloroethane\b|\bdichlorobenzene\b",
-        r"\bcarbon tetrachloride\b|\bstyrene\b|\bethylbenzene\b|\bmtbe\b|\bmethyl tert butyl ether\b",
-        r"\bperchlorate\b|\bcotinine\b|\bhydroxycotinine\b",
-        r"\bcadmium\b|\blead\b|\bmercury\b",
-        r"\bacrylamide\b|\bglycideamide\b|\bcrotonaldehyde\b",
-        r"\bpesticide\b|\btoxicant\b|\bvolatile organic\b|\bvoc\b",
-    ]
-    return any(re.search(p, txt) is not None for p in patterns)
-
-
-def classify_biomarker(name: str, variable_name: str, source_files: str) -> tuple[str, bool, bool]:
-    txt = normalize_text(f"{name} {variable_name} {source_files}")
-    is_env = is_environmental_marker(name, variable_name, source_files)
-    if is_env:
-        return "Environmental/Toxicant", True, False
-
-    def has_any(keys: list[str]) -> bool:
-        return any(k in txt for k in keys)
-
-    if has_any(["a1c", "glycohemoglobin", "hemoglobin a1", "glucose", "insulin", "c peptide"]):
-        return "Cardiometabolic - Glycemic", False, True
-
-    if has_any(
-        [
-            "hemoglobin",
-            "hematocrit",
-            "platelet",
-            "lymphocyte",
-            "neutrophil",
-            "eosinophil",
-            "basophil",
-            "monocyte",
-            "white blood cell",
-            "red blood cell",
-            "reticulocyte",
-            "mcv",
-            "mch",
-            "mchc",
-            "rdw",
-        ]
-    ):
-        return "Routine - CBC", False, True
-
-    if has_any(["cholesterol", "triglyceride", "lipoprotein", "apolipoprotein", "hdl", "ldl"]):
-        return "Cardiometabolic - Lipid", False, True
-
-    if has_any(["thyroid", "tsh", "thyroxine", "triiodothyronine", "free t4", "t4", "t3", "thyroglobulin"]):
-        return "Organ - Thyroid", False, True
-
-    if has_any(["creatinine", "blood urea nitrogen", " bun ", "cystatin", "uric acid", "egfr", "kidney"]):
-        return "Organ - Renal", False, True
-
-    if has_any(
-        [
-            "alanine aminotransferase",
-            "aspartate aminotransferase",
-            "alkaline phosphatase",
-            "gamma glutamyl",
-            "bilirubin",
-            "albumin",
-            "total protein",
-            "globulin",
-            "lactate dehydrogenase",
-            " alt ",
-            " ast ",
-            " ggt ",
-            " ldh ",
-            "hepatic",
-            "liver",
-        ]
-    ):
-        return "Organ - Hepatic", False, True
-
-    if has_any(["prothrombin", "pt inr", "inr", "fibrinogen", "coag", "aptt", "ptt", "d dimer"]):
-        return "Specialized - Coagulation", False, True
-
-    if has_any(
-        [
-            "vitamin",
-            "folate",
-            "ferritin",
-            "transferrin",
-            "iron",
-            "retinol",
-            "tocopherol",
-            "carotene",
-            "selenium",
-            "zinc",
-            "copper",
-            "b12",
-            "b6",
-        ]
-    ):
-        return "Specialized - Nutritional/Vitamin", False, True
-
-    if has_any(["c reactive protein", " crp ", "hs crp", "sedimentation", "inflamm", "alpha 1 acid glycoprotein"]):
-        return "Specialized - Inflammatory", False, True
-
-    if has_any(
-        [
-            "testosterone",
-            "estradiol",
-            "progesterone",
-            "anti mullerian",
-            "inhibin",
-            "luteinizing hormone",
-            "follicle stimulating",
-            "shbg",
-            "prolactin",
-            "cortisol",
-            "androstenedione",
-        ]
-    ):
-        return "Hormones/Reproductive", False, False
-
-    if has_any(
-        [
-            "antibody",
-            "igg",
-            "igm",
-            "ige",
-            "measles",
-            "mumps",
-            "rubella",
-            "varicella",
-            "toxoplasma",
-            "chlamydia",
-            "pertussis",
-            "polio",
-            "tb ",
-            "cryptosporidium",
-        ]
-    ):
-        return "Infectious/Serology", False, False
-
-    if has_any(
-        [
-            "sodium",
-            "potassium",
-            "chloride",
-            "bicarbonate",
-            "co2",
-            "calcium",
-            "phosphorus",
-            "anion gap",
-            "osmolality",
-            "electrolyte",
-            "metabolic panel",
-        ]
-    ):
-        return "Routine - CMP", False, True
-
-    return "Other Clinical", False, False
-
-
-AGE_BINS = list(np.arange(20, 90, 5)) + [200]
-AGE_LABELS = [f"{a}-{a+4}" for a in range(20, 85, 5)] + ["85+"]
-AGE_MIDS = {lab: mid for lab, mid in zip(AGE_LABELS, [a + 2.5 for a in range(20, 85, 5)] + [87.5])}
-TRIM_PCTS = [0, 5, 10, 15, 20, 25]
-DERIVED_NLR_ID = "neutrophil to lymphocyte ratio"
-DERIVED_NLR_NAME = "Neutrophil-to-lymphocyte ratio (NLR)"
-
-
-def trim_mode_key(pct: int) -> str:
-    p = int(pct)
-    if p <= 0:
-        return "all"
-    return f"trim_{p}_{100-p}"
-
-
-def trim_mode_quantiles(mode: str) -> tuple[float, float] | None:
-    if mode == "all":
-        return None
-    m = re.match(r"trim_(\d{1,2})_(\d{1,2})$", str(mode))
-    if not m:
-        return None
-    lo = int(m.group(1))
-    hi = int(m.group(2))
-    if lo < 0 or hi > 100 or lo >= hi:
-        return None
-    return lo / 100.0, hi / 100.0
-
-
-def slope(x: np.ndarray, y: np.ndarray) -> float:
-    if len(x) < 2:
-        return np.nan
-    return float(np.polyfit(x, y, 1)[0])
-
-
-def compute_binned_long(
-    df: pd.DataFrame,
-    group_cols: list[str],
-    trim_quantiles: tuple[float, float] | None = None,
-) -> pd.DataFrame:
-    tmp = df.copy()
-    tmp["age_bin"] = pd.cut(tmp["age_years"], bins=AGE_BINS, labels=AGE_LABELS, right=False, include_lowest=True)
-    tmp["age_mid"] = tmp["age_bin"].map(AGE_MIDS).astype(float)
-    tmp = tmp.dropna(subset=["age_bin", "value"])
-
-    keys = group_cols + ["age_bin", "age_mid"]
-    if trim_quantiles is not None:
-        q_lo, q_hi = trim_quantiles
-        q_tbl = (
-            tmp.groupby(keys, observed=True)["value"]
-            .quantile([q_lo, q_hi])
-            .unstack(level=-1)
-            .rename(columns={q_lo: "trim_lo", q_hi: "trim_hi"})
-            .reset_index()
-        )
-        tmp = tmp.merge(q_tbl, on=keys, how="left")
-        tmp = tmp[(tmp["value"] >= tmp["trim_lo"]) & (tmp["value"] <= tmp["trim_hi"])].copy()
-
-    grouped = (
-        tmp.groupby(keys, observed=True)["value"]
-        .agg(
-            n="count",
-            mean="mean",
-            std="std",
-            median="median",
-            q25=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 25)),
-            q75=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 75)),
-            p10=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 10)),
-            p90=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 90)),
-            skewness=lambda s: float(scipy_skew(s.to_numpy(dtype=float), bias=False, nan_policy="omit")),
-        )
-        .reset_index()
-    )
-    grouped["cv"] = grouped["std"] / grouped["mean"].abs()
-    grouped.loc[grouped["mean"].abs() < 1e-8, "cv"] = np.nan
-    grouped["passes_n_threshold"] = grouped["n"] >= 30
-    return grouped.reset_index(drop=True)
-
-
-def trend_from_points(points: list[dict], value_key: str) -> dict:
-    eligible = [
-        p
-        for p in points
-        if bool(p.get("passes_n_threshold"))
-        and p.get(value_key) is not None
-        and pd.notna(p.get(value_key))
-    ]
-    x = np.asarray([float(p["age_mid"]) for p in eligible], dtype=float)
-    y = np.asarray([float(p[value_key]) for p in eligible], dtype=float)
-    rho = np.nan
-    pval = np.nan
-    if len(y) >= 2:
-        rho, pval = spearmanr(x, y)
-    pos = y > 0
-    out = {
-        "n_bins": int(len(eligible)),
-        "spearman_rho": float(rho) if pd.notna(rho) else None,
-        "spearman_p": float(pval) if pd.notna(pval) else None,
-        "linear_slope_per_year": float(slope(x, y)) if len(y) >= 2 else None,
-        "linear_slope_log_per_year": float(slope(x[pos], np.log(y[pos]))) if int(pos.sum()) >= 2 else None,
-    }
-    out["negative_flag"] = bool(
-        out["n_bins"] >= 5
-        and out["spearman_rho"] is not None
-        and out["spearman_p"] is not None
-        and out["linear_slope_per_year"] is not None
-        and out["spearman_rho"] < 0
-        and out["spearman_p"] < 0.05
-        and out["linear_slope_per_year"] < 0
-    )
-    if value_key == "cv":
-        out["linear_slope_cv_per_year"] = out["linear_slope_per_year"]
-        out["linear_slope_logcv_per_year"] = out["linear_slope_log_per_year"]
-        out["decline_flag"] = out["negative_flag"]
-    return out
-
-
-def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping: dict) -> dict:
-    if clalit_f is None or clalit_m is None or not mapping:
-        return {}
-    df_f = clalit_f.copy()
-    df_m = clalit_m.copy()
-    df_f['sex_norm'] = 'female'
-    df_m['sex_norm'] = 'male'
-    df = pd.concat([df_f, df_m], ignore_index=True)
-    df['mapped_targets'] = df['test'].map(mapping)
-    df = df.dropna(subset=['mapped_targets']).copy()
-    # Allow one Clalit test to map to multiple NHANES biomarker IDs (e.g., CRP aliases).
-    df['mapped_targets'] = df['mapped_targets'].apply(
-        lambda v: v if isinstance(v, list) else [v]
-    )
-    df = df.explode('mapped_targets').rename(columns={'mapped_targets': 'biomarker_id'})
-    df = df.dropna(subset=['biomarker_id']).copy()
-    df['biomarker_id'] = df['biomarker_id'].astype(str)
-    
-    df['age_bin'] = pd.cut(df['age'], bins=AGE_BINS, labels=AGE_LABELS, right=False, include_lowest=True)
-    df = df.dropna(subset=['age_bin']).copy()
-    df['age_mid'] = df['age_bin'].map(AGE_MIDS).astype(float)
-    
-    clalit_payload = {}
-    
-    for (bid, sex), g in df.groupby(['biomarker_id', 'sex_norm'], observed=True):
-        pooled = []
-        for age_bin, g_age in g.groupby('age_bin', observed=True):
-            if g_age.empty:
-                continue
-            n_tot = int(g_age['n'].sum())
-            if n_tot < 30:
-                continue
-            mean_v = float(np.average(g_age['mean'], weights=g_age['n']))
-            var_v = np.average(g_age['sd']**2 + (g_age['mean'] - mean_v)**2, weights=g_age['n'])
-            std_v = float(np.sqrt(var_v)) if var_v > 0 else 0.0
-            cv_v = std_v / abs(mean_v) if abs(mean_v) > 1e-8 else np.nan
-            median_v = float(np.average(g_age['median'], weights=g_age['n']))
-            q25_v = float(np.average(g_age['q25'], weights=g_age['n'])) if 'q25' in g_age.columns else None
-            q75_v = float(np.average(g_age['q75'], weights=g_age['n'])) if 'q75' in g_age.columns else None
-            
-            p = {
-                "age_bin": str(age_bin),
-                "age_mid": float(g_age['age_mid'].iloc[0]),
-                "n": n_tot,
-                "mean": mean_v,
-                "std": std_v,
-                "median": median_v,
-                "q25": q25_v,
-                "q75": q75_v,
-                "cv": float(cv_v),
-                "passes_n_threshold": True
-            }
-            pooled.append(p)
-        clalit_payload.setdefault(bid, {})[sex] = pooled
-        
-    for bid, g in df.groupby('biomarker_id', observed=True):
-        pooled = []
-        for age_bin, g_age in g.groupby('age_bin', observed=True):
-            if g_age.empty:
-                continue
-            n_tot = int(g_age['n'].sum())
-            if n_tot < 30:
-                continue
-            mean_v = float(np.average(g_age['mean'], weights=g_age['n']))
-            var_v = np.average(g_age['sd']**2 + (g_age['mean'] - mean_v)**2, weights=g_age['n'])
-            std_v = float(np.sqrt(var_v)) if var_v > 0 else 0.0
-            cv_v = std_v / abs(mean_v) if abs(mean_v) > 1e-8 else np.nan
-            median_v = float(np.average(g_age['median'], weights=g_age['n']))
-            q25_v = float(np.average(g_age['q25'], weights=g_age['n'])) if 'q25' in g_age.columns else None
-            q75_v = float(np.average(g_age['q75'], weights=g_age['n'])) if 'q75' in g_age.columns else None
-            
-            p = {
-                "age_bin": str(age_bin),
-                "age_mid": float(g_age['age_mid'].iloc[0]),
-                "n": n_tot,
-                "mean": mean_v,
-                "std": std_v,
-                "median": median_v,
-                "q25": q25_v,
-                "q75": q75_v,
-                "cv": float(cv_v),
-                "passes_n_threshold": True
-            }
-            pooled.append(p)
-        clalit_payload.setdefault(bid, {})['pooled'] = pooled
-        
-    return clalit_payload
-
-
-def append_neutrophil_lymphocyte_ratio(
-    long_df: pd.DataFrame | None,
-    catalog_df: pd.DataFrame | None,
-    specimen_kind: str,
-) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
-    """Append a derived neutrophil-to-lymphocyte ratio biomarker to blood inputs."""
-    if specimen_kind != "blood" or long_df is None or long_df.empty:
-        return long_df, catalog_df
-
-    required = {"seqn", "age_years", "sex", "biomarker_id", "value"}
-    if not required.issubset(long_df.columns):
-        return long_df, catalog_df
-
-    key_cols = [c for c in ["seqn", "cycle_start_year", "age_years", "sex"] if c in long_df.columns]
-    use = long_df[key_cols + ["biomarker_id", "value"]].dropna(subset=["biomarker_id", "value"]).copy()
-    use["bid_norm"] = use["biomarker_id"].astype(str).str.strip().str.lower()
-
-    neut = (
-        use[use["bid_norm"] == "segmented neutrophils num"]
-        .groupby(key_cols, observed=True)["value"]
-        .mean()
-        .reset_index(name="neutrophils")
-    )
-    lymph = (
-        use[use["bid_norm"] == "lymphocyte number"]
-        .groupby(key_cols, observed=True)["value"]
-        .mean()
-        .reset_index(name="lymphocytes")
-    )
-    merged = neut.merge(lymph, on=key_cols, how="inner")
-    merged = merged.replace([np.inf, -np.inf], np.nan).dropna(subset=["neutrophils", "lymphocytes"])
-    merged = merged[merged["lymphocytes"] > 0].copy()
-    if merged.empty:
-        return long_df, catalog_df
-
-    merged["value"] = merged["neutrophils"] / merged["lymphocytes"]
-    merged = merged.replace([np.inf, -np.inf], np.nan).dropna(subset=["value"]).copy()
-    if merged.empty:
-        return long_df, catalog_df
-
-    derived = pd.DataFrame(index=np.arange(len(merged)))
-    for c in long_df.columns:
-        derived[c] = np.nan
-    for c in key_cols:
-        derived[c] = merged[c].to_numpy()
-    derived["biomarker_id"] = DERIVED_NLR_ID
-    derived["value"] = merged["value"].to_numpy(dtype=float)
-    if "variable_name" in derived.columns:
-        derived["variable_name"] = DERIVED_NLR_ID
-    if "biomarker_name" in derived.columns:
-        derived["biomarker_name"] = DERIVED_NLR_NAME
-    if "source_data_file" in derived.columns:
-        derived["source_data_file"] = "DERIVED"
-    if "unit" in derived.columns:
-        derived["unit"] = ""
-    if "healthy_flag" in derived.columns:
-        derived["healthy_flag"] = np.nan
-    if "exclusion_reason" in derived.columns:
-        derived["exclusion_reason"] = ""
-
-    long_out = pd.concat([long_df, derived[long_df.columns]], ignore_index=True)
-
-    catalog_out = catalog_df
-    if catalog_out is not None and not catalog_out.empty:
-        has_row = catalog_out["biomarker_id"].astype(str).str.lower().eq(DERIVED_NLR_ID).any()
-        if not has_row:
-            new_row = {c: np.nan for c in catalog_out.columns}
-            new_row["biomarker_id"] = DERIVED_NLR_ID
-            if "variable_name" in new_row:
-                new_row["variable_name"] = DERIVED_NLR_ID
-            if "biomarker_name" in new_row:
-                new_row["biomarker_name"] = DERIVED_NLR_NAME
-            if "unit" in new_row:
-                new_row["unit"] = ""
-            if "source_file_count" in new_row:
-                new_row["source_file_count"] = 2
-            if "source_files" in new_row:
-                new_row["source_files"] = "DERIVED"
-            if "source_variable_count" in new_row:
-                new_row["source_variable_count"] = 2
-            if "source_variables" in new_row:
-                new_row["source_variables"] = "segmented neutrophils num|lymphocyte number"
-            catalog_out = pd.concat([catalog_out, pd.DataFrame([new_row])], ignore_index=True)
-
-    return long_out, catalog_out
-
-
-def build_outputs(
-    cv_df: pd.DataFrame,
-    metrics_df: pd.DataFrame,
-    catalog_df: pd.DataFrame | None,
-    long_df: pd.DataFrame | None,
-    raw_sample_n: int,
-    random_seed: int,
-    specimen_kind: str = "blood",
-    clalit_f_df: pd.DataFrame | None = None,
-    clalit_m_df: pd.DataFrame | None = None,
-    clalit_map: dict | None = None,
-) -> tuple[pd.DataFrame, list[dict], dict[str, str], dict[str, dict]]:
-    cv_df = cv_df.copy()
-    long_df, catalog_df = append_neutrophil_lymphocyte_ratio(long_df, catalog_df, specimen_kind)
-    if "variable_name" not in cv_df.columns:
-        cv_df["variable_name"] = cv_df["biomarker_id"]
-    if "unit" not in cv_df.columns:
-        cv_df["unit"] = ""
-
-    def grouped_to_points_map(df: pd.DataFrame) -> dict[str, list[dict]]:
-        out: dict[str, list[dict]] = {}
-        if df is None or df.empty:
-            return out
-        for bid, g in df.groupby("biomarker_id", observed=True):
-            pts = []
-            for r in g.sort_values("age_mid").itertuples(index=False):
-                mean_v = float(getattr(r, "mean"))
-                std_v = getattr(r, "std", np.nan)
-                med_v = getattr(r, "median", np.nan)
-                q25_v = getattr(r, "q25", np.nan)
-                q75_v = getattr(r, "q75", np.nan)
-                p10_v = getattr(r, "p10", np.nan)
-                p90_v = getattr(r, "p90", np.nan)
-                skew_v = getattr(r, "skewness", np.nan)
-                cv_v = getattr(r, "cv", np.nan)
-                pts.append(
-                    {
-                        "age_bin": str(getattr(r, "age_bin")),
-                        "age_mid": float(getattr(r, "age_mid")),
-                        "n": int(getattr(r, "n")),
-                        "mean": mean_v,
-                        "std": float(std_v) if pd.notna(std_v) else None,
-                        "median": float(med_v) if pd.notna(med_v) else mean_v,
-                        "q25": float(q25_v) if pd.notna(q25_v) else None,
-                        "q75": float(q75_v) if pd.notna(q75_v) else None,
-                        "p10": float(p10_v) if pd.notna(p10_v) else None,
-                        "p90": float(p90_v) if pd.notna(p90_v) else None,
-                        "skewness": float(skew_v) if pd.notna(skew_v) else None,
-                        "cv": float(cv_v) if pd.notna(cv_v) else None,
-                        "passes_n_threshold": bool(getattr(r, "passes_n_threshold")),
-                    }
-                )
-            out[str(bid)] = pts
-        return out
-
-    def grouped_to_sex_points_map(df: pd.DataFrame) -> dict[str, dict[str, list[dict]]]:
-        out: dict[str, dict[str, list[dict]]] = {}
-        if df is None or df.empty:
-            return out
-        for (bid, sex_norm), g in df.groupby(["biomarker_id", "sex_norm"], observed=True):
-            out.setdefault(str(bid), {})[str(sex_norm)] = grouped_to_points_map(g)[str(bid)]
-        return out
-
-    raw_samples: dict[str, list[dict]] = {}
-    raw_samples_by_sex: dict[str, dict[str, list[dict]]] = {}
-    raw_counts: dict[str, int] = {}
-    raw_counts_by_sex: dict[str, dict[str, int]] = {}
-    pooled_points_by_mode: dict[str, dict[str, list[dict]]] = {}
-    sex_points_by_mode: dict[str, dict[str, dict[str, list[dict]]]] = {}
-    pooled_trends_by_mode_cv: dict[str, dict[str, dict]] = {}
-    pooled_trends_by_mode_mean: dict[str, dict[str, dict]] = {}
-    pooled_trends_by_mode_skew: dict[str, dict[str, dict]] = {}
-    sex_trends_by_mode_cv: dict[str, dict[str, dict[str, dict]]] = {}
-    sex_trends_by_mode_mean: dict[str, dict[str, dict[str, dict]]] = {}
-    sex_trends_by_mode_skew: dict[str, dict[str, dict[str, dict]]] = {}
-
-    if long_df is not None and not long_df.empty:
-        use = long_df[["biomarker_id", "age_years", "value", "sex"]].dropna(subset=["biomarker_id", "age_years", "value"])
-        use["sex_norm"] = use["sex"].astype(str).str.strip().str.lower()
-        use.loc[~use["sex_norm"].isin(["male", "female"]), "sex_norm"] = "unknown"
-
-        sex_use = use[use["sex_norm"].isin(["male", "female"])][["biomarker_id", "age_years", "value", "sex_norm"]]
-        for pct in TRIM_PCTS:
-            mode = trim_mode_key(pct)
-            q = trim_mode_quantiles(mode)
-            pooled_binned = compute_binned_long(
-                use[["biomarker_id", "age_years", "value"]],
-                group_cols=["biomarker_id"],
-                trim_quantiles=q,
-            )
-            sex_binned = compute_binned_long(
-                sex_use,
-                group_cols=["biomarker_id", "sex_norm"],
-                trim_quantiles=q,
-            )
-            pooled_pts = grouped_to_points_map(pooled_binned)
-            sex_pts = grouped_to_sex_points_map(sex_binned)
-            pooled_points_by_mode[mode] = pooled_pts
-            sex_points_by_mode[mode] = sex_pts
-            pooled_trends_by_mode_cv[mode] = {bid: trend_from_points(pts, "cv") for bid, pts in pooled_pts.items()}
-            pooled_trends_by_mode_mean[mode] = {bid: trend_from_points(pts, "mean") for bid, pts in pooled_pts.items()}
-            pooled_trends_by_mode_skew[mode] = {
-                bid: trend_from_points(pts, "skewness") for bid, pts in pooled_pts.items()
-            }
-            sex_trends_by_mode_cv[mode] = {
-                bid: {sx: trend_from_points(pts, "cv") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
-            }
-            sex_trends_by_mode_mean[mode] = {
-                bid: {sx: trend_from_points(pts, "mean") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
-            }
-            sex_trends_by_mode_skew[mode] = {
-                bid: {sx: trend_from_points(pts, "skewness") for sx, pts in by_sex.items()}
-                for bid, by_sex in sex_pts.items()
-            }
-
-        raw_counts = use.groupby("biomarker_id", observed=True).size().astype(int).to_dict()
-        sex_counts_tbl = (
-            use[use["sex_norm"].isin(["male", "female"])]
-            .groupby(["biomarker_id", "sex_norm"], observed=True)
-            .size()
-            .reset_index(name="n")
-        )
-        for r in sex_counts_tbl.itertuples(index=False):
-            raw_counts_by_sex.setdefault(str(r.biomarker_id), {})[str(r.sex_norm)] = int(r.n)
-
-        rng = np.random.default_rng(random_seed)
-        by_biomarker = [(str(bid), g) for bid, g in use.groupby("biomarker_id", observed=True)]
-        non_derived_groups = [(bid, g) for bid, g in by_biomarker if bid != DERIVED_NLR_ID]
-        derived_groups = [(bid, g) for bid, g in by_biomarker if bid == DERIVED_NLR_ID]
-        for bid, g in non_derived_groups + derived_groups:
-            g_pool = g[["age_years", "value"]].dropna()
-            if len(g_pool) > raw_sample_n:
-                idx = rng.choice(len(g_pool), size=raw_sample_n, replace=False)
-                g_pool = g_pool.iloc[idx]
-            raw_samples[str(bid)] = [{"age_years": float(r.age_years), "value": float(r.value)} for r in g_pool.itertuples(index=False)]
-
-        by_biomarker_sex = [
-            ((str(bid), str(sex_norm)), g)
-            for (bid, sex_norm), g in use[use["sex_norm"].isin(["male", "female"])].groupby(
-                ["biomarker_id", "sex_norm"], observed=True
-            )
-        ]
-        non_derived_sex_groups = [item for item in by_biomarker_sex if item[0][0] != DERIVED_NLR_ID]
-        derived_sex_groups = [item for item in by_biomarker_sex if item[0][0] == DERIVED_NLR_ID]
-        for (bid, sex_norm), g in non_derived_sex_groups + derived_sex_groups:
-            g2 = g[["age_years", "value"]].dropna()
-            if len(g2) > raw_sample_n:
-                idx = rng.choice(len(g2), size=raw_sample_n, replace=False)
-                g2 = g2.iloc[idx]
-            raw_samples_by_sex.setdefault(str(bid), {})[str(sex_norm)] = [
-                {"age_years": float(r.age_years), "value": float(r.value)} for r in g2.itertuples(index=False)
-            ]
-    else:
-        # Fallback without participant-level long table.
-        base = cv_df.copy()
-        base["age_bin"] = base["age_bin"].astype(str)
-        if "median" not in base.columns:
-            base["median"] = base["mean"]
-        for col in ["q25", "q75", "p10", "p90"]:
-            if col not in base.columns:
-                base[col] = np.nan
-        if "skewness" not in base.columns:
-            base["skewness"] = np.nan
-        for pct in TRIM_PCTS:
-            mode = trim_mode_key(pct)
-            pooled_points_by_mode[mode] = grouped_to_points_map(base)
-            pooled_trends_by_mode_cv[mode] = {
-                bid: trend_from_points(pts, "cv") for bid, pts in pooled_points_by_mode[mode].items()
-            }
-            pooled_trends_by_mode_mean[mode] = {
-                bid: trend_from_points(pts, "mean") for bid, pts in pooled_points_by_mode[mode].items()
-            }
-            pooled_trends_by_mode_skew[mode] = {
-                bid: trend_from_points(pts, "skewness") for bid, pts in pooled_points_by_mode[mode].items()
-            }
-            sex_points_by_mode[mode] = {}
-            sex_trends_by_mode_cv[mode] = {}
-            sex_trends_by_mode_mean[mode] = {}
-            sex_trends_by_mode_skew[mode] = {}
-
-    if catalog_df is not None and not catalog_df.empty:
-        need = [
-            "biomarker_id",
-            "variable_name",
-            "biomarker_name",
-            "unit",
-            "source_file_count",
-            "source_files",
-            "source_variable_count",
-            "source_variables",
-        ]
-        metadata = catalog_df[need].drop_duplicates().sort_values(["biomarker_name", "biomarker_id"]).copy()
-    else:
-        metadata = (
-            cv_df[["biomarker_id", "biomarker_name", "variable_name", "unit"]]
-            .drop_duplicates()
-            .sort_values(["biomarker_name", "biomarker_id"])
-        )
-        metadata["source_file_count"] = np.nan
-        metadata["source_files"] = ""
-        metadata["source_variable_count"] = np.nan
-        metadata["source_variables"] = ""
-
-    metadata["variable_name"] = metadata["variable_name"].fillna(metadata["biomarker_id"])
-    metadata["biomarker_name"] = metadata["biomarker_name"].fillna(metadata["variable_name"])
-    metadata["unit"] = metadata["unit"].fillna("")
-    metadata["source_files"] = metadata["source_files"].fillna("")
-    metadata["source_file_count"] = pd.to_numeric(metadata["source_file_count"], errors="coerce").fillna(0).astype(int)
-    metadata["source_variables"] = metadata["source_variables"].fillna("")
-    metadata["source_variable_count"] = pd.to_numeric(metadata["source_variable_count"], errors="coerce").fillna(0).astype(int)
-    metadata["raw_total_n"] = metadata["biomarker_id"].map(raw_counts).fillna(0).astype(int)
-    metadata["raw_sample_cap"] = int(raw_sample_n)
-    metadata["display_name"] = [
-        make_display_name(n, u, specimen_kind=specimen_kind)
-        for n, u in zip(metadata["biomarker_name"], metadata["unit"])
-    ]
-    cat_rows = [
-        classify_biomarker(n, v, sf)
-        for n, v, sf in zip(metadata["biomarker_name"], metadata["variable_name"], metadata["source_files"])
-    ]
-    metadata["category"] = [r[0] for r in cat_rows]
-    metadata["is_environmental"] = [bool(r[1]) for r in cat_rows]
-    metadata["is_core_clinical"] = [bool(r[2]) for r in cat_rows]
-    metadata["category_rank"] = metadata["category"].map(CATEGORY_ORDER).fillna(999).astype(int)
-    metadata = metadata.sort_values(["category_rank", "display_name", "biomarker_id"]).reset_index(drop=True)
-
-    clalit_data_map = process_clalit_data(clalit_f_df, clalit_m_df, clalit_map)
-
-    metrics: list[dict] = []
-    for r in metadata.itertuples(index=False):
-        bid = str(r.biomarker_id)
-        fallback_cv = {
-            "n_bins": 0,
-            "spearman_rho": None,
-            "spearman_p": None,
-            "linear_slope_per_year": None,
-            "linear_slope_log_per_year": None,
-            "linear_slope_cv_per_year": None,
-            "linear_slope_logcv_per_year": None,
-            "negative_flag": False,
-            "decline_flag": False,
-        }
-        fallback_other = {
-            "n_bins": 0,
-            "spearman_rho": None,
-            "spearman_p": None,
-            "linear_slope_per_year": None,
-            "linear_slope_log_per_year": None,
-            "negative_flag": False,
-        }
-        modes = [trim_mode_key(p) for p in TRIM_PCTS]
-        trends_cv = {mode: pooled_trends_by_mode_cv.get(mode, {}).get(bid, fallback_cv) for mode in modes}
-        trends_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, fallback_other) for mode in modes}
-        trends_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, fallback_other) for mode in modes}
-        sex_metrics_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in modes}
-        sex_metrics_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in modes}
-        sex_metrics_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in modes}
-        trend_all = trends_cv.get("all", fallback_cv)
-
-        c_trends = {"cv": {}, "mean": {}, "skewness": {}}
-        for c_sex, pts in clalit_data_map.get(bid, {}).items():
-            if not pts:
-                continue
-            c_trends["cv"][c_sex] = trend_from_points(pts, "cv")
-            c_trends["mean"][c_sex] = trend_from_points(pts, "mean")
-            c_trends["skewness"][c_sex] = trend_from_points(pts, "skewness")
-
-        metrics.append(
-            {
-                "biomarker_id": bid,
-                "biomarker_name": str(r.biomarker_name),
-                "n_bins": trend_all.get("n_bins"),
-                "spearman_rho": trend_all.get("spearman_rho"),
-                "spearman_p": trend_all.get("spearman_p"),
-                "linear_slope_cv_per_year": trend_all.get("linear_slope_cv_per_year"),
-                "linear_slope_logcv_per_year": trend_all.get("linear_slope_logcv_per_year"),
-                "decline_flag": trend_all.get("decline_flag"),
-                "trends": trends_cv,
-                "mean_trends": trends_mean,
-                "skewness_trends": trends_skew,
-                "trends_by_stat": {
-                    "cv": trends_cv,
-                    "mean": trends_mean,
-                    "skewness": trends_skew,
-                },
-                "sex_metrics": sex_metrics_cv,
-                "sex_mean_metrics": sex_metrics_mean,
-                "sex_skewness_metrics": sex_metrics_skew,
-                "sex_metrics_by_stat": {
-                    "cv": sex_metrics_cv,
-                    "mean": sex_metrics_mean,
-                    "skewness": sex_metrics_skew,
-                },
-                "clalit_trends": c_trends,
-            }
-        )
-
-    series_index: dict[str, str] = {}
-    series_payloads: dict[str, dict] = {}
-
-    meta_by_id = metadata.set_index("biomarker_id").to_dict(orient="index")
-
-    for bid in metadata["biomarker_id"].astype(str).tolist():
-        rel_path = safe_series_filename(bid)
-        md = meta_by_id.get(bid, {})
-        series_index[bid] = rel_path
-        points_by_filter = {mode: pooled_points_by_mode.get(mode, {}).get(bid, []) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        sex_points_by_filter = {mode: sex_points_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        trends_by_filter_cv = {mode: pooled_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        trends_by_filter_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        trends_by_filter_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        sex_trends_filter_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        sex_trends_filter_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        sex_trends_filter_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
-        all_points = points_by_filter.get("all", [])
-        series_payloads[rel_path] = {
-            "biomarker_id": bid,
-            "biomarker_name": str(md.get("biomarker_name") or bid),
-            "display_name": str(md.get("display_name") or make_display_name(
-                str(md.get("biomarker_name") or bid),
-                str(md.get("unit") or ""),
-                specimen_kind=specimen_kind,
-            )),
-            "variable_name": str(md.get("variable_name") or bid),
-            "unit": str(md.get("unit") or ""),
-            "category": md.get("category", "Other Clinical"),
-            "is_environmental": bool(md.get("is_environmental", False)),
-            "is_core_clinical": bool(md.get("is_core_clinical", False)),
-            "raw_total_n": int(md.get("raw_total_n", 0)),
-            "raw_total_n_by_sex": raw_counts_by_sex.get(str(bid), {}),
-            "raw_sample_cap": int(md.get("raw_sample_cap", raw_sample_n)),
-            "points": all_points,
-            "points_by_filter": points_by_filter,
-            "raw_sample": raw_samples.get(str(bid), []),
-            "raw_sample_by_sex": raw_samples_by_sex.get(str(bid), {}),
-            "sex_points": sex_points_by_filter.get("all", {}),
-            "sex_points_by_filter": sex_points_by_filter,
-            "trends": trends_by_filter_cv,
-            "mean_trends": trends_by_filter_mean,
-            "skewness_trends": trends_by_filter_skew,
-            "trends_by_stat": {
-                "cv": trends_by_filter_cv,
-                "mean": trends_by_filter_mean,
-                "skewness": trends_by_filter_skew,
-            },
-            "sex_metrics": sex_trends_filter_cv,
-            "sex_mean_metrics": sex_trends_filter_mean,
-            "sex_skewness_metrics": sex_trends_filter_skew,
-            "sex_metrics_by_stat": {
-                "cv": sex_trends_filter_cv,
-                "mean": sex_trends_filter_mean,
-                "skewness": sex_trends_filter_skew,
-            },
-            "clalit_data": clalit_data_map.get(str(bid)),
-        }
-
-    return metadata, metrics, series_index, series_payloads
-
-
-def render_dashboard_html(
-    data_base: str,
-    specimen_title: str,
-    specimen_lower: str,
-    has_clalit: bool,
-    specimen_switch_link: str,
-) -> str:
-    data_version = str(int(time.time()))
-    template = TEMPLATE_PATH.read_text(encoding="utf-8") if TEMPLATE_PATH.exists() else HTML_TEMPLATE
-    return (
-        template.replace("__DATA_VERSION__", data_version)
-        .replace("__DATA_BASE__", data_base)
-        .replace("__SPECIMEN_TITLE__", specimen_title)
-        .replace("__SPECIMEN_LOWER__", specimen_lower)
-        .replace("__HAS_CLALIT__", "true" if has_clalit else "false")
-        .replace("__SPECIMEN_SWITCH_LINK__", specimen_switch_link)
-    )
-
-
-def write_dashboard_bundle(
-    out_html: Path,
-    out_json: Path,
-    data_dir_name: str,
-    metadata: pd.DataFrame,
-    metrics: list[dict],
-    series_index: dict[str, str],
-    series_payloads: dict[str, dict],
-    raw_sample_n: int,
-) -> None:
-    data_dir = out_html.parent / data_dir_name
-    series_dir = data_dir / "series"
-
-    ensure_dir(out_html.parent)
-    ensure_dir(data_dir)
-    ensure_dir(series_dir)
-    ensure_dir(out_json.parent)
-
-    for old in series_dir.glob("*.json"):
-        old.unlink()
-
-    (data_dir / "metadata.json").write_text(
-        json.dumps(metadata.to_dict(orient="records"), ensure_ascii=True, allow_nan=False), encoding="utf-8"
-    )
-    (data_dir / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=True, allow_nan=False), encoding="utf-8")
-    (data_dir / "series_index.json").write_text(
-        json.dumps(series_index, ensure_ascii=True, allow_nan=False), encoding="utf-8"
-    )
-
-    for rel, payload in series_payloads.items():
-        p = data_dir / rel
-        ensure_dir(p.parent)
-        p.write_text(json.dumps(payload, ensure_ascii=True, allow_nan=False), encoding="utf-8")
-
-    summary_payload = {
-        "metadata_count": len(metadata),
-        "metrics_count": len(metrics),
-        "series_count": len(series_payloads),
-        "raw_sample_n": raw_sample_n,
-        "data_dir": str(data_dir),
-    }
-    out_json.write_text(json.dumps(summary_payload, ensure_ascii=True, indent=2, allow_nan=False), encoding="utf-8")
-
-    print(f"Wrote metadata: {data_dir / 'metadata.json'}")
-    print(f"Wrote metrics: {data_dir / 'metrics.json'}")
-    print(f"Wrote series index: {data_dir / 'series_index.json'}")
-    print(f"Wrote {len(series_payloads)} series files under: {series_dir}")
-    print(f"Wrote dashboard summary JSON: {out_json}")
-
-
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--cv", default="data/processed/cv_by_age.parquet")
-    ap.add_argument("--cv-all", default="data/processed/cv_by_age_all.parquet")
-    ap.add_argument("--metrics", default="data/processed/cv_trend_metrics.parquet")
-    ap.add_argument("--catalog", default="data/processed/biomarker_catalog.parquet")
-    ap.add_argument("--long", default="data/processed/biomarker_long.parquet")
-    ap.add_argument("--urine-cv", default="data/processed/urine/cv_by_age.parquet")
-    ap.add_argument("--urine-cv-all", default="data/processed/urine/cv_by_age_all.parquet")
-    ap.add_argument("--urine-metrics", default="data/processed/urine/cv_trend_metrics.parquet")
-    ap.add_argument("--urine-catalog", default="data/processed/urine/biomarker_catalog.parquet")
-    ap.add_argument("--urine-long", default="data/processed/urine/biomarker_long.parquet")
-    ap.add_argument("--raw-sample-n", type=int, default=1200)
-    ap.add_argument("--random-seed", type=int, default=42)
-    ap.add_argument("--out", default="dashboard/index.html")
-    ap.add_argument("--json-out", default="dashboard/dashboard_data.json")
-    ap.add_argument("--urine-out", default="dashboard/urinary.html")
-    ap.add_argument("--urine-json-out", default="dashboard/dashboard_data_urine.json")
-    ap.add_argument("--clalit-f", default="data/clalit/females_all_statistics.csv")
-    ap.add_argument("--clalit-m", default="data/clalit/males_all_statistics.csv")
-    ap.add_argument("--clalit-map", default="data/clalit_mapping.json")
-    args = ap.parse_args()
-
-    def load_inputs(cv_all_path: str, cv_path: str, metrics_path: str, catalog_path: str, long_path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None]:
-        preferred_cv = Path(cv_all_path)
-        if not preferred_cv.exists():
-            preferred_cv = Path(cv_path)
-        cv_df = pd.read_parquet(preferred_cv)
-        metrics_df = pd.read_parquet(metrics_path) if Path(metrics_path).exists() else pd.DataFrame()
-        cat_path = Path(catalog_path)
-        catalog_df = pd.read_parquet(cat_path) if cat_path.exists() else None
-        lg_path = Path(long_path)
-        long_df = None
-        if lg_path.exists():
-            long_df = pd.read_parquet(
-                lg_path,
-                columns=["seqn", "cycle_start_year", "biomarker_id", "age_years", "value", "sex"],
-            )
-        return cv_df, metrics_df, catalog_df, long_df
-
-    blood_cv_df, blood_metrics_df, blood_catalog_df, blood_long_df = load_inputs(
-        cv_all_path=args.cv_all,
-        cv_path=args.cv,
-        metrics_path=args.metrics,
-        catalog_path=args.catalog,
-        long_path=args.long,
-    )
-    urine_cv_df, urine_metrics_df, urine_catalog_df, urine_long_df = load_inputs(
-        cv_all_path=args.urine_cv_all,
-        cv_path=args.urine_cv,
-        metrics_path=args.urine_metrics,
-        catalog_path=args.urine_catalog,
-        long_path=args.urine_long,
-    )
-
-    clalit_f = pd.read_csv(args.clalit_f) if Path(args.clalit_f).exists() else None
-    clalit_m = pd.read_csv(args.clalit_m) if Path(args.clalit_m).exists() else None
-    clalit_map = None
-    if Path(args.clalit_map).exists():
-        with open(args.clalit_map) as f:
-            clalit_map = json.load(f)
-    has_blood_clalit = bool(clalit_f is not None and clalit_m is not None and clalit_map)
-
-    blood_metadata, blood_metrics, blood_series_index, blood_series_payloads = build_outputs(
-        cv_df=blood_cv_df,
-        metrics_df=blood_metrics_df,
-        catalog_df=blood_catalog_df,
-        long_df=blood_long_df,
-        raw_sample_n=args.raw_sample_n,
-        random_seed=args.random_seed,
-        specimen_kind="blood",
-        clalit_f_df=clalit_f if has_blood_clalit else None,
-        clalit_m_df=clalit_m if has_blood_clalit else None,
-        clalit_map=clalit_map if has_blood_clalit else None,
-    )
-    urine_metadata, urine_metrics, urine_series_index, urine_series_payloads = build_outputs(
-        cv_df=urine_cv_df,
-        metrics_df=urine_metrics_df,
-        catalog_df=urine_catalog_df,
-        long_df=urine_long_df,
-        raw_sample_n=args.raw_sample_n,
-        random_seed=args.random_seed,
-        specimen_kind="urine",
-        clalit_f_df=None,
-        clalit_m_df=None,
-        clalit_map=None,
-    )
-
-    blood_out_html = Path(args.out)
-    blood_out_json = Path(args.json_out)
-    urine_out_html = Path(args.urine_out)
-    urine_out_json = Path(args.urine_json_out)
-
-    write_dashboard_bundle(
-        out_html=blood_out_html,
-        out_json=blood_out_json,
-        data_dir_name="data",
-        metadata=blood_metadata,
-        metrics=blood_metrics,
-        series_index=blood_series_index,
-        series_payloads=blood_series_payloads,
-        raw_sample_n=args.raw_sample_n,
-    )
-    write_dashboard_bundle(
-        out_html=urine_out_html,
-        out_json=urine_out_json,
-        data_dir_name="data_urine",
-        metadata=urine_metadata,
-        metrics=urine_metrics,
-        series_index=urine_series_index,
-        series_payloads=urine_series_payloads,
-        raw_sample_n=args.raw_sample_n,
-    )
-
-    blood_self_href = os.path.relpath(blood_out_html, start=blood_out_html.parent).replace(os.sep, "/")
-    urine_from_blood_href = os.path.relpath(urine_out_html, start=blood_out_html.parent).replace(os.sep, "/")
-    blood_from_urine_href = os.path.relpath(blood_out_html, start=urine_out_html.parent).replace(os.sep, "/")
-    urine_self_href = os.path.relpath(urine_out_html, start=urine_out_html.parent).replace(os.sep, "/")
-
-    blood_switch_links = (
-        f'<a class="tab-btn specimen-link active" data-base-href="{blood_self_href}" href="{blood_self_href}#dashboard">Blood Tests</a>'
-        f'<a class="tab-btn specimen-link" data-base-href="{urine_from_blood_href}" href="{urine_from_blood_href}#dashboard">Urinary Tests</a>'
-    )
-    urine_switch_links = (
-        f'<a class="tab-btn specimen-link" data-base-href="{blood_from_urine_href}" href="{blood_from_urine_href}#dashboard">Blood Tests</a>'
-        f'<a class="tab-btn specimen-link active" data-base-href="{urine_self_href}" href="{urine_self_href}#dashboard">Urinary Tests</a>'
-    )
-
-    blood_out_html.write_text(
-        render_dashboard_html(
-            data_base="./data",
-            specimen_title="Blood",
-            specimen_lower="blood",
-            has_clalit=has_blood_clalit,
-            specimen_switch_link=blood_switch_links,
-        ),
-        encoding="utf-8",
-    )
-    urine_out_html.write_text(
-        render_dashboard_html(
-            data_base="./data_urine",
-            specimen_title="Urinary",
-            specimen_lower="urinary",
-            has_clalit=False,
-            specimen_switch_link=urine_switch_links,
-        ),
-        encoding="utf-8",
-    )
-    print(f"Wrote dashboard HTML: {blood_out_html}")
-    print(f"Wrote dashboard HTML: {urine_out_html}")
-
-
-if __name__ == "__main__":
-    main()
