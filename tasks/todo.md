@@ -1,8 +1,7 @@
-# Dashboard UI Modernization
+# Blood Duplicate Harmonization
 
-- [completed] Redesign shared dashboard HTML/CSS structure in `src/build_dashboard.py` without changing control IDs or behavior.
-- [completed] Update metric summary and Plotly presentation styling while preserving analytical logic.
-- [completed] Regenerate blood and urinary dashboard outputs.
-- [completed] Validate desktop/mobile behavior and representative interactions with Playwright.
-- [completed] Update `README.md` with the redesigned UI architecture and verification workflow.
-- [pending] Review diff, commit changes, and push to the repository.
+- [in_progress] Audit blood biomarker duplicates across names, units, and missing-unit aliases in `data/processed/lab_variable_manifest.parquet`.
+- [pending] Update `src/build_analysis_dataset.py` to merge true duplicates using smarter name normalization, unit parsing, and conversion handling.
+- [pending] Emit blood duplicate merge documentation into processed/output artifacts and update `README.md`.
+- [pending] Rebuild blood dataset/dashboard outputs and verify the merged catalog.
+- [pending] Run focused tests, review the diff, commit changes, and push to the repository.

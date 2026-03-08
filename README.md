@@ -270,7 +270,18 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ## Pooling and variable screening
 - Biomarkers are pooled across NHANES cycles/files by normalized test name (not only by code name).
 - Example: different code names for the same test (e.g., `LBX*` and `SST*`) are merged when they refer to the same analyte/test.
-- Compatible unit variants are converted and pooled (e.g., g/dL and g/L for albumin); incompatible unit systems remain separate entries.
+- Compatible unit variants are converted and pooled, including:
+  - simple scale changes (for example `g/dL` vs `g/L`, `ng/mL` vs `ug/L`)
+  - paired NHANES conventional/SI fields inferred from the raw XPT data (for example `mg/dL` vs `mmol/L`, `pg/mL` vs `pmol/L`)
+  - missing-unit aliases when NHANES reuses the same analyte label without printing the unit in some files
+- Known blood-test alias merges now include cases such as:
+  - `Albumin` + `Albumin (g/dL)` + `Albumin (g/L)`
+  - `Creatinine (mg/dL)` + `Creatinine (umol/L)`
+  - `Triglyceride` + `Triglycerides`
+  - `Vitamin B12` + `Vitamin B12, serum`
+  - `Folate, serum` + `Serum folate`
+  - `Cholesterol` + `Total Cholesterol`
+- Intentionally incompatible representations remain separate (for example `%` fatty-acid composition vs concentration units, and serology `IgG` vs `IgM` assays).
 - Non-analytic fields are removed before analysis:
   - comment/result code fields
   - questionnaire-style text fields
@@ -283,6 +294,10 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - Screening audit is written to:
   - `data/processed/variable_screening_summary.csv`
   - `data/processed/urine/variable_screening_summary.csv`
+- Duplicate-merge documentation is written to:
+  - `data/processed/duplicate_merge_map.csv`
+  - `data/processed/duplicate_merge_summary.csv`
+  - `data/processed/duplicate_merge_report.md`
 - Pooled catalog is written to:
   - `data/processed/biomarker_catalog.parquet`
   - `data/processed/urine/biomarker_catalog.parquet`
