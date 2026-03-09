@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import skew as scipy_skew
 from scipy.stats import spearmanr
-from scipy.stats.mstats import hdquantiles
 
 from nhanes_common import ensure_dir
 
@@ -2857,16 +2856,6 @@ def slope(x: np.ndarray, y: np.ndarray) -> float:
     return float(np.polyfit(x, y, 1)[0])
 
 
-def harrell_davis_quantile(values, q: float) -> float:
-    arr = np.asarray(values, dtype=float)
-    arr = arr[np.isfinite(arr)]
-    if arr.size == 0:
-        return np.nan
-    if arr.size == 1:
-        return float(arr[0])
-    return float(hdquantiles(arr, [q])[0])
-
-
 def compute_binned_long(
     df: pd.DataFrame,
     group_cols: list[str],
@@ -2899,9 +2888,6 @@ def compute_binned_long(
             median="median",
             q25=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 25)),
             q75=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 75)),
-            hd_q25=lambda s: harrell_davis_quantile(s.to_numpy(dtype=float), 0.25),
-            hd_median=lambda s: harrell_davis_quantile(s.to_numpy(dtype=float), 0.5),
-            hd_q75=lambda s: harrell_davis_quantile(s.to_numpy(dtype=float), 0.75),
             p10=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 10)),
             p90=lambda s: float(np.nanpercentile(s.to_numpy(dtype=float), 90)),
             skewness=lambda s: float(scipy_skew(s.to_numpy(dtype=float), bias=False, nan_policy="omit")),
@@ -2910,7 +2896,7 @@ def compute_binned_long(
     )
     grouped["cv"] = grouped["std"] / grouped["mean"].abs()
     grouped.loc[grouped["mean"].abs() < 1e-8, "cv"] = np.nan
-    grouped["quantile_skewness"] = quantile_skewness_from_stats(grouped["hd_q25"], grouped["hd_median"], grouped["hd_q75"])
+    grouped["quantile_skewness"] = quantile_skewness_from_stats(grouped["q25"], grouped["median"], grouped["q75"])
     grouped["passes_n_threshold"] = grouped["n"] >= 30
     return grouped.reset_index(drop=True)
 
@@ -3228,9 +3214,6 @@ def build_outputs(
                 q75_v = getattr(r, "q75", np.nan)
                 p10_v = getattr(r, "p10", np.nan)
                 p90_v = getattr(r, "p90", np.nan)
-                hd_q25_v = getattr(r, "hd_q25", np.nan)
-                hd_median_v = getattr(r, "hd_median", np.nan)
-                hd_q75_v = getattr(r, "hd_q75", np.nan)
                 skew_v = getattr(r, "skewness", np.nan)
                 qskew_v = getattr(r, "quantile_skewness", np.nan)
                 cv_v = getattr(r, "cv", np.nan)
@@ -3246,9 +3229,6 @@ def build_outputs(
                         "q75": float(q75_v) if pd.notna(q75_v) else None,
                         "p10": float(p10_v) if pd.notna(p10_v) else None,
                         "p90": float(p90_v) if pd.notna(p90_v) else None,
-                        "hd_q25": float(hd_q25_v) if pd.notna(hd_q25_v) else None,
-                        "hd_median": float(hd_median_v) if pd.notna(hd_median_v) else None,
-                        "hd_q75": float(hd_q75_v) if pd.notna(hd_q75_v) else None,
                         "skewness": float(skew_v) if pd.notna(skew_v) else None,
                         "quantile_skewness": float(qskew_v) if pd.notna(qskew_v) else None,
                         "cv": float(cv_v) if pd.notna(cv_v) else None,
@@ -3379,13 +3359,10 @@ def build_outputs(
         for col in ["q25", "q75", "p10", "p90"]:
             if col not in base.columns:
                 base[col] = np.nan
-        for col, source_col in [("hd_q25", "q25"), ("hd_median", "median"), ("hd_q75", "q75")]:
-            if col not in base.columns:
-                base[col] = base[source_col]
         if "skewness" not in base.columns:
             base["skewness"] = np.nan
         if "quantile_skewness" not in base.columns:
-            base["quantile_skewness"] = quantile_skewness_from_stats(base["hd_q25"], base["hd_median"], base["hd_q75"])
+            base["quantile_skewness"] = quantile_skewness_from_stats(base["q25"], base["median"], base["q75"])
         for pct in TRIM_PCTS:
             mode = trim_mode_key(pct)
             pooled_points_by_mode[mode] = grouped_to_points_map(base)

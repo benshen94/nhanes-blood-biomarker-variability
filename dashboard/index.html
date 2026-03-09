@@ -1604,7 +1604,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1773072929';
+    const DATA_VERSION = '1773073181';
     const HAS_CLALIT = true;
     const SPECIMEN_TITLE = 'Blood';
     const SPECIMEN_LABEL = 'blood';
@@ -2596,10 +2596,7 @@
         return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>skewness=${formatNum(point.skewness, 4)}<br>median=${formatNum(point.median, 4)}<br>mean=${formatNum(point.mean, 4)}<br>cv=${formatNum(point.cv, 4)}`;
       }
       if (statKey === 'quantile_skewness') {
-        const q25 = point.hd_q25 ?? point.q25;
-        const median = point.hd_median ?? point.median;
-        const q75 = point.hd_q75 ?? point.q75;
-        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}<br>hd_q25=${formatNum(q25, 4)}<br>hd_median=${formatNum(median, 4)}<br>hd_q75=${formatNum(q75, 4)}<br>skewness=${formatNum(point.skewness, 4)}`;
+        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}<br>q25=${formatNum(point.q25, 4)}<br>median=${formatNum(point.median, 4)}<br>q75=${formatNum(point.q75, 4)}<br>skewness=${formatNum(point.skewness, 4)}`;
       }
       return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>median=${formatNum(point.median, 4)}<br>q25=${formatNum(point.q25, 4)}<br>q75=${formatNum(point.q75, 4)}<br>mean=${formatNum(point.mean, 4)}<br>std=${formatNum(point.std, 4)}<br>cv=${formatNum(point.cv, 4)}<br>skewness=${formatNum(point.skewness, 4)}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}`;
     }

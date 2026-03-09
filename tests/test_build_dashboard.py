@@ -173,53 +173,6 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertNotIn("85-89", age_bins)
         self.assertIn("80-84", age_bins)
 
-    def test_quantile_skewness_uses_harrell_davis_quantiles(self):
-        rows = []
-        values = ([4.0] * 20) + ([4.1] * 20) + ([4.2] * 20) + ([4.3] * 20) + ([4.4] * 20)
-        for i, value in enumerate(values):
-            rows.append(
-                {
-                    "seqn": 200000 + i,
-                    "cycle_start_year": 2001,
-                    "biomarker_id": "hd-check",
-                    "age_years": 42,
-                    "value": value,
-                    "sex": "female",
-                }
-            )
-        long_df = pd.DataFrame(rows)
-        catalog_df = pd.DataFrame(
-            [
-                {
-                    "biomarker_id": "hd-check",
-                    "variable_name": "LBXHD",
-                    "biomarker_name": "HD check",
-                    "unit": "g/dL",
-                    "source_file_count": 1,
-                    "source_files": "TEST",
-                    "source_variable_count": 1,
-                    "source_variables": "LBXHD",
-                }
-            ]
-        )
-
-        _, _, _, series_payloads = build_outputs(
-            cv_df=pd.DataFrame(columns=["biomarker_id", "biomarker_name", "variable_name", "unit"]),
-            metrics_df=pd.DataFrame(),
-            catalog_df=catalog_df,
-            long_df=long_df,
-            raw_sample_n=50,
-            random_seed=42,
-            specimen_kind="blood",
-        )
-
-        payload = next(iter(series_payloads.values()))
-        point = payload["points_by_filter"]["all"][0]
-        self.assertAlmostEqual(point["q25"], 4.1, places=6)
-        self.assertAlmostEqual(point["q75"], 4.3, places=6)
-        self.assertNotAlmostEqual(point["hd_q25"], point["q25"], places=4)
-        self.assertNotAlmostEqual(point["hd_q75"], point["q75"], places=4)
-
 
 if __name__ == "__main__":
     unittest.main()
