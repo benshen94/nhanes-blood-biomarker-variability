@@ -610,8 +610,7 @@
       align-content: flex-start;
       align-items: flex-start;
     }
-    .filter-expression-dropzone.drag-over,
-    .filter-stage-slot.drag-over {
+    .filter-expression-dropzone.drag-over {
       border-color: var(--focus);
       background: rgba(14, 165, 233, 0.08);
     }
@@ -620,40 +619,6 @@
       font-size: 13px;
       line-height: 1.5;
       max-width: 56ch;
-    }
-    .filter-stage-slot {
-      flex: 0 0 auto;
-      min-width: 80px;
-      min-height: 42px;
-      padding: 0 12px;
-      border-radius: 999px;
-      border: 1px dashed rgba(15, 118, 110, 0.22);
-      background: rgba(255,255,255,0.9);
-      color: var(--ink-muted);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-      font-size: 12px;
-      font-weight: 700;
-      line-height: 1;
-      appearance: none;
-      transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
-    }
-    .filter-stage-slot:hover {
-      color: var(--accent-strong);
-      border-color: rgba(15, 118, 110, 0.42);
-      background: rgba(15,118,110,0.08);
-    }
-    .filter-stage-slot.is-empty-slot {
-      width: 100%;
-      min-width: 0;
-      min-height: 56px;
-      padding: 14px 18px;
-      border-radius: 16px;
-      white-space: normal;
-      text-align: center;
-      line-height: 1.45;
     }
     .filter-stage-token {
       display: inline-flex;
@@ -1478,7 +1443,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1773049568';
+    const DATA_VERSION = '1773050358';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -1630,7 +1595,6 @@
       filterClauses: [],
       filterSelectedClauseId: null,
       filterStageTokens: [],
-      filterStageInsertIndex: null,
       filterTokenNextId: 1,
       filterResults: [],
       filterExpressionPlan: null,
@@ -3336,16 +3300,6 @@
       return state.filterClauses.find(clause => clause.id === clauseId) || null;
     }
 
-    function ensureStageInsertIndex(index) {
-      if (!Number.isInteger(index)) return state.filterStageTokens.length;
-      return Math.max(0, Math.min(state.filterStageTokens.length, index));
-    }
-
-    function setFilterStageInsertIndex(index) {
-      state.filterStageInsertIndex = ensureStageInsertIndex(index);
-      renderFilterStage();
-    }
-
     function upsertFilterClause(shouldInsert = false) {
       const draft = getFilterClauseDraft();
       if (!draft) {
@@ -3373,7 +3327,6 @@
       state.filterClauses = state.filterClauses.filter(clause => clause.id !== clauseId);
       state.filterStageTokens = state.filterStageTokens.filter(token => !(token.kind === 'clause' && token.value === clauseId));
       if (state.filterSelectedClauseId === clauseId) resetFilterClauseWorkshop();
-      state.filterStageInsertIndex = ensureStageInsertIndex(state.filterStageInsertIndex);
       renderFilterClauseLibrary();
       renderFilterStage();
     }
@@ -3382,11 +3335,9 @@
       return { id: state.filterTokenNextId++, kind, value };
     }
 
-    function insertFilterStageToken(tokenLike, index = state.filterStageInsertIndex) {
+    function insertFilterStageToken(tokenLike) {
       const token = buildStageToken(tokenLike.kind, tokenLike.value);
-      const insertAt = ensureStageInsertIndex(index);
-      state.filterStageTokens.splice(insertAt, 0, token);
-      state.filterStageInsertIndex = insertAt + 1;
+      state.filterStageTokens.push(token);
       renderFilterStage();
       return token;
     }
@@ -3398,7 +3349,6 @@
       if (next < 0 || next >= state.filterStageTokens.length) return;
       const [token] = state.filterStageTokens.splice(idx, 1);
       state.filterStageTokens.splice(next, 0, token);
-      state.filterStageInsertIndex = next + 1;
       renderFilterStage();
     }
 
@@ -3406,7 +3356,6 @@
       const idx = state.filterStageTokens.findIndex(token => token.id === tokenId);
       if (idx < 0) return;
       state.filterStageTokens.splice(idx, 1);
-      state.filterStageInsertIndex = ensureStageInsertIndex(idx);
       renderFilterStage();
     }
 
@@ -3437,36 +3386,6 @@
 
     function filterStageExpressionText(tokens = state.filterStageTokens) {
       return tokens.map(token => filterStageTokenText(token)).join(' ');
-    }
-
-    function attachFilterStageSlotHandlers(slot, index) {
-      slot.addEventListener('click', () => setFilterStageInsertIndex(index));
-      slot.addEventListener('dragover', (event) => {
-        event.preventDefault();
-        slot.classList.add('drag-over');
-      });
-      slot.addEventListener('dragleave', () => {
-        slot.classList.remove('drag-over');
-      });
-      slot.addEventListener('drop', (event) => {
-        event.preventDefault();
-        slot.classList.remove('drag-over');
-        const payload = parseDraggedFilterPayload(event);
-        if (!payload) return;
-        if (payload.source === 'library' && payload.clauseId !== undefined) {
-          insertFilterStageToken({ kind: 'clause', value: Number(payload.clauseId) }, index);
-          return;
-        }
-        if (payload.source === 'stage' && payload.tokenId !== undefined) {
-          const fromIdx = state.filterStageTokens.findIndex(token => token.id === Number(payload.tokenId));
-          if (fromIdx < 0) return;
-          const [token] = state.filterStageTokens.splice(fromIdx, 1);
-          const insertAt = fromIdx < index ? index - 1 : index;
-          state.filterStageTokens.splice(ensureStageInsertIndex(insertAt), 0, token);
-          state.filterStageInsertIndex = ensureStageInsertIndex(insertAt) + 1;
-          renderFilterStage();
-        }
-      });
     }
 
     function renderFilterClauseLibrary() {
@@ -3505,23 +3424,35 @@
     function renderFilterStage() {
       filterStageEl.innerHTML = '';
       const tokens = state.filterStageTokens;
-      const renderSlot = (index) => {
-        const slot = document.createElement('button');
-        slot.type = 'button';
-        slot.className = 'filter-stage-slot';
-        if (!tokens.length) slot.classList.add('is-empty-slot');
-        if (state.filterStageInsertIndex === index) slot.classList.add('drag-over');
-        slot.textContent = tokens.length ? 'Insert' : 'Drop clauses here or click to choose the first insertion point';
-        slot.setAttribute('aria-label', tokens.length ? `Insert at position ${index + 1}` : 'Choose first insertion point');
-        slot.title = tokens.length ? 'Insert here' : 'Choose first insertion point';
-        attachFilterStageSlotHandlers(slot, index);
-        filterStageEl.appendChild(slot);
+      filterStageEl.classList.remove('drag-over');
+      filterStageEl.ondragover = (event) => {
+        event.preventDefault();
+        filterStageEl.classList.add('drag-over');
       };
-      renderSlot(0);
+      filterStageEl.ondragleave = () => {
+        filterStageEl.classList.remove('drag-over');
+      };
+      filterStageEl.ondrop = (event) => {
+        event.preventDefault();
+        filterStageEl.classList.remove('drag-over');
+        const payload = parseDraggedFilterPayload(event);
+        if (!payload) return;
+        if (payload.source === 'library' && payload.clauseId !== undefined) {
+          insertFilterStageToken({ kind: 'clause', value: Number(payload.clauseId) });
+          return;
+        }
+        if (payload.source === 'stage' && payload.tokenId !== undefined) {
+          const fromIdx = state.filterStageTokens.findIndex(token => token.id === Number(payload.tokenId));
+          if (fromIdx < 0) return;
+          const [token] = state.filterStageTokens.splice(fromIdx, 1);
+          state.filterStageTokens.push(token);
+          renderFilterStage();
+        }
+      };
       if (!tokens.length) {
         const empty = document.createElement('div');
         empty.className = 'filter-stage-empty';
-        empty.textContent = 'The stage is empty. Save a clause, then insert it here with operators and parentheses.';
+        empty.textContent = 'The stage is empty. Save a clause, then add it to the end with the toolbar or drag it here.';
         filterStageEl.appendChild(empty);
       }
       for (let i = 0; i < tokens.length; i += 1) {
@@ -3550,7 +3481,6 @@
         pill.querySelector('[data-action="right"]').addEventListener('click', () => moveFilterStageToken(token.id, 1));
         pill.querySelector('[data-action="remove"]').addEventListener('click', () => deleteFilterStageToken(token.id));
         filterStageEl.appendChild(pill);
-        renderSlot(i + 1);
       }
       const plan = buildFilterExpressionPlan(tokens);
       state.filterExpressionPlan = plan.ok ? plan : null;
@@ -4003,10 +3933,8 @@
       resetFilterClauseWorkshop();
       const defaultClause = upsertFilterClause(false);
       state.filterStageTokens = [];
-      state.filterStageInsertIndex = 0;
       if (defaultClause) {
         state.filterStageTokens.push(buildStageToken('clause', defaultClause.id));
-        state.filterStageInsertIndex = 1;
       }
       renderFilterClauseLibrary();
       renderFilterStage();
