@@ -8,7 +8,7 @@ import pandas as pd
 
 sys.path.insert(0, str((Path(__file__).resolve().parents[1] / "src")))
 
-from build_analysis_dataset import build_pooling_map, normalize_unit, parse_terminal_unit
+from build_analysis_dataset import build_pooling_map, is_comment_or_code_variable, normalize_unit, parse_terminal_unit
 
 
 class TestBuildAnalysisDataset(unittest.TestCase):
@@ -71,6 +71,21 @@ class TestBuildAnalysisDataset(unittest.TestCase):
 
         triglyceride = pooled[pooled["pool_group_key"] == "triglyceride"]
         self.assertEqual(set(triglyceride["pooled_id"]), {"triglyceride"})
+
+    def test_is_comment_or_code_variable_excludes_formula_ldl_variants(self):
+        self.assertTrue(
+            is_comment_or_code_variable(
+                "LBDLDLM",
+                "LDL-Cholesterol, Martin-Hopkins equation (mg/dL). LBDLDLM = (LBXTC-(LBDHDD + LBXTR/Adjustable Factor), round to 0 decimal places)",
+            )
+        )
+        self.assertTrue(
+            is_comment_or_code_variable(
+                "LBDLDLN",
+                "LBDLDLN = (LBXTC/0.948 - LBDHDD/0.971 - (LBXTR/8.56 + (LBXTR * (LBXTC - LBDHDD))/2140 - LBXTR^2/16100) - 9.44)",
+            )
+        )
+        self.assertFalse(is_comment_or_code_variable("LBDLDL", "LDL-cholesterol (mg/dL)"))
 
 
 if __name__ == "__main__":

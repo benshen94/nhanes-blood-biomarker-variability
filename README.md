@@ -302,6 +302,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - comment/result code fields
   - questionnaire-style text fields
   - duplicate/technical assay fields
+  - alternate equation-specific LDL calculation outputs that duplicate the plain LDL biomarker (`Friedewald`, `Martin-Hopkins`, `NIH equation 2`, and explicit `LBDLDLN = ...` formula labels)
   - low-information categorical numeric fields
 - CRP/hs-CRP are included as pooled blood biomarkers.
 - A derived blood biomarker is added during dashboard build:

@@ -753,6 +753,10 @@ def is_comment_or_code_variable(variable_name: str, variable_desc: str) -> bool:
         r"\bod in dup",
         r"od_dup",
         r"\bmean ab conc",
+        r"\bfriedewald equation\b",
+        r"\bmartin-hopkins equation\b",
+        r"\bnih equation 2\b",
+        r"\blbdldln\s*=",
     ]
     return any(re.search(p, v) is not None for p in patterns)
 
