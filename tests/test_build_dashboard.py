@@ -122,6 +122,56 @@ class TestBuildDashboard(unittest.TestCase):
 
         self.assertIn('id="search" list="biomarker-options" placeholder="Type name, code, file..." autocomplete="off"', html)
         self.assertIn('id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." autocomplete="off"', html)
+        self.assertIn('id="full-view-skew-stat"', html)
+        self.assertIn('id="filter-tests-full-skew-stat"', html)
+
+    def test_build_outputs_drops_85_plus_age_bin(self):
+        rows = []
+        for age in [22, 32, 42, 52, 62, 72, 82, 87]:
+            for i in range(30):
+                rows.append(
+                    {
+                        "seqn": age * 1000 + i,
+                        "cycle_start_year": 2001,
+                        "biomarker_id": "bin-check",
+                        "age_years": age,
+                        "value": float(age) + (0.5 if i % 2 else -0.5),
+                        "sex": "female",
+                    }
+                )
+        long_df = pd.DataFrame(rows)
+        catalog_df = pd.DataFrame(
+            [
+                {
+                    "biomarker_id": "bin-check",
+                    "variable_name": "LBXBIN",
+                    "biomarker_name": "Bin check",
+                    "unit": "mg/dL",
+                    "source_file_count": 1,
+                    "source_files": "TEST",
+                    "source_variable_count": 1,
+                    "source_variables": "LBXBIN",
+                }
+            ]
+        )
+
+        _, metrics, _, series_payloads = build_outputs(
+            cv_df=pd.DataFrame(columns=["biomarker_id", "biomarker_name", "variable_name", "unit"]),
+            metrics_df=pd.DataFrame(),
+            catalog_df=catalog_df,
+            long_df=long_df,
+            raw_sample_n=50,
+            random_seed=42,
+            specimen_kind="blood",
+        )
+
+        metric = metrics[0]
+        payload = next(iter(series_payloads.values()))
+        self.assertEqual(metric["trends_by_stat"]["std"]["all"]["n_bins"], 7)
+        age_bins = [point["age_bin"] for point in payload["points_by_filter"]["all"]]
+        self.assertNotIn("85+", age_bins)
+        self.assertNotIn("85-89", age_bins)
+        self.assertIn("80-84", age_bins)
 
 
 if __name__ == "__main__":

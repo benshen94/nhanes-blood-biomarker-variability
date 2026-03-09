@@ -1107,6 +1107,12 @@
                 <button id="mode-qskew" class="mode-btn" type="button">Plot Quantile Skewness</button>
                 <button id="mode-full" class="mode-btn" type="button">Full View</button>
               </div>
+              <label style="margin-top:12px;">Full view skew metric
+                <select id="full-view-skew-stat">
+                  <option value="skewness" selected>Classic skewness</option>
+                  <option value="quantile_skewness">Quantile skewness</option>
+                </select>
+              </label>
             </div>
 
             <div class="control-section">
@@ -1520,6 +1526,12 @@
                   <option value="full">Full view (all metrics)</option>
                 </select>
               </label>
+              <label>Full view skew metric
+                <select id="filter-tests-full-skew-stat">
+                  <option value="skewness" selected>Classic skewness</option>
+                  <option value="quantile_skewness">Quantile skewness</option>
+                </select>
+              </label>
             </div>
             <div id="filter-tests-plot-summary" class="filter-plot-summary">Run a filter to populate the overlay plot.</div>
             <div id="filter-tests-plot"></div>
@@ -1704,7 +1716,9 @@
     const filterTestsPlotAllBtn = document.getElementById('filter-tests-plot-all');
     const filterTestsPlotNoneBtn = document.getElementById('filter-tests-plot-none');
     const filterTestsPlotStatEl = document.getElementById('filter-tests-plot-stat');
+    const filterTestsFullSkewStatEl = document.getElementById('filter-tests-full-skew-stat');
     const filterTestsPlotSummaryEl = document.getElementById('filter-tests-plot-summary');
+    const fullViewSkewStatEl = document.getElementById('full-view-skew-stat');
     const waterfallSearchEl = document.getElementById('waterfall-search');
     const waterfallOptionsEl = document.getElementById('waterfall-biomarker-options');
     const waterfallBiomarkerEl = document.getElementById('waterfall-biomarker');
@@ -1759,6 +1773,8 @@
       filterExpressionPlan: null,
       filterTestsSelectionSet: new Set(),
       filterPlotSelectionSet: new Set(),
+      fullViewSkewMetric: 'skewness',
+      filterFullViewSkewMetric: 'skewness',
     };
 
     const WATERFALL_AGE_BINS = [
@@ -1826,6 +1842,16 @@
     function effectiveDashboardMode() {
       if (state.mode === 'full') return state.lastSingleMode || 'cv';
       return state.mode || 'cv';
+    }
+
+    function selectedDashboardFullViewSkewMetric() {
+      const value = fullViewSkewStatEl?.value || state.fullViewSkewMetric || 'skewness';
+      return value === 'quantile_skewness' ? 'quantile_skewness' : 'skewness';
+    }
+
+    function selectedFilterFullViewSkewMetric() {
+      const value = filterTestsFullSkewStatEl?.value || state.filterFullViewSkewMetric || 'skewness';
+      return value === 'quantile_skewness' ? 'quantile_skewness' : 'skewness';
     }
 
     function canonicalTopTab(tabName) {
@@ -2419,6 +2445,10 @@
     }
 
     function setMode(mode) {
+      if (mode === 'skewness' || mode === 'quantile_skewness') {
+        state.fullViewSkewMetric = mode;
+        if (fullViewSkewStatEl) fullViewSkewStatEl.value = mode;
+      }
       if (mode !== 'full') state.lastSingleMode = mode;
       state.mode = mode;
       modeCvBtn.classList.toggle('active', mode === 'cv');
@@ -2691,7 +2721,8 @@
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       const plotEl = document.getElementById('plot');
       if (state.mode === 'full') {
-        const statKeys = ['mean', 'std', 'skewness', 'quantile_skewness', 'cv'];
+        const skewStatKey = selectedDashboardFullViewSkewMetric();
+        const statKeys = ['mean', 'std', skewStatKey, 'cv'];
         const legendSeen = new Set();
         const traces = [];
         for (let i = 0; i < statKeys.length; i += 1) {
@@ -2705,14 +2736,14 @@
             legendSeen,
           }));
         }
-        plotEl.style.height = mobile ? '1840px' : '1180px';
-        const rows = mobile ? 5 : 3;
+        plotEl.style.height = mobile ? '1560px' : '1060px';
+        const rows = mobile ? 4 : 2;
         const columns = mobile ? 1 : 2;
         const annotations = statKeys.map((statKey, index) => {
           const rowIndex = mobile ? index : Math.floor(index / 2);
           const colIndex = mobile ? 0 : index % 2;
           const x = mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77);
-          const y = mobile ? (0.985 - (rowIndex * 0.196)) : (0.995 - (rowIndex * 0.33));
+          const y = mobile ? (0.955 - (rowIndex * 0.235)) : (0.93 - (rowIndex * 0.47));
           return {
             xref: 'paper',
             yref: 'paper',
@@ -2725,26 +2756,26 @@
           };
         });
         Plotly.newPlot('plot', traces, applyPlotTheme({
-          title: `${title} — Full View`,
+          title: { text: `${title} — Full View`, x: 0.5, xanchor: 'center', y: 0.985 },
           grid: { rows, columns, pattern: 'independent' },
           annotations,
           legend: {
             orientation: 'h',
-            y: mobile ? -0.08 : 1.08,
+            y: mobile ? -0.16 : -0.12,
+            yanchor: 'top',
             x: 0,
             font: { size: mobile ? 10 : 12 },
+            bgcolor: 'rgba(255,255,255,0.82)',
           },
-          xaxis: { title: 'Age (years)' },
+          xaxis: { title: '' },
           yaxis: { title: dashboardMetricConfig('mean').yAxisTitle },
-          xaxis2: { title: 'Age (years)' },
+          xaxis2: { title: '' },
           yaxis2: { title: dashboardMetricConfig('std').yAxisTitle },
           xaxis3: { title: 'Age (years)' },
-          yaxis3: { title: dashboardMetricConfig('skewness').yAxisTitle },
+          yaxis3: { title: dashboardMetricConfig(skewStatKey).yAxisTitle },
           xaxis4: { title: 'Age (years)' },
-          yaxis4: { title: dashboardMetricConfig('quantile_skewness').yAxisTitle },
-          xaxis5: { title: 'Age (years)' },
-          yaxis5: { title: dashboardMetricConfig('cv').yAxisTitle },
-          margin: mobile ? { t: 110, l: 58, r: 18, b: 88 } : { t: 110, l: 70, r: 24, b: 76 },
+          yaxis4: { title: dashboardMetricConfig('cv').yAxisTitle },
+          margin: mobile ? { t: 128, l: 58, r: 18, b: 118 } : { t: 148, l: 70, r: 24, b: 110 },
         }, mobile), { responsive: true, displaylogo: false });
         return;
       }
@@ -4334,7 +4365,8 @@
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       const plotEl = document.getElementById('filter-tests-plot');
       if (selectedMetric === 'full') {
-        const statKeys = ['median', 'std', 'skewness', 'quantile_skewness', 'cv'];
+        const skewStatKey = selectedFilterFullViewSkewMetric();
+        const statKeys = ['median', 'std', skewStatKey, 'cv'];
         const legendSeen = new Set();
         const traces = [];
         const notes = [];
@@ -4343,8 +4375,8 @@
           traces.push(...built.traces);
           notes.push(...built.notes);
         }
-        plotEl.style.height = mobile ? '1840px' : '1180px';
-        const rows = mobile ? 5 : 3;
+        plotEl.style.height = mobile ? '1560px' : '1060px';
+        const rows = mobile ? 4 : 2;
         const columns = mobile ? 1 : 2;
         const labels = {
           median: 'Median normalized to age ~30',
@@ -4360,7 +4392,7 @@
             xref: 'paper',
             yref: 'paper',
             x: mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77),
-            y: mobile ? (0.985 - (rowIndex * 0.196)) : (0.995 - (rowIndex * 0.33)),
+            y: mobile ? (0.955 - (rowIndex * 0.235)) : (0.93 - (rowIndex * 0.47)),
             showarrow: false,
             align: 'center',
             text: `<b>${labels[statKey]}</b>`,
@@ -4368,30 +4400,30 @@
           };
         });
         Plotly.newPlot('filter-tests-plot', traces, applyPlotTheme({
-          title: '',
+          title: { text: 'Filtered Test Full Overlay', x: 0.5, xanchor: 'center', y: 0.985 },
           grid: { rows, columns, pattern: 'independent' },
           annotations,
           legend: {
             orientation: 'h',
-            y: mobile ? -0.08 : 1.08,
+            y: mobile ? -0.16 : -0.12,
+            yanchor: 'top',
             x: 0,
             font: { size: mobile ? 10 : 12 },
+            bgcolor: 'rgba(255,255,255,0.82)',
           },
-          xaxis: { title: 'Age (years)' },
+          xaxis: { title: '' },
           yaxis: { title: filterPlotMetricConfig('median').yAxisTitle },
-          xaxis2: { title: 'Age (years)' },
+          xaxis2: { title: '' },
           yaxis2: { title: filterPlotMetricConfig('std').yAxisTitle },
           xaxis3: { title: 'Age (years)' },
-          yaxis3: { title: filterPlotMetricConfig('skewness').yAxisTitle },
+          yaxis3: { title: filterPlotMetricConfig(skewStatKey).yAxisTitle },
           xaxis4: { title: 'Age (years)' },
-          yaxis4: { title: filterPlotMetricConfig('quantile_skewness').yAxisTitle },
-          xaxis5: { title: 'Age (years)' },
-          yaxis5: { title: filterPlotMetricConfig('cv').yAxisTitle },
-          margin: mobile ? { t: 66, l: 58, r: 18, b: 88 } : { t: 74, l: 70, r: 24, b: 76 },
+          yaxis4: { title: filterPlotMetricConfig('cv').yAxisTitle },
+          margin: mobile ? { t: 128, l: 58, r: 18, b: 118 } : { t: 148, l: 70, r: 24, b: 110 },
         }, mobile), { responsive: true, displaylogo: false });
         filterTestsPlotSummaryEl.textContent = notes.length
-          ? `${traces.length} traces rendered across all five metrics. ${notes.length} traces were skipped because a baseline near age 30 was unavailable or zero.`
-          : `${traces.length} traces rendered across all five metrics from ${included.length} filtered tests.`;
+          ? `${traces.length} traces rendered across four metrics using ${labels[skewStatKey].toLowerCase()}. ${notes.length} traces were skipped because a baseline near age 30 was unavailable or zero.`
+          : `${traces.length} traces rendered across four metrics using ${labels[skewStatKey].toLowerCase()} from ${included.length} filtered tests.`;
         return;
       }
       plotEl.style.height = '';
@@ -4811,6 +4843,10 @@
         renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });
+      fullViewSkewStatEl.addEventListener('change', async () => {
+        state.fullViewSkewMetric = selectedDashboardFullViewSkewMetric();
+        if (state.currentId && state.mode === 'full') await renderPlot(state.currentId);
+      });
       scatterXStatEl.addEventListener('change', renderScatterPlot);
       scatterYStatEl.addEventListener('change', renderScatterPlot);
       scatterCohortEl.addEventListener('change', () => {
@@ -5049,6 +5085,10 @@
         renderFilterTestsPlot();
       });
       filterTestsPlotStatEl.addEventListener('change', () => {
+        renderFilterTestsPlot();
+      });
+      filterTestsFullSkewStatEl.addEventListener('change', () => {
+        state.filterFullViewSkewMetric = selectedFilterFullViewSkewMetric();
         renderFilterTestsPlot();
       });
       waterfallMinNEl.addEventListener('change', () => {

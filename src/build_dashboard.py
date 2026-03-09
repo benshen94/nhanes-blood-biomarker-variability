@@ -2822,9 +2822,9 @@ def classify_biomarker(name: str, variable_name: str, source_files: str) -> tupl
     return "Other Clinical", False, False
 
 
-AGE_BINS = list(np.arange(20, 90, 5)) + [200]
-AGE_LABELS = [f"{a}-{a+4}" for a in range(20, 85, 5)] + ["85+"]
-AGE_MIDS = {lab: mid for lab, mid in zip(AGE_LABELS, [a + 2.5 for a in range(20, 85, 5)] + [87.5])}
+AGE_BINS = list(np.arange(20, 90, 5))
+AGE_LABELS = [f"{a}-{a+4}" for a in range(20, 85, 5)]
+AGE_MIDS = {lab: mid for lab, mid in zip(AGE_LABELS, [a + 2.5 for a in range(20, 85, 5)])}
 TRIM_PCTS = [0, 5, 10, 15, 20, 25]
 DERIVED_NLR_ID = "neutrophil to lymphocyte ratio"
 DERIVED_NLR_NAME = "Neutrophil-to-lymphocyte ratio (NLR)"

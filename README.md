@@ -161,10 +161,11 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - raw scatter sample (age vs value) for the selected biomarker
   - `Plot Skewness`: classic moment skewness vs age (distribution asymmetry per age bin).
   - `Plot Quantile Skewness`: Bowley/Galton quantile skewness vs age, defined as `(Q3 + Q1 - 2*median) / (Q3 - Q1)`.
-  - `Full View`: a multi-panel dashboard view that shows `Median`, `Standard deviation`, `Skewness`, `Quantile skewness`, and `CV` together for the selected biomarker.
+  - `Full View`: a 2x2 dashboard view that shows `Median`, `Standard deviation`, `CV`, and one selectable skewness panel for the selected biomarker.
+    - use the `Full view skew metric` selector to choose either classic `Skewness` or `Quantile skewness`
     - each subplot shows the NHANES Spearman rho with age above the panel
     - in `Both` cohort mode, female and male rho values are shown separately in each subplot
-    - if Clalit overlay data exist for that biomarker, Clalit trajectories are included in the median, standard deviation, quantile skewness, and CV panels without extra rho text
+    - if Clalit overlay data exist for that biomarker, Clalit trajectories are included in the median, standard deviation, selected skewness panel, and CV panel without extra rho text
   - All ranking/filtering/scatter/histogram views now compute and use the same age-trend metrics for `CV`, `SD`, `Median`, `Skewness`, and `Quantile skewness`:
     - `n_bins`
     - `Spearman rho`
@@ -172,6 +173,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - linear slope
     - linear log-slope when defined
   - `Symmetric Trim Per Tail (%)`: optional robust trimming within each age bin before summary stats are computed (for example 10-90, 20-80, 25-75).
+  - Age bins for these summary trajectories run from `20-24` through `80-84`; ages `85+` are excluded from the binned trend calculations.
   - Sex view: `Pooled`, `Female`, `Male`, `Both (Female + Male)`.
     - In sex-specific views, trimming is done within each sex separately (not on pooled male+female values).
 
@@ -233,7 +235,8 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - standard deviation normalized to the nearest age-30 bin
     - skewness normalized to the nearest age-30 bin
     - quantile skewness normalized to the nearest age-30 bin
-    - `Full view (all metrics)` to show median, standard deviation, skewness, quantile skewness, and CV together in separate panels for the current filtered set
+    - `Full view (all metrics)` to show median, standard deviation, CV, and one selectable skewness panel together for the current filtered set
+    - use the `Full view skew metric` selector to choose classic skewness or quantile skewness in that 2x2 overlay view
   - in `Both` cohort mode, overlay traces are split into female and male trajectories for each selected biomarker
   - clicking a result opens that biomarker in `Dashboard`
 
