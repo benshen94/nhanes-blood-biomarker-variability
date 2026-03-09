@@ -3237,9 +3237,11 @@ def build_outputs(
     pooled_points_by_mode: dict[str, dict[str, list[dict]]] = {}
     sex_points_by_mode: dict[str, dict[str, dict[str, list[dict]]]] = {}
     pooled_trends_by_mode_cv: dict[str, dict[str, dict]] = {}
+    pooled_trends_by_mode_std: dict[str, dict[str, dict]] = {}
     pooled_trends_by_mode_mean: dict[str, dict[str, dict]] = {}
     pooled_trends_by_mode_skew: dict[str, dict[str, dict]] = {}
     sex_trends_by_mode_cv: dict[str, dict[str, dict[str, dict]]] = {}
+    sex_trends_by_mode_std: dict[str, dict[str, dict[str, dict]]] = {}
     sex_trends_by_mode_mean: dict[str, dict[str, dict[str, dict]]] = {}
     sex_trends_by_mode_skew: dict[str, dict[str, dict[str, dict]]] = {}
 
@@ -3267,12 +3269,16 @@ def build_outputs(
             pooled_points_by_mode[mode] = pooled_pts
             sex_points_by_mode[mode] = sex_pts
             pooled_trends_by_mode_cv[mode] = {bid: trend_from_points(pts, "cv") for bid, pts in pooled_pts.items()}
+            pooled_trends_by_mode_std[mode] = {bid: trend_from_points(pts, "std") for bid, pts in pooled_pts.items()}
             pooled_trends_by_mode_mean[mode] = {bid: trend_from_points(pts, "mean") for bid, pts in pooled_pts.items()}
             pooled_trends_by_mode_skew[mode] = {
                 bid: trend_from_points(pts, "skewness") for bid, pts in pooled_pts.items()
             }
             sex_trends_by_mode_cv[mode] = {
                 bid: {sx: trend_from_points(pts, "cv") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
+            }
+            sex_trends_by_mode_std[mode] = {
+                bid: {sx: trend_from_points(pts, "std") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
             }
             sex_trends_by_mode_mean[mode] = {
                 bid: {sx: trend_from_points(pts, "mean") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
@@ -3336,6 +3342,9 @@ def build_outputs(
             pooled_trends_by_mode_cv[mode] = {
                 bid: trend_from_points(pts, "cv") for bid, pts in pooled_points_by_mode[mode].items()
             }
+            pooled_trends_by_mode_std[mode] = {
+                bid: trend_from_points(pts, "std") for bid, pts in pooled_points_by_mode[mode].items()
+            }
             pooled_trends_by_mode_mean[mode] = {
                 bid: trend_from_points(pts, "mean") for bid, pts in pooled_points_by_mode[mode].items()
             }
@@ -3344,6 +3353,7 @@ def build_outputs(
             }
             sex_points_by_mode[mode] = {}
             sex_trends_by_mode_cv[mode] = {}
+            sex_trends_by_mode_std[mode] = {}
             sex_trends_by_mode_mean[mode] = {}
             sex_trends_by_mode_skew[mode] = {}
 
@@ -3419,18 +3429,21 @@ def build_outputs(
         }
         modes = [trim_mode_key(p) for p in TRIM_PCTS]
         trends_cv = {mode: pooled_trends_by_mode_cv.get(mode, {}).get(bid, fallback_cv) for mode in modes}
+        trends_std = {mode: pooled_trends_by_mode_std.get(mode, {}).get(bid, fallback_other) for mode in modes}
         trends_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, fallback_other) for mode in modes}
         trends_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, fallback_other) for mode in modes}
         sex_metrics_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in modes}
+        sex_metrics_std = {mode: sex_trends_by_mode_std.get(mode, {}).get(bid, {}) for mode in modes}
         sex_metrics_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in modes}
         sex_metrics_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in modes}
         trend_all = trends_cv.get("all", fallback_cv)
 
-        c_trends = {"cv": {}, "mean": {}, "skewness": {}}
+        c_trends = {"cv": {}, "std": {}, "mean": {}, "skewness": {}}
         for c_sex, pts in clalit_data_map.get(bid, {}).items():
             if not pts:
                 continue
             c_trends["cv"][c_sex] = trend_from_points(pts, "cv")
+            c_trends["std"][c_sex] = trend_from_points(pts, "std")
             c_trends["mean"][c_sex] = trend_from_points(pts, "mean")
             c_trends["skewness"][c_sex] = trend_from_points(pts, "skewness")
 
@@ -3445,18 +3458,22 @@ def build_outputs(
                 "linear_slope_logcv_per_year": trend_all.get("linear_slope_logcv_per_year"),
                 "decline_flag": trend_all.get("decline_flag"),
                 "trends": trends_cv,
+                "std_trends": trends_std,
                 "mean_trends": trends_mean,
                 "skewness_trends": trends_skew,
                 "trends_by_stat": {
                     "cv": trends_cv,
+                    "std": trends_std,
                     "mean": trends_mean,
                     "skewness": trends_skew,
                 },
                 "sex_metrics": sex_metrics_cv,
+                "sex_std_metrics": sex_metrics_std,
                 "sex_mean_metrics": sex_metrics_mean,
                 "sex_skewness_metrics": sex_metrics_skew,
                 "sex_metrics_by_stat": {
                     "cv": sex_metrics_cv,
+                    "std": sex_metrics_std,
                     "mean": sex_metrics_mean,
                     "skewness": sex_metrics_skew,
                 },
@@ -3476,9 +3493,11 @@ def build_outputs(
         points_by_filter = {mode: pooled_points_by_mode.get(mode, {}).get(bid, []) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_points_by_filter = {mode: sex_points_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         trends_by_filter_cv = {mode: pooled_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        trends_by_filter_std = {mode: pooled_trends_by_mode_std.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         trends_by_filter_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         trends_by_filter_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_trends_filter_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_trends_filter_std = {mode: sex_trends_by_mode_std.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_trends_filter_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_trends_filter_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         all_points = points_by_filter.get("all", [])
@@ -3505,18 +3524,22 @@ def build_outputs(
             "sex_points": sex_points_by_filter.get("all", {}),
             "sex_points_by_filter": sex_points_by_filter,
             "trends": trends_by_filter_cv,
+            "std_trends": trends_by_filter_std,
             "mean_trends": trends_by_filter_mean,
             "skewness_trends": trends_by_filter_skew,
             "trends_by_stat": {
                 "cv": trends_by_filter_cv,
+                "std": trends_by_filter_std,
                 "mean": trends_by_filter_mean,
                 "skewness": trends_by_filter_skew,
             },
             "sex_metrics": sex_trends_filter_cv,
+            "sex_std_metrics": sex_trends_filter_std,
             "sex_mean_metrics": sex_trends_filter_mean,
             "sex_skewness_metrics": sex_trends_filter_skew,
             "sex_metrics_by_stat": {
                 "cv": sex_trends_filter_cv,
+                "std": sex_trends_filter_std,
                 "mean": sex_trends_filter_mean,
                 "skewness": sex_trends_filter_skew,
             },

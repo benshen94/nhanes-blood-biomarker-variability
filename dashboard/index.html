@@ -731,6 +731,85 @@
       gap: 10px;
       margin-top: 12px;
     }
+    .filter-bank-shell {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(241,245,249,0.88));
+      box-shadow: 0 12px 22px rgba(16, 42, 67, 0.05);
+    }
+    .filter-bank-toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.2fr) minmax(240px, 1fr);
+      gap: 12px;
+      align-items: end;
+      margin-top: 10px;
+    }
+    .filter-bank-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-bank-status {
+      margin-top: 10px;
+    }
+    .filter-saved-bank {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .saved-statement-card {
+      display: grid;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 10px 18px rgba(16, 42, 67, 0.04);
+    }
+    .saved-statement-card.selected {
+      border-color: rgba(37, 99, 235, 0.34);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+    .saved-statement-head {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .saved-statement-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .saved-statement-meta {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+    .saved-statement-expression {
+      font-family: "SFMono-Regular", ui-monospace, "Menlo", monospace;
+      font-size: 12px;
+      color: var(--ink-soft);
+      word-break: break-word;
+    }
+    .saved-statement-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .saved-statement-actions button {
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      border-radius: 10px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
     .clause-card {
       display: grid;
       gap: 8px;
@@ -952,6 +1031,7 @@
       .filter-controls select,
       .filter-controls input { width: 100%; }
       .filter-workshop-grid { grid-template-columns: 1fr; }
+      .filter-bank-toolbar { grid-template-columns: 1fr; }
       .filter-results-toolbar { align-items: flex-start; }
       .scatter-controls label { width: 100%; }
       .scatter-controls select,
@@ -1357,6 +1437,24 @@
               </div>
               <div id="filter-stage" class="filter-expression-dropzone" aria-live="polite"></div>
               <div id="filter-expression-preview" class="filter-expression-preview">Build an expression from clauses and operators.</div>
+              <div class="filter-bank-shell">
+                <div class="filter-section-head">
+                  <h3>Saved Statement Bank</h3>
+                  <p>Store a full logical stage and its clause library in this browser, then reload it next time without rebuilding it from scratch.</p>
+                </div>
+                <div class="filter-bank-toolbar">
+                  <label for="filter-saved-name">Statement name
+                    <input id="filter-saved-name" type="text" placeholder="Example: Stability gate with skewness escape hatch" />
+                  </label>
+                  <div class="filter-bank-actions">
+                    <button id="filter-saved-save" class="primary" type="button">Save Current Stage</button>
+                    <button id="filter-saved-update" type="button">Update Selected</button>
+                    <button id="filter-saved-clear" type="button">New Draft</button>
+                  </div>
+                </div>
+                <div id="filter-saved-status" class="filter-test-hint filter-bank-status">Saved statements stay in this browser for this specimen page.</div>
+                <div id="filter-saved-bank" class="filter-saved-bank"></div>
+              </div>
               <div class="filter-section-head" style="margin-top:12px;">
                 <h3>Available Clauses</h3>
                 <p>Select to edit, drag onto the stage, or insert from the toolbar.</p>
@@ -1483,7 +1581,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1773054962';
+    const DATA_VERSION = '1773056107';
     const HAS_CLALIT = true;
     const SPECIMEN_TITLE = 'Blood';
     const SPECIMEN_LABEL = 'blood';
@@ -1580,6 +1678,12 @@
     const filterStageInsertCloseBtn = document.getElementById('filter-stage-insert-close');
     const filterStageEl = document.getElementById('filter-stage');
     const filterExpressionPreviewEl = document.getElementById('filter-expression-preview');
+    const filterSavedNameEl = document.getElementById('filter-saved-name');
+    const filterSavedSaveBtn = document.getElementById('filter-saved-save');
+    const filterSavedUpdateBtn = document.getElementById('filter-saved-update');
+    const filterSavedClearBtn = document.getElementById('filter-saved-clear');
+    const filterSavedStatusEl = document.getElementById('filter-saved-status');
+    const filterSavedBankEl = document.getElementById('filter-saved-bank');
     const filterClauseLibraryEl = document.getElementById('filter-clause-library');
     const filterTestsSummaryEl = document.getElementById('filter-tests-summary');
     const filterTestsTableEl = document.getElementById('filter-tests-table');
@@ -1636,6 +1740,8 @@
       filterSelectedClauseId: null,
       filterStageTokens: [],
       filterTokenNextId: 1,
+      filterSavedStatements: [],
+      filterSelectedSavedStatementId: null,
       filterResults: [],
       filterExpressionPlan: null,
       filterTestsSelectionSet: new Set(),
@@ -1656,6 +1762,7 @@
     const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
     const TOP_TABS = ['dashboard', 'compare', 'filter-tests', 'scatter', 'hist', 'waterfall', 'info'];
     const TOP_TAB_SET = new Set(TOP_TABS);
+    const FILTER_STATEMENT_BANK_KEY = `nhanes-filter-bank:${String(SPECIMEN_LABEL || 'specimen').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
     function formatNum(v, d=4) {
       if (v === null || v === undefined || Number.isNaN(v)) return 'NA';
@@ -3338,6 +3445,99 @@
       return `${metricHtml} ${clause.op} ${formatCompactClauseThreshold(clause.threshold)}`;
     }
 
+    function formatSavedStatementDate(value) {
+      if (!value) return 'Unknown save time';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Unknown save time';
+      return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    }
+
+    function normalizeSavedStatement(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      const clauses = Array.isArray(raw.clauses)
+        ? raw.clauses
+            .filter(item => item && typeof item === 'object')
+            .map(item => ({
+              id: Number(item.id),
+              stat: String(item.stat || 'cv'),
+              field: String(item.field || 'spearman_rho'),
+              op: String(item.op || '<'),
+              threshold: Number(item.threshold),
+            }))
+            .filter(item => Number.isFinite(item.id) && Number.isFinite(item.threshold))
+        : [];
+      const stageTokens = Array.isArray(raw.stageTokens)
+        ? raw.stageTokens
+            .filter(item => item && typeof item === 'object')
+            .map(item => ({ kind: String(item.kind || ''), value: item.value }))
+            .filter(item => ['clause', 'operator', 'paren'].includes(item.kind))
+        : [];
+      if (!clauses.length || !stageTokens.length) return null;
+      return {
+        id: String(raw.id || `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`),
+        name: String(raw.name || 'Saved statement').trim() || 'Saved statement',
+        expressionText: String(raw.expressionText || ''),
+        previewMessage: String(raw.previewMessage || ''),
+        clauses,
+        stageTokens,
+        createdAt: raw.createdAt || new Date().toISOString(),
+        updatedAt: raw.updatedAt || new Date().toISOString(),
+      };
+    }
+
+    function persistSavedFilterStatements() {
+      try {
+        const payload = state.filterSavedStatements.map(statement => ({
+          id: statement.id,
+          name: statement.name,
+          expressionText: statement.expressionText,
+          previewMessage: statement.previewMessage,
+          clauses: statement.clauses,
+          stageTokens: statement.stageTokens,
+          createdAt: statement.createdAt,
+          updatedAt: statement.updatedAt,
+        }));
+        window.localStorage.setItem(FILTER_STATEMENT_BANK_KEY, JSON.stringify(payload));
+        return true;
+      } catch (error) {
+        console.error('Failed to persist saved filter statements', error);
+        return false;
+      }
+    }
+
+    function loadSavedFilterStatements() {
+      try {
+        const raw = window.localStorage.getItem(FILTER_STATEMENT_BANK_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .map(normalizeSavedStatement)
+          .filter(Boolean)
+          .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+      } catch (error) {
+        console.error('Failed to read saved filter statements', error);
+        return [];
+      }
+    }
+
+    function nextSavedStatementName() {
+      let index = 1;
+      const usedNames = new Set(state.filterSavedStatements.map(statement => statement.name));
+      while (usedNames.has(`Statement ${index}`)) index += 1;
+      return `Statement ${index}`;
+    }
+
+    function setFilterSavedStatus(message) {
+      filterSavedStatusEl.textContent = message;
+    }
+
     function getFilterClauseDraft() {
       const threshold = Number(filterClauseValueEl.value);
       if (!Number.isFinite(threshold)) return null;
@@ -3415,6 +3615,151 @@
 
     function buildStageToken(kind, value) {
       return { id: state.filterTokenNextId++, kind, value };
+    }
+
+    function snapshotFilterStatement(name) {
+      const trimmedName = String(name || '').trim() || nextSavedStatementName();
+      return {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
+        name: trimmedName,
+        expressionText: filterStageExpressionText(),
+        previewMessage: filterExpressionPreviewEl.textContent || '',
+        clauses: state.filterClauses.map(clause => ({ ...clause })),
+        stageTokens: state.filterStageTokens.map(token => ({ kind: token.kind, value: token.value })),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    function selectSavedFilterStatement(statementId) {
+      state.filterSelectedSavedStatementId = statementId || null;
+      const statement = state.filterSavedStatements.find(item => item.id === state.filterSelectedSavedStatementId) || null;
+      filterSavedNameEl.value = statement ? statement.name : '';
+      setFilterSavedStatus(statement
+        ? `Selected "${statement.name}". Load it, update it, or start a new draft.`
+        : 'Saved statements stay in this browser for this specimen page.');
+      renderSavedFilterStatementBank();
+    }
+
+    function renderSavedFilterStatementBank() {
+      filterSavedBankEl.innerHTML = '';
+      if (!state.filterSavedStatements.length) {
+        filterSavedBankEl.innerHTML = '<div class="filter-stage-empty">No saved logical stages yet. Save the current stage once it is useful.</div>';
+        return;
+      }
+      for (const statement of state.filterSavedStatements) {
+        const card = document.createElement('article');
+        card.className = `saved-statement-card${state.filterSelectedSavedStatementId === statement.id ? ' selected' : ''}`;
+        const summaryText = statement.expressionText || statement.previewMessage || 'Saved stage';
+        card.innerHTML = `
+          <div class="saved-statement-head">
+            <div>
+              <div class="saved-statement-name">${statement.name}</div>
+              <div class="saved-statement-meta">Updated ${formatSavedStatementDate(statement.updatedAt)} · ${statement.clauses.length} clauses</div>
+            </div>
+            <div class="saved-statement-meta">${statement.previewMessage || 'Saved logical stage'}</div>
+          </div>
+          <div class="saved-statement-expression">${summaryText}</div>
+          <div class="saved-statement-actions">
+            <button type="button" data-action="select">Select</button>
+            <button type="button" data-action="load">Load</button>
+            <button type="button" data-action="update">Update</button>
+            <button type="button" data-action="delete">Delete</button>
+          </div>
+        `;
+        card.querySelector('[data-action="select"]').addEventListener('click', () => {
+          selectSavedFilterStatement(statement.id);
+        });
+        card.querySelector('[data-action="load"]').addEventListener('click', () => {
+          loadSavedFilterStatement(statement.id);
+        });
+        card.querySelector('[data-action="update"]').addEventListener('click', () => {
+          saveCurrentFilterStatement({ overwriteId: statement.id });
+        });
+        card.querySelector('[data-action="delete"]').addEventListener('click', () => {
+          deleteSavedFilterStatement(statement.id);
+        });
+        filterSavedBankEl.appendChild(card);
+      }
+    }
+
+    function saveCurrentFilterStatement(options = {}) {
+      const { overwriteId = null } = options;
+      if (!state.filterClauses.length || !state.filterStageTokens.length) {
+        setFilterSavedStatus('Add at least one clause and one stage token before saving.');
+        return null;
+      }
+      const existing = overwriteId ? state.filterSavedStatements.find(statement => statement.id === overwriteId) : null;
+      const snapshot = snapshotFilterStatement(filterSavedNameEl.value);
+      if (existing) {
+        snapshot.id = existing.id;
+        snapshot.createdAt = existing.createdAt;
+      }
+      state.filterSavedStatements = overwriteId
+        ? state.filterSavedStatements.map(statement => statement.id === overwriteId ? snapshot : statement)
+        : [snapshot, ...state.filterSavedStatements];
+      state.filterSavedStatements.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+      state.filterSelectedSavedStatementId = snapshot.id;
+      filterSavedNameEl.value = snapshot.name;
+      if (!persistSavedFilterStatements()) {
+        setFilterSavedStatus('Could not persist the saved statement in this browser.');
+        return null;
+      }
+      setFilterSavedStatus(overwriteId ? `Updated "${snapshot.name}".` : `Saved "${snapshot.name}" to the statement bank.`);
+      renderSavedFilterStatementBank();
+      return snapshot;
+    }
+
+    function loadSavedFilterStatement(statementId) {
+      const statement = state.filterSavedStatements.find(item => item.id === statementId);
+      if (!statement) {
+        setFilterSavedStatus('That saved statement is no longer available.');
+        return;
+      }
+      const clauseIdMap = new Map();
+      state.filterClauses = statement.clauses.map(rawClause => {
+        const nextId = state.filterClauseNextId++;
+        clauseIdMap.set(rawClause.id, nextId);
+        return {
+          id: nextId,
+          stat: rawClause.stat,
+          field: rawClause.field,
+          op: rawClause.op,
+          threshold: Number(rawClause.threshold),
+        };
+      });
+      state.filterStageTokens = [];
+      for (const rawToken of statement.stageTokens) {
+        if (rawToken.kind === 'clause') {
+          const mappedClauseId = clauseIdMap.get(Number(rawToken.value));
+          if (!mappedClauseId) continue;
+          state.filterStageTokens.push(buildStageToken('clause', mappedClauseId));
+          continue;
+        }
+        if (rawToken.kind === 'operator' || rawToken.kind === 'paren') {
+          state.filterStageTokens.push(buildStageToken(rawToken.kind, rawToken.value));
+        }
+      }
+      resetFilterClauseWorkshop();
+      selectSavedFilterStatement(statement.id);
+      renderFilterClauseLibrary();
+      renderFilterStage();
+      setFilterSavedStatus(`Loaded "${statement.name}" into the clause library and logical stage.`);
+    }
+
+    function deleteSavedFilterStatement(statementId) {
+      const statement = state.filterSavedStatements.find(item => item.id === statementId);
+      state.filterSavedStatements = state.filterSavedStatements.filter(item => item.id !== statementId);
+      if (!persistSavedFilterStatements()) {
+        setFilterSavedStatus('Could not update the statement bank in this browser.');
+        return;
+      }
+      if (state.filterSelectedSavedStatementId === statementId) {
+        state.filterSelectedSavedStatementId = null;
+        filterSavedNameEl.value = '';
+      }
+      renderSavedFilterStatementBank();
+      setFilterSavedStatus(statement ? `Deleted "${statement.name}" from the statement bank.` : 'Deleted saved statement.');
     }
 
     function insertFilterStageToken(tokenLike) {
@@ -4069,6 +4414,8 @@
       if (defaultClause) {
         state.filterStageTokens.push(buildStageToken('clause', defaultClause.id));
       }
+      state.filterSavedStatements = loadSavedFilterStatements();
+      renderSavedFilterStatementBank();
       renderFilterClauseLibrary();
       renderFilterStage();
 
@@ -4374,6 +4721,20 @@
       });
       filterStageInsertCloseBtn.addEventListener('click', () => {
         insertFilterStageToken({ kind: 'paren', value: ')' });
+      });
+      filterSavedSaveBtn.addEventListener('click', () => {
+        saveCurrentFilterStatement();
+      });
+      filterSavedUpdateBtn.addEventListener('click', () => {
+        if (!state.filterSelectedSavedStatementId) {
+          setFilterSavedStatus('Select a saved statement to update it, or use Save Current Stage.');
+          return;
+        }
+        saveCurrentFilterStatement({ overwriteId: state.filterSelectedSavedStatementId });
+      });
+      filterSavedClearBtn.addEventListener('click', () => {
+        selectSavedFilterStatement(null);
+        filterSavedNameEl.value = '';
       });
       filterTestsRunBtn.addEventListener('click', () => {
         renderFilterTests();

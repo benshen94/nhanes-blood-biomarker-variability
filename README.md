@@ -160,6 +160,12 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - interquartile range (IQR) band (25th-75th percentile)
     - raw scatter sample (age vs value) for the selected biomarker
   - `Plot Skewness`: skewness vs age (distribution asymmetry per age bin).
+  - All ranking/filtering/scatter/histogram views now compute and use the same age-trend metrics for `CV`, `SD`, `Median`, and `Skewness`:
+    - `n_bins`
+    - `Spearman rho`
+    - `Spearman p`
+    - linear slope
+    - linear log-slope when defined
   - `Symmetric Trim Per Tail (%)`: optional robust trimming within each age bin before summary stats are computed (for example 10-90, 20-80, 25-75).
   - Sex view: `Pooled`, `Female`, `Male`, `Both (Female + Male)`.
     - In sex-specific views, trimming is done within each sex separately (not on pooled male+female values).
@@ -201,9 +207,10 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - Controls:
   - sex group: `Female`, `Male`, or `Both (Female + Male)`
   - symmetric trim slider (shared globally)
-  - `Clause Workshop` for creating and editing reusable clauses
+  - `Clause Constructor` for creating and editing reusable clauses
   - `Logical Stage` for nested expressions such as `C1 AND (C2 OR C3)`
   - stage tokens can be inserted by button and reordered/removed directly on the stage
+  - `Saved Statement Bank` to save a full logical stage plus its clause library in browser storage, then load/update/delete it later
   - searchable multi-select test picker with quick actions (`Select all visible`, `Core clinical only`, `Clear selection`)
   - optional include/exclude environmental-toxicant assays
 - Clause fields:
@@ -218,6 +225,8 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `Filtered Test Overlay` plot can switch between:
     - median normalized to the nearest age-30 bin
     - CV normalized to the nearest age-30 bin
+    - standard deviation normalized to the nearest age-30 bin
+    - skewness normalized to the nearest age-30 bin
   - in `Both` cohort mode, overlay traces are split into female and male trajectories for each selected biomarker
   - clicking a result opens that biomarker in `Dashboard`
 
