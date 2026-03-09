@@ -1603,7 +1603,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1773068415';
+    const DATA_VERSION = '1773070465';
     const HAS_CLALIT = true;
     const SPECIMEN_TITLE = 'Blood';
     const SPECIMEN_LABEL = 'blood';
@@ -2608,13 +2608,13 @@
       if (cohort === 'both') {
         const femaleRho = Number(metric?.female?.spearman_rho);
         const maleRho = Number(metric?.male?.spearman_rho);
-        const femaleText = Number.isFinite(femaleRho) ? `Female &rho;<sub>S</sub>=${formatNum(femaleRho, 4)}` : 'Female &rho;<sub>S</sub>=NA';
-        const maleText = Number.isFinite(maleRho) ? `Male &rho;<sub>S</sub>=${formatNum(maleRho, 4)}` : 'Male &rho;<sub>S</sub>=NA';
+        const femaleText = Number.isFinite(femaleRho) ? `Female Spearman rho=${formatNum(femaleRho, 4)}` : 'Female Spearman rho=NA';
+        const maleText = Number.isFinite(maleRho) ? `Male Spearman rho=${formatNum(maleRho, 4)}` : 'Male Spearman rho=NA';
         return `${femaleText}<br>${maleText}`;
       }
       const rho = Number(metric?.spearman_rho);
       const cohortLabelText = cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled';
-      return `${cohortLabelText} &rho;<sub>S</sub>=${Number.isFinite(rho) ? formatNum(rho, 4) : 'NA'}`;
+      return `${cohortLabelText} Spearman rho=${Number.isFinite(rho) ? formatNum(rho, 4) : 'NA'}`;
     }
 
     function applyTraceAxes(trace, axisIndex) {
@@ -2768,7 +2768,7 @@
           const rowIndex = mobile ? index : Math.floor(index / 2);
           const colIndex = mobile ? 0 : index % 2;
           const x = mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77);
-          const y = mobile ? (1.035 - (rowIndex * 0.247)) : (rowIndex === 0 ? 1.095 : 0.575);
+          const y = mobile ? (1.015 - (rowIndex * 0.252)) : (rowIndex === 0 ? 1.045 : 0.485);
           return {
             xref: 'paper',
             yref: 'paper',
@@ -2776,7 +2776,7 @@
             y,
             showarrow: false,
             align: 'center',
-            text: `<b>${dashboardMetricConfig(statKey).title}</b><br><span style="font-size:${mobile ? 10 : 10.5}px">${dashboardMetricRhoText(state.metricsById.get(id), cohort, trimMode, statKey)}</span>`,
+            text: `<b>${dashboardMetricConfig(statKey).title}</b><br><span style="font-size:${mobile ? 10 : 10}px">${dashboardMetricRhoText(state.metricsById.get(id), cohort, trimMode, statKey)}</span>`,
             xanchor: 'center',
             yanchor: 'bottom',
             font: { size: mobile ? 13 : 13, color: '#102a43' },
@@ -2802,7 +2802,7 @@
           yaxis3: { title: dashboardMetricConfig(skewStatKey).yAxisTitle },
           xaxis4: { title: 'Age (years)' },
           yaxis4: { title: dashboardMetricConfig('cv').yAxisTitle },
-          margin: mobile ? { t: 172, l: 58, r: 18, b: 118 } : { t: 210, l: 70, r: 24, b: 110 },
+          margin: mobile ? { t: 168, l: 58, r: 18, b: 118 } : { t: 190, l: 70, r: 24, b: 110 },
         }, mobile), { responsive: true, displaylogo: false });
         return;
       }
