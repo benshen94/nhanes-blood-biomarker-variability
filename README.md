@@ -231,6 +231,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - CV normalized to the nearest age-30 bin
     - standard deviation normalized to the nearest age-30 bin
     - skewness normalized to the nearest age-30 bin
+    - `Full view (2x2 all metrics)` to show median, standard deviation, skewness, and CV together in separate panels for the current filtered set
   - in `Both` cohort mode, overlay traces are split into female and male trajectories for each selected biomarker
   - clicking a result opens that biomarker in `Dashboard`
 

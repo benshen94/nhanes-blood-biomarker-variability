@@ -1510,6 +1510,7 @@
                   <option value="cv">CV normalized to age ~30</option>
                   <option value="std">Standard deviation normalized to age ~30</option>
                   <option value="skewness">Skewness normalized to age ~30</option>
+                  <option value="full">Full view (2x2 all metrics)</option>
                 </select>
               </label>
             </div>
@@ -4146,6 +4147,14 @@
     }
 
     function filterPlotMetricConfig(metric) {
+      if (metric === 'full') {
+        return {
+          field: null,
+          title: 'Filtered Test Full Overlay',
+          yAxisTitle: 'Normalized value',
+          hoverLabel: 'Value',
+        };
+      }
       if (metric === 'cv') {
         return {
           field: 'cv',
@@ -4219,10 +4228,53 @@
       return [{ key: cohort, label: cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled', points: pickPointsByCohort(series, cohort, trimMode) || [] }];
     }
 
+    function buildFilterOverlayMetricTraces(included, seriesList, cohort, trimMode, metric, axisIndex = 0, legendSeen = null) {
+      const metricConfig = filterPlotMetricConfig(metric);
+      const traces = [];
+      const notes = [];
+      for (let i = 0; i < included.length; i += 1) {
+        const result = included[i];
+        const series = seriesList[i];
+        const pointSets = filterPlotPointSets(series, cohort, trimMode);
+        const baseColor = stableColorForKey(result.id);
+        for (const pointSet of pointSets) {
+          const normalized = normalizedFilterPlotPoints(pointSet.points, metricConfig.field);
+          if (!normalized) {
+            notes.push(`${metricConfig.hoverLabel}: ${result.display_name} (${pointSet.label}) skipped: no usable age~30 baseline.`);
+            continue;
+          }
+          const isFemale = pointSet.key === 'female';
+          const isMale = pointSet.key === 'male';
+          const lineDash = isMale ? 'dash' : 'solid';
+          const markerSymbol = isMale ? 'square' : isFemale ? 'circle' : 'diamond';
+          const trace = {
+            x: normalized.points.map(point => point.age_mid),
+            y: normalized.points.map(point => point.normalized),
+            mode: 'lines+markers',
+            type: 'scatter',
+            name: cohort === 'both' ? `${result.display_name} (${pointSet.label})` : result.display_name,
+            marker: { size: 6, color: baseColor, symbol: markerSymbol, line: { width: 1, color: '#ffffff' } },
+            line: { width: 2, color: baseColor, dash: lineDash },
+            customdata: normalized.points.map(point => [result.display_name, pointSet.label, point.age_bin, point.n, point.raw, normalized.baselineAge, normalized.baselineValue, metricConfig.hoverLabel]),
+            hovertemplate: '%{customdata[0]}<br>cohort=%{customdata[1]}<br>age_bin=%{customdata[2]}<br>n=%{customdata[3]}<br>%{customdata[7]}=%{customdata[4]:.4f}<br>baseline age=%{customdata[5]:.0f}<br>baseline value=%{customdata[6]:.4f}<br>normalized=%{y:.4f}<extra></extra>',
+            legendgroup: cohort === 'both' ? `${result.id}-${pointSet.key}` : result.id,
+          };
+          if (legendSeen) {
+            const legendKey = `${trace.legendgroup}`;
+            trace.showlegend = !legendSeen.has(legendKey);
+            if (trace.showlegend) legendSeen.add(legendKey);
+          }
+          traces.push(applyTraceAxes(trace, axisIndex));
+        }
+      }
+      return { traces, notes, metricConfig };
+    }
+
     async function renderFilterTestsPlot() {
       const results = state.filterResults || [];
       const included = results.filter(result => state.filterPlotSelectionSet.has(result.id));
-      const metricConfig = filterPlotMetricConfig(filterTestsPlotStatEl.value || 'median');
+      const selectedMetric = filterTestsPlotStatEl.value || 'median';
+      const metricConfig = filterPlotMetricConfig(selectedMetric);
       if (!included.length) {
         filterTestsPlotCountEl.textContent = 'No filtered tests selected for plotting yet.';
         filterTestsPlotSummaryEl.textContent = 'Run a filter and keep one or more rows checked to render the overlay plot.';
@@ -4234,49 +4286,87 @@
         return;
       }
       filterTestsPlotCountEl.textContent = `${included.length} filtered tests currently plotted.`;
-      const field = metricConfig.field;
       const trimMode = trimPctToMode(filterTestsTrimSliderEl.value);
       const cohort = filterTestsCohortEl.value || 'both';
-      const traces = [];
-      const notes = [];
       const seriesList = await Promise.all(included.map(result => loadSeries(result.id)));
-      for (let i = 0; i < included.length; i += 1) {
-        const result = included[i];
-        const series = seriesList[i];
-        const pointSets = filterPlotPointSets(series, cohort, trimMode);
-        const baseColor = stableColorForKey(result.id);
-        for (const pointSet of pointSets) {
-          const normalized = normalizedFilterPlotPoints(pointSet.points, field);
-          if (!normalized) {
-            notes.push(`${result.display_name} (${pointSet.label}) skipped: no usable age~30 baseline.`);
-            continue;
-          }
-          const isFemale = pointSet.key === 'female';
-          const isMale = pointSet.key === 'male';
-          const lineDash = isMale ? 'dash' : 'solid';
-          const markerSymbol = isMale ? 'square' : isFemale ? 'circle' : 'diamond';
-          traces.push({
-            x: normalized.points.map(point => point.age_mid),
-            y: normalized.points.map(point => point.normalized),
-            mode: 'lines+markers',
-            type: 'scatter',
-            name: cohort === 'both' ? `${result.display_name} (${pointSet.label})` : result.display_name,
-            marker: { size: 6, color: baseColor, symbol: markerSymbol, line: { width: 1, color: '#ffffff' } },
-            line: { width: 2, color: baseColor, dash: lineDash },
-            customdata: normalized.points.map(point => [result.display_name, pointSet.label, point.age_bin, point.n, point.raw, normalized.baselineAge, normalized.baselineValue, metricConfig.hoverLabel]),
-            hovertemplate: '%{customdata[0]}<br>cohort=%{customdata[1]}<br>age_bin=%{customdata[2]}<br>n=%{customdata[3]}<br>%{customdata[7]}=%{customdata[4]:.4f}<br>baseline age=%{customdata[5]:.0f}<br>baseline value=%{customdata[6]:.4f}<br>normalized=%{y:.4f}<extra></extra>',
-          });
-        }
-      }
       const mobile = window.matchMedia('(max-width: 760px)').matches;
-      Plotly.newPlot('filter-tests-plot', traces, applyPlotTheme({
+      const plotEl = document.getElementById('filter-tests-plot');
+      if (selectedMetric === 'full') {
+        const statKeys = ['median', 'std', 'skewness', 'cv'];
+        const legendSeen = new Set();
+        const traces = [];
+        const notes = [];
+        for (let i = 0; i < statKeys.length; i += 1) {
+          const built = buildFilterOverlayMetricTraces(included, seriesList, cohort, trimMode, statKeys[i], i, legendSeen);
+          traces.push(...built.traces);
+          notes.push(...built.notes);
+        }
+        plotEl.style.height = mobile ? '1500px' : '980px';
+        const rows = mobile ? 4 : 2;
+        const columns = mobile ? 1 : 2;
+        const labels = {
+          median: 'Median normalized to age ~30',
+          std: 'Standard deviation normalized to age ~30',
+          skewness: 'Skewness normalized to age ~30',
+          cv: 'CV normalized to age ~30',
+        };
+        const annotations = statKeys.map((statKey, index) => {
+          const rowIndex = mobile ? index : Math.floor(index / 2);
+          const colIndex = mobile ? 0 : index % 2;
+          return {
+            xref: 'paper',
+            yref: 'paper',
+            x: mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77),
+            y: mobile ? (0.98 - (rowIndex * 0.245)) : (rowIndex === 0 ? 0.995 : 0.495),
+            showarrow: false,
+            align: 'center',
+            text: `<b>${labels[statKey]}</b>`,
+            font: { size: mobile ? 13 : 14, color: '#102a43' },
+          };
+        });
+        Plotly.newPlot('filter-tests-plot', traces, applyPlotTheme({
+          title: '',
+          grid: { rows, columns, pattern: 'independent' },
+          annotations,
+          legend: {
+            orientation: 'h',
+            y: mobile ? -0.08 : 1.08,
+            x: 0,
+            font: { size: mobile ? 10 : 12 },
+          },
+          xaxis: { title: 'Age (years)' },
+          yaxis: { title: filterPlotMetricConfig('median').yAxisTitle },
+          xaxis2: { title: 'Age (years)' },
+          yaxis2: { title: filterPlotMetricConfig('std').yAxisTitle },
+          xaxis3: { title: 'Age (years)' },
+          yaxis3: { title: filterPlotMetricConfig('skewness').yAxisTitle },
+          xaxis4: { title: 'Age (years)' },
+          yaxis4: { title: filterPlotMetricConfig('cv').yAxisTitle },
+          margin: mobile ? { t: 66, l: 58, r: 18, b: 88 } : { t: 74, l: 70, r: 24, b: 76 },
+        }, mobile), { responsive: true, displaylogo: false });
+        filterTestsPlotSummaryEl.textContent = notes.length
+          ? `${traces.length} traces rendered across all four metrics. ${notes.length} traces were skipped because a baseline near age 30 was unavailable or zero.`
+          : `${traces.length} traces rendered across all four metrics from ${included.length} filtered tests.`;
+        return;
+      }
+      plotEl.style.height = '';
+      const built = buildFilterOverlayMetricTraces(included, seriesList, cohort, trimMode, selectedMetric);
+      Plotly.newPlot('filter-tests-plot', built.traces, applyPlotTheme({
         title: metricConfig.title,
         xaxis: { title: 'Age (years)' },
         yaxis: { title: metricConfig.yAxisTitle },
+        legend: {
+          orientation: 'h',
+          y: 1.16,
+          x: 0,
+          font: { size: mobile ? 10 : 12 },
+          bgcolor: 'rgba(255,255,255,0.82)',
+        },
+        margin: mobile ? { t: 120, l: 54, r: 12, b: 52 } : { t: 138, l: 72, r: 18, b: 58 },
       }, mobile), { responsive: true, displaylogo: false });
-      filterTestsPlotSummaryEl.textContent = notes.length
-        ? `${traces.length} traces rendered. ${notes.length} skipped because a baseline near age 30 was unavailable or zero.`
-        : `${traces.length} traces rendered from ${included.length} filtered tests.`;
+      filterTestsPlotSummaryEl.textContent = built.notes.length
+        ? `${built.traces.length} traces rendered. ${built.notes.length} skipped because a baseline near age 30 was unavailable or zero.`
+        : `${built.traces.length} traces rendered from ${included.length} filtered tests.`;
     }
 
     function exportFilterTestsCsv() {
