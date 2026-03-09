@@ -1603,7 +1603,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1773068090';
+    const DATA_VERSION = '1773068415';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -2768,7 +2768,7 @@
           const rowIndex = mobile ? index : Math.floor(index / 2);
           const colIndex = mobile ? 0 : index % 2;
           const x = mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77);
-          const y = mobile ? (1.02 - (rowIndex * 0.245)) : (rowIndex === 0 ? 1.07 : 0.555);
+          const y = mobile ? (1.035 - (rowIndex * 0.247)) : (rowIndex === 0 ? 1.095 : 0.575);
           return {
             xref: 'paper',
             yref: 'paper',
@@ -2776,10 +2776,10 @@
             y,
             showarrow: false,
             align: 'center',
-            text: `<b>${dashboardMetricConfig(statKey).title}</b><br><span style="font-size:${mobile ? 10 : 11}px">${dashboardMetricRhoText(state.metricsById.get(id), cohort, trimMode, statKey)}</span>`,
+            text: `<b>${dashboardMetricConfig(statKey).title}</b><br><span style="font-size:${mobile ? 10 : 10.5}px">${dashboardMetricRhoText(state.metricsById.get(id), cohort, trimMode, statKey)}</span>`,
             xanchor: 'center',
             yanchor: 'bottom',
-            font: { size: mobile ? 13 : 14, color: '#102a43' },
+            font: { size: mobile ? 13 : 13, color: '#102a43' },
           };
         });
         Plotly.newPlot('plot', traces, applyPlotTheme({
@@ -2802,7 +2802,7 @@
           yaxis3: { title: dashboardMetricConfig(skewStatKey).yAxisTitle },
           xaxis4: { title: 'Age (years)' },
           yaxis4: { title: dashboardMetricConfig('cv').yAxisTitle },
-          margin: mobile ? { t: 156, l: 58, r: 18, b: 118 } : { t: 186, l: 70, r: 24, b: 110 },
+          margin: mobile ? { t: 172, l: 58, r: 18, b: 118 } : { t: 210, l: 70, r: 24, b: 110 },
         }, mobile), { responsive: true, displaylogo: false });
         return;
       }
