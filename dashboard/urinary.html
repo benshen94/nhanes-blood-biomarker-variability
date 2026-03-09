@@ -1481,7 +1481,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1773052789';
+    const DATA_VERSION = '1773053904';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -3361,11 +3361,17 @@
       filterClauseEditingEl.textContent = `Editing ${filterClauseCode(clause)}.`;
     }
 
+    function beginNewFilterClauseDraft(message) {
+      state.filterSelectedClauseId = null;
+      filterClauseEditingEl.textContent = message || 'Drafting a new clause.';
+    }
+
     function getFilterClauseById(clauseId) {
       return state.filterClauses.find(clause => clause.id === clauseId) || null;
     }
 
-    function upsertFilterClause(shouldInsert = false) {
+    function upsertFilterClause(options = {}) {
+      const { shouldInsert = false, keepEditing = false } = options;
       const draft = getFilterClauseDraft();
       if (!draft) {
         filterClauseEditingEl.textContent = 'Threshold must be numeric.';
@@ -3380,8 +3386,12 @@
         clause = { id: state.filterClauseNextId++, ...draft };
         state.filterClauses.push(clause);
       }
-      state.filterSelectedClauseId = clause.id;
-      filterClauseEditingEl.textContent = `Saved ${filterClauseCode(clause)}.`;
+      if (keepEditing) {
+        state.filterSelectedClauseId = clause.id;
+        filterClauseEditingEl.textContent = `Saved ${filterClauseCode(clause)}.`;
+      } else {
+        beginNewFilterClauseDraft(`Saved ${filterClauseCode(clause)}. Drafting ${filterClauseCode({ id: state.filterClauseNextId })}.`);
+      }
       renderFilterClauseLibrary();
       renderFilterStage();
       if (shouldInsert) insertFilterStageToken({ kind: 'clause', value: clause.id });
