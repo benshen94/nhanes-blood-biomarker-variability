@@ -1104,6 +1104,7 @@
                 <button id="mode-std" class="mode-btn" type="button">Plot SD</button>
                 <button id="mode-mean" class="mode-btn" type="button">Plot Median</button>
                 <button id="mode-skew" class="mode-btn" type="button">Plot Skewness</button>
+                <button id="mode-full" class="mode-btn" type="button">Full View</button>
               </div>
             </div>
 
@@ -1581,7 +1582,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1773057081';
+    const DATA_VERSION = '1773057468';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -1596,6 +1597,7 @@
     const modeStdBtn = document.getElementById('mode-std');
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
+    const modeFullBtn = document.getElementById('mode-full');
     const statusChip = document.getElementById('status-chip');
     const heroTitleEl = document.getElementById('hero-title');
     const heroSubEl = document.getElementById('hero-sub');
@@ -1732,6 +1734,7 @@
       metadataById: new Map(),
       cache: new Map(),
       mode: 'cv',
+      lastSingleMode: 'cv',
       currentId: null,
       scatterLabels: false,
       waterfallId: null,
@@ -1806,6 +1809,11 @@
       if (statKey === 'mean') return 'Mean';
       if (statKey === 'skewness') return 'Skewness';
       return 'CV';
+    }
+
+    function effectiveDashboardMode() {
+      if (state.mode === 'full') return state.lastSingleMode || 'cv';
+      return state.mode || 'cv';
     }
 
     function canonicalTopTab(tabName) {
@@ -2354,7 +2362,7 @@
 
       const cohort = cohortFilterEl.value || 'pooled';
       const trimMode = trimPctToMode(trimSliderEl.value);
-      const statKey = modeToStat(state.mode);
+      const statKey = modeToStat(effectiveDashboardMode());
       const trendsByStat = pooled.trends_by_stat || {
         cv: pooled.trends || {},
         std: pooled.std_trends || {},
@@ -2379,7 +2387,7 @@
       let html = `<div class="metric-header">`;
       html += `<span class="metric-pill">Category: ${md.category || 'Other Clinical'}</span>`;
       html += `<span class="metric-pill">Outliers: ${trimLabel}</span>`;
-      html += `<span class="metric-pill">View: ${stat} vs age</span>`;
+      html += `<span class="metric-pill">View: ${state.mode === 'full' ? `Full view (primary metric ${stat})` : `${stat} vs age`}</span>`;
       html += `</div><div class="metric-grid">`;
       if (cohort === 'both') {
         html += renderMetricRows('Female', sexMetrics.female || null, rawBySex.female ?? 'NA', rawCap, statKey);
@@ -2395,15 +2403,18 @@
     }
 
     function setMode(mode) {
+      if (mode !== 'full') state.lastSingleMode = mode;
       state.mode = mode;
       modeCvBtn.classList.toggle('active', mode === 'cv');
       modeStdBtn.classList.toggle('active', mode === 'std');
       modeMeanBtn.classList.toggle('active', mode === 'mean');
       modeSkewBtn.classList.toggle('active', mode === 'skewness');
+      modeFullBtn.classList.toggle('active', mode === 'full');
       modeCvBtn.setAttribute('aria-pressed', mode === 'cv' ? 'true' : 'false');
       modeStdBtn.setAttribute('aria-pressed', mode === 'std' ? 'true' : 'false');
       modeMeanBtn.setAttribute('aria-pressed', mode === 'mean' ? 'true' : 'false');
       modeSkewBtn.setAttribute('aria-pressed', mode === 'skewness' ? 'true' : 'false');
+      modeFullBtn.setAttribute('aria-pressed', mode === 'full' ? 'true' : 'false');
     }
 
     function pickPointsByCohort(s, cohort, trimMode) {
@@ -2451,6 +2462,190 @@
       };
     }
 
+    function dashboardMetricConfig(statKey) {
+      if (statKey === 'cv') {
+        return {
+          title: 'CV',
+          yAxisTitle: 'Coefficient of Variation (CV)',
+          field: 'cv',
+          supportsClalit: true,
+          includeBand: false,
+          includeRaw: false,
+        };
+      }
+      if (statKey === 'std') {
+        return {
+          title: 'Standard Deviation',
+          yAxisTitle: 'Standard deviation (binned)',
+          field: 'std',
+          supportsClalit: true,
+          includeBand: false,
+          includeRaw: false,
+        };
+      }
+      if (statKey === 'skewness') {
+        return {
+          title: 'Skewness',
+          yAxisTitle: 'Skewness (binned)',
+          field: 'skewness',
+          supportsClalit: false,
+          includeBand: false,
+          includeRaw: false,
+        };
+      }
+      return {
+        title: 'Median',
+        yAxisTitle: 'Median biomarker value',
+        field: 'median',
+        supportsClalit: true,
+        includeBand: true,
+        includeRaw: true,
+      };
+    }
+
+    function dashboardMetricHoverText(point, statKey, cohortLabelText, isClalit = false) {
+      const prefix = isClalit ? `Clalit ${cohortLabelText}` : cohortLabelText;
+      if (statKey === 'cv') {
+        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>cv=${formatNum(point.cv, 4)}<br>mean=${formatNum(point.mean, 4)}<br>std=${formatNum(point.std, 4)}`;
+      }
+      if (statKey === 'std') {
+        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>std=${formatNum(point.std, 4)}<br>mean=${formatNum(point.mean, 4)}<br>median=${formatNum(point.median, 4)}<br>cv=${formatNum(point.cv, 4)}`;
+      }
+      if (statKey === 'skewness') {
+        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>skewness=${formatNum(point.skewness, 4)}<br>median=${formatNum(point.median, 4)}<br>mean=${formatNum(point.mean, 4)}<br>cv=${formatNum(point.cv, 4)}`;
+      }
+      return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>median=${formatNum(point.median, 4)}<br>q25=${formatNum(point.q25, 4)}<br>q75=${formatNum(point.q75, 4)}<br>mean=${formatNum(point.mean, 4)}<br>std=${formatNum(point.std, 4)}<br>cv=${formatNum(point.cv, 4)}<br>skewness=${formatNum(point.skewness, 4)}`;
+    }
+
+    function dashboardMetricRhoText(record, cohort, trimMode, statKey) {
+      const metric = metricForRecord(record, cohort, trimMode, statKey);
+      if (cohort === 'both') {
+        const femaleRho = Number(metric?.female?.spearman_rho);
+        const maleRho = Number(metric?.male?.spearman_rho);
+        const femaleText = Number.isFinite(femaleRho) ? `Female &rho;<sub>S</sub>=${formatNum(femaleRho, 4)}` : 'Female &rho;<sub>S</sub>=NA';
+        const maleText = Number.isFinite(maleRho) ? `Male &rho;<sub>S</sub>=${formatNum(maleRho, 4)}` : 'Male &rho;<sub>S</sub>=NA';
+        return `${femaleText} &nbsp;&middot;&nbsp; ${maleText}`;
+      }
+      const rho = Number(metric?.spearman_rho);
+      const cohortLabelText = cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled';
+      return `${cohortLabelText} &rho;<sub>S</sub>=${Number.isFinite(rho) ? formatNum(rho, 4) : 'NA'}`;
+    }
+
+    function applyTraceAxes(trace, axisIndex) {
+      if (axisIndex <= 0) return trace;
+      trace.xaxis = `x${axisIndex + 1}`;
+      trace.yaxis = `y${axisIndex + 1}`;
+      return trace;
+    }
+
+    function pushDashboardLegendTrace(traces, legendSeen, trace, forceHide = false) {
+      if (forceHide) {
+        trace.showlegend = false;
+      } else if (legendSeen) {
+        const key = `${trace.legendgroup || trace.name}`;
+        trace.showlegend = !legendSeen.has(key);
+        if (trace.showlegend) legendSeen.add(key);
+      }
+      traces.push(trace);
+    }
+
+    function buildDashboardMetricPanelTraces(series, options) {
+      const {
+        statKey,
+        cohort,
+        trimMode,
+        showLow,
+        hideClalit,
+        axisIndex = 0,
+        legendSeen = null,
+      } = options;
+      const config = dashboardMetricConfig(statKey);
+      const traces = [];
+      const selectedCohorts = cohort === 'both' ? ['female', 'male'] : [cohort];
+      const cohortLabel = { pooled: 'Pooled', female: 'Female', male: 'Male' };
+      const band95 = {
+        pooled: 'rgba(15,118,110,0.16)',
+        female: 'rgba(209,73,91,0.18)',
+        male: 'rgba(37,99,235,0.18)',
+      };
+      for (const c of selectedCohorts) {
+        let points = pickPointsByCohort(series, c, trimMode);
+        points = showLow ? points : points.filter(point => point.passes_n_threshold);
+        points = points.filter(point => Number.isFinite(Number(point[config.field])));
+        if (!points.length) continue;
+
+        if (config.includeBand) {
+          const bandTrace = ciBandTrace(points, band95[c], `${cohortLabel[c]} IQR (25th-75th)`);
+          if (bandTrace) {
+            bandTrace.legendgroup = `${cohortLabel[c]} IQR`;
+            pushDashboardLegendTrace(traces, legendSeen, applyTraceAxes(bandTrace, axisIndex));
+          }
+        }
+
+        const nhanesTrace = lineTrace(
+          points,
+          COHORT_COLORS[c],
+          `${cohortLabel[c]} ${config.title}`,
+          config.field,
+          (point) => dashboardMetricHoverText(point, statKey, cohortLabel[c], false)
+        );
+        nhanesTrace.legendgroup = `${cohortLabel[c]} NHANES`;
+        pushDashboardLegendTrace(traces, legendSeen, applyTraceAxes(nhanesTrace, axisIndex));
+
+        if (config.includeRaw) {
+          const raw = pickRawByCohort(series, c);
+          if (raw && raw.length) {
+            const rawTrace = {
+              x: raw.map(point => point.age_years),
+              y: raw.map(point => point.value),
+              mode: 'markers',
+              type: 'scatter',
+              marker: {
+                color: c === 'female' ? 'rgba(209,73,91,0.23)' : c === 'male' ? 'rgba(37,99,235,0.23)' : 'rgba(71,85,105,0.25)',
+                size: 4,
+              },
+              hovertemplate: 'age=%{x}<br>value=%{y:.4f}<extra>' + `${cohortLabel[c]} raw sample` + '</extra>',
+              name: `${cohortLabel[c]} Raw sample`,
+              legendgroup: `${cohortLabel[c]} Raw sample`,
+            };
+            pushDashboardLegendTrace(traces, legendSeen, applyTraceAxes(rawTrace, axisIndex));
+          }
+        }
+      }
+
+      if (HAS_CLALIT && series.clalit_data && !hideClalit && config.supportsClalit) {
+        for (const c of selectedCohorts) {
+          let points = series.clalit_data[c] || [];
+          points = showLow ? points : points.filter(point => point.passes_n_threshold);
+          points = points.filter(point => Number.isFinite(Number(point[config.field])));
+          if (!points.length) continue;
+
+          if (config.includeBand) {
+            const clalitBand = ciBandTrace(points, band95[c], `Clalit ${cohortLabel[c]} IQR (25th-75th)`);
+            if (clalitBand) {
+              clalitBand.legendgroup = `Clalit ${cohortLabel[c]} IQR`;
+              pushDashboardLegendTrace(traces, legendSeen, applyTraceAxes(clalitBand, axisIndex));
+            }
+          }
+
+          const clalitTrace = {
+            x: points.map(point => point.age_mid),
+            y: points.map(point => point[config.field]),
+            text: points.map(point => dashboardMetricHoverText(point, statKey, cohortLabel[c], true)),
+            mode: 'lines+markers',
+            type: 'scatter',
+            marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
+            line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
+            hovertemplate: '%{text}<extra></extra>',
+            name: `Clalit ${cohortLabel[c]} ${config.title}`,
+            legendgroup: `Clalit ${cohortLabel[c]}`,
+          };
+          pushDashboardLegendTrace(traces, legendSeen, applyTraceAxes(clalitTrace, axisIndex));
+        }
+      }
+      return traces;
+    }
+
     async function renderPlot(id) {
       const s = await loadSeries(id);
       if (!s) return;
@@ -2460,161 +2655,81 @@
       const cohort = cohortFilterEl.value || 'pooled';
       const trimMode = trimPctToMode(trimSliderEl.value);
 
-      const traces = [];
       const title = `${s.display_name || s.biomarker_name}`;
-      const selectedCohorts = cohort === 'both' ? ['female', 'male'] : [cohort];
-      const cohortLabel = { pooled: 'Pooled', female: 'Female', male: 'Male' };
-      const band95 = {
-        pooled: 'rgba(15,118,110,0.16)',
-        female: 'rgba(209,73,91,0.18)',
-        male: 'rgba(37,99,235,0.18)',
-      };
-      for (const c of selectedCohorts) {
-        const pointsRaw = pickPointsByCohort(s, c, trimMode);
-        let points = showLow ? pointsRaw : pointsRaw.filter(p => p.passes_n_threshold);
-        if (!points || points.length === 0) continue;
-
-        if (state.mode === 'cv') {
-          points = points.filter(p => p.cv !== null && p.cv !== undefined && Number.isFinite(Number(p.cv)));
-          if (points.length === 0) continue;
-          traces.push(lineTrace(points, COHORT_COLORS[c], `${cohortLabel[c]} CV`, 'cv'));
-          continue;
-        }
-
-        if (state.mode === 'std') {
-          points = points.filter(p => p.std !== null && p.std !== undefined && Number.isFinite(Number(p.std)));
-          if (points.length === 0) continue;
-          traces.push(lineTrace(
-            points,
-            COHORT_COLORS[c],
-            `${cohortLabel[c]} SD`,
-            'std',
-            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>std=${formatNum(p.std, 4)}<br>mean=${formatNum(p.mean, 4)}<br>median=${formatNum(p.median, 4)}<br>cv=${formatNum(p.cv, 4)}`
-          ));
-          continue;
-        }
-
-        if (state.mode === 'skewness') {
-          points = points.filter(p => p.skewness !== null && p.skewness !== undefined && Number.isFinite(Number(p.skewness)));
-          if (points.length === 0) continue;
-          traces.push(lineTrace(
-            points,
-            COHORT_COLORS[c],
-            `${cohortLabel[c]} Skewness`,
-            'skewness',
-            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>skewness=${formatNum(p.skewness, 4)}<br>median=${formatNum(p.median, 4)}<br>mean=${formatNum(p.mean, 4)}<br>cv=${formatNum(p.cv, 4)}`
-          ));
-          continue;
-        }
-
-        const ci = ciBandTrace(points, band95[c], `${cohortLabel[c]} IQR (25th-75th)`);
-        if (ci) traces.push(ci);
-        traces.push({
-          ...lineTrace(
-            points,
-            COHORT_COLORS[c],
-            `${cohortLabel[c]} Median (binned)`,
-            'median',
-            (p) => `age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>q25=${formatNum(p.q25, 4)}<br>q75=${formatNum(p.q75, 4)}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}<br>skewness=${formatNum(p.skewness, 4)}`
-          ),
-        });
-
-        const raw = pickRawByCohort(s, c);
-        if (raw && raw.length > 0) {
-          traces.push({
-            x: raw.map(p => p.age_years),
-            y: raw.map(p => p.value),
-            mode: 'markers',
-            type: 'scatter',
-            marker: { color: c === 'female' ? 'rgba(209,73,91,0.23)' : c === 'male' ? 'rgba(37,99,235,0.23)' : 'rgba(71,85,105,0.25)', size: 4 },
-            hovertemplate: 'age=%{x}<br>value=%{y:.4f}<extra>' + `${cohortLabel[c]} raw sample` + '</extra>',
-            name: `${cohortLabel[c]} Raw sample`
-          });
-        }
-      }
-
-      if (HAS_CLALIT && s.clalit_data && !hideClalit) {
-        for (const c of selectedCohorts) {
-          if (!s.clalit_data[c]) continue;
-          let points = showLow ? s.clalit_data[c] : s.clalit_data[c].filter(p => p.passes_n_threshold);
-          if (!points || points.length === 0) continue;
-
-          if (state.mode === 'cv') {
-            points = points.filter(p => Number.isFinite(p.cv));
-            if (points.length === 0) continue;
-            traces.push({
-              x: points.map(p => p.age_mid),
-              y: points.map(p => p.cv),
-              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>cv=${formatNum(p.cv, 4)}<br>mean=${formatNum(p.mean, 4)}`),
-              mode: 'lines+markers',
-              type: 'scatter',
-              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
-              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
-              hovertemplate: '%{text}<extra></extra>',
-              name: `Clalit ${cohortLabel[c]} CV`
-            });
-            continue;
-          }
-
-          if (state.mode === 'std') {
-            points = points.filter(p => Number.isFinite(p.std));
-            if (points.length === 0) continue;
-            traces.push({
-              x: points.map(p => p.age_mid),
-              y: points.map(p => p.std),
-              text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>std=${formatNum(p.std, 4)}<br>mean=${formatNum(p.mean, 4)}`),
-              mode: 'lines+markers',
-              type: 'scatter',
-              marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
-              line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
-              hovertemplate: '%{text}<extra></extra>',
-              name: `Clalit ${cohortLabel[c]} SD`
-            });
-            continue;
-          }
-
-          if (state.mode === 'skewness') {
-            // Clalit data provides log_skewness, which causes sign inversion issues when compared to raw skewness. We skip it.
-            continue;
-          }
-
-          const clalitBandColors = {
-            pooled: 'rgba(15,118,110,0.16)',
-            female: 'rgba(209,73,91,0.18)',
-            male: 'rgba(37,99,235,0.18)',
-          };
-
-          const clalitCi = ciBandTrace(points, clalitBandColors[c], `Clalit ${cohortLabel[c]} IQR (25th-75th)`);
-          if (clalitCi) traces.push(clalitCi);
-
-          traces.push({
-            x: points.map(p => p.age_mid),
-            y: points.map(p => p.median),
-            text: points.map(p => `Clalit ${cohortLabel[c]}<br>age_bin=${p.age_bin}<br>n=${p.n}<br>median=${formatNum(p.median, 4)}<br>q25=${formatNum(p.q25, 4)}<br>q75=${formatNum(p.q75, 4)}<br>mean=${formatNum(p.mean, 4)}`),
-            mode: 'lines+markers',
-            type: 'scatter',
-            marker: { size: 6, color: COHORT_COLORS[c], symbol: 'diamond' },
-            line: { color: COHORT_COLORS[c], width: 2, dash: 'dot' },
-            hovertemplate: '%{text}<extra></extra>',
-            name: `Clalit ${cohortLabel[c]} Median`
-          });
-        }
-      }
-
       renderMetrics(id, s);
       const mobile = window.matchMedia('(max-width: 760px)').matches;
+      const plotEl = document.getElementById('plot');
+      if (state.mode === 'full') {
+        const statKeys = ['mean', 'std', 'skewness', 'cv'];
+        const legendSeen = new Set();
+        const traces = [];
+        for (let i = 0; i < statKeys.length; i += 1) {
+          traces.push(...buildDashboardMetricPanelTraces(s, {
+            statKey: statKeys[i],
+            cohort,
+            trimMode,
+            showLow,
+            hideClalit,
+            axisIndex: i,
+            legendSeen,
+          }));
+        }
+        plotEl.style.height = mobile ? '1500px' : '980px';
+        const rows = mobile ? 4 : 2;
+        const columns = mobile ? 1 : 2;
+        const annotations = statKeys.map((statKey, index) => {
+          const rowIndex = mobile ? index : Math.floor(index / 2);
+          const colIndex = mobile ? 0 : index % 2;
+          const x = mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77);
+          const y = mobile ? (0.98 - (rowIndex * 0.245)) : (rowIndex === 0 ? 0.995 : 0.495);
+          return {
+            xref: 'paper',
+            yref: 'paper',
+            x,
+            y,
+            showarrow: false,
+            align: 'center',
+            text: `<b>${dashboardMetricConfig(statKey).title}</b><br><span style="font-size:${mobile ? 10 : 11}px">${dashboardMetricRhoText(state.metricsById.get(id), cohort, trimMode, statKey)}</span>`,
+            font: { size: mobile ? 13 : 14, color: '#102a43' },
+          };
+        });
+        Plotly.newPlot('plot', traces, applyPlotTheme({
+          title: `${title} — Full View`,
+          grid: { rows, columns, pattern: 'independent' },
+          annotations,
+          legend: {
+            orientation: 'h',
+            y: mobile ? -0.08 : 1.08,
+            x: 0,
+            font: { size: mobile ? 10 : 12 },
+          },
+          xaxis: { title: 'Age (years)' },
+          yaxis: { title: dashboardMetricConfig('mean').yAxisTitle },
+          xaxis2: { title: 'Age (years)' },
+          yaxis2: { title: dashboardMetricConfig('std').yAxisTitle },
+          xaxis3: { title: 'Age (years)' },
+          yaxis3: { title: dashboardMetricConfig('skewness').yAxisTitle },
+          xaxis4: { title: 'Age (years)' },
+          yaxis4: { title: dashboardMetricConfig('cv').yAxisTitle },
+          margin: mobile ? { t: 110, l: 58, r: 18, b: 88 } : { t: 110, l: 70, r: 24, b: 76 },
+        }, mobile), { responsive: true, displaylogo: false });
+        return;
+      }
+
+      plotEl.style.height = '';
+      const statKey = effectiveDashboardMode();
+      const traces = buildDashboardMetricPanelTraces(s, {
+        statKey,
+        cohort,
+        trimMode,
+        showLow,
+        hideClalit,
+        axisIndex: 0,
+      });
       Plotly.newPlot('plot', traces, applyPlotTheme({
         title,
         xaxis: { title: 'Age (years)' },
-        yaxis: {
-          title: state.mode === 'cv'
-            ? 'Coefficient of Variation (CV)'
-            : state.mode === 'std'
-              ? 'Standard deviation (binned)'
-            : state.mode === 'skewness'
-              ? 'Skewness (binned)'
-              : 'Median Biomarker Value'
-        },
+        yaxis: { title: dashboardMetricConfig(statKey).yAxisTitle },
         legend: {
           orientation: 'h',
           y: 1.12,
@@ -3179,7 +3294,7 @@
       const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
       const cohort = cohortFilterEl.value || 'pooled';
       const trimMode = trimPctToMode(trimSliderEl.value);
-      const statKey = modeToStat(state.mode);
+      const statKey = modeToStat(effectiveDashboardMode());
       const stat = statLabel(statKey);
       if (rankTitleEl) rankTitleEl.textContent = `Biomarkers Ranked by Most Negative Spearman Rho (${stat} vs age)`;
       const ranked = metricsForView(
@@ -4548,6 +4663,11 @@
       });
       modeSkewBtn.addEventListener('click', async () => {
         setMode('skewness');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeFullBtn.addEventListener('click', async () => {
+        setMode('full');
         renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });

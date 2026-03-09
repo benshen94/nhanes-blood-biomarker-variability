@@ -160,6 +160,10 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - interquartile range (IQR) band (25th-75th percentile)
     - raw scatter sample (age vs value) for the selected biomarker
   - `Plot Skewness`: skewness vs age (distribution asymmetry per age bin).
+  - `Full View`: a 2x2 dashboard panel that shows `Median`, `Standard deviation`, `Skewness`, and `CV` together for the selected biomarker.
+    - each subplot shows the NHANES Spearman rho with age above the panel
+    - in `Both` cohort mode, female and male rho values are shown separately in each subplot
+    - if Clalit overlay data exist for that biomarker, Clalit trajectories are included in the median, standard deviation, and CV panels without extra rho text
   - All ranking/filtering/scatter/histogram views now compute and use the same age-trend metrics for `CV`, `SD`, `Median`, and `Skewness`:
     - `n_bins`
     - `Spearman rho`
