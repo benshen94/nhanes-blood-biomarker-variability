@@ -2762,7 +2762,7 @@
             legendSeen,
           }));
         }
-        plotEl.style.height = mobile ? '1560px' : '1060px';
+        plotEl.style.height = mobile ? '1640px' : '1140px';
         const rows = mobile ? 4 : 2;
         const columns = mobile ? 1 : 2;
         const annotations = statKeys.map((statKey, index) => {
@@ -4443,11 +4443,13 @@
             xref: 'paper',
             yref: 'paper',
             x: mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77),
-            y: mobile ? (0.955 - (rowIndex * 0.235)) : (0.93 - (rowIndex * 0.47)),
+            y: mobile ? (1.01 - (rowIndex * 0.25)) : (rowIndex === 0 ? 1.03 : 0.49),
             showarrow: false,
             align: 'center',
             text: `<b>${labels[statKey]}</b>`,
-            font: { size: mobile ? 13 : 14, color: '#102a43' },
+            xanchor: 'center',
+            yanchor: 'bottom',
+            font: { size: mobile ? 13 : 15, color: '#102a43' },
           };
         });
         Plotly.newPlot('filter-tests-plot', traces, applyPlotTheme({
@@ -4456,11 +4458,14 @@
           annotations,
           legend: {
             orientation: 'h',
-            y: mobile ? -0.16 : -0.12,
+            y: mobile ? -0.2 : -0.18,
             yanchor: 'top',
             x: 0,
-            font: { size: mobile ? 10 : 12 },
+            font: { size: mobile ? 12 : 14 },
             bgcolor: 'rgba(255,255,255,0.82)',
+            bordercolor: 'rgba(16,42,67,0.12)',
+            borderwidth: 1,
+            itemwidth: mobile ? 70 : 88,
           },
           xaxis: { title: '' },
           yaxis: { title: filterPlotMetricConfig('median').yAxisTitle },
@@ -4470,7 +4475,7 @@
           yaxis3: { title: filterPlotMetricConfig(skewStatKey).yAxisTitle },
           xaxis4: { title: 'Age (years)' },
           yaxis4: { title: filterPlotMetricConfig('cv').yAxisTitle },
-          margin: mobile ? { t: 128, l: 58, r: 18, b: 118 } : { t: 148, l: 70, r: 24, b: 110 },
+          margin: mobile ? { t: 154, l: 58, r: 18, b: 148 } : { t: 176, l: 70, r: 24, b: 156 },
         }, mobile), { responsive: true, displaylogo: false });
         filterTestsPlotSummaryEl.textContent = notes.length
           ? `${traces.length} traces rendered across four metrics using ${labels[skewStatKey].toLowerCase()}. ${notes.length} traces were skipped because a baseline near age 30 was unavailable or zero.`
