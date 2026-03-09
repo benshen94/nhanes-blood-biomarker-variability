@@ -1378,6 +1378,7 @@
             <label>Sex group
               <select id="filter-tests-cohort">
                 <option value="both" selected>Both (Female + Male)</option>
+                <option value="pooled">Pooled</option>
                 <option value="female">Female</option>
                 <option value="male">Male</option>
               </select>
@@ -4793,7 +4794,7 @@
         cohortFilterEl.value = compareCohortEl.value;
         scatterCohortEl.value = compareCohortEl.value;
         histCohortEl.value = compareCohortEl.value;
-        if (compareCohortEl.value !== 'pooled') filterTestsCohortEl.value = compareCohortEl.value;
+        filterTestsCohortEl.value = compareCohortEl.value;
         if (compareCohortEl.value !== 'both') waterfallCohortEl.value = compareCohortEl.value;
         renderRankTable();
         renderComparePlot();
@@ -4838,7 +4839,7 @@
         compareCohortEl.value = cohortFilterEl.value;
         scatterCohortEl.value = cohortFilterEl.value;
         histCohortEl.value = cohortFilterEl.value;
-        if (cohortFilterEl.value !== 'pooled') filterTestsCohortEl.value = cohortFilterEl.value;
+        filterTestsCohortEl.value = cohortFilterEl.value;
         if (cohortFilterEl.value !== 'both') waterfallCohortEl.value = cohortFilterEl.value;
         renderRankTable();
         renderComparePlot();
@@ -4904,7 +4905,7 @@
         cohortFilterEl.value = scatterCohortEl.value;
         compareCohortEl.value = scatterCohortEl.value;
         histCohortEl.value = scatterCohortEl.value;
-        if (scatterCohortEl.value !== 'pooled') filterTestsCohortEl.value = scatterCohortEl.value;
+        filterTestsCohortEl.value = scatterCohortEl.value;
         if (scatterCohortEl.value !== 'both') waterfallCohortEl.value = scatterCohortEl.value;
         renderRankTable();
         renderComparePlot();
@@ -4958,7 +4959,7 @@
         cohortFilterEl.value = histCohortEl.value;
         compareCohortEl.value = histCohortEl.value;
         scatterCohortEl.value = histCohortEl.value;
-        if (histCohortEl.value !== 'pooled') filterTestsCohortEl.value = histCohortEl.value;
+        filterTestsCohortEl.value = histCohortEl.value;
         if (histCohortEl.value !== 'both') waterfallCohortEl.value = histCohortEl.value;
         renderRankTable();
         renderComparePlot();
@@ -5019,7 +5020,7 @@
         compareCohortEl.value = waterfallCohortEl.value;
         scatterCohortEl.value = waterfallCohortEl.value;
         histCohortEl.value = waterfallCohortEl.value;
-        if (waterfallCohortEl.value !== 'pooled') filterTestsCohortEl.value = waterfallCohortEl.value;
+        filterTestsCohortEl.value = waterfallCohortEl.value;
         renderRankTable();
         renderComparePlot();
         renderFilterTests();
