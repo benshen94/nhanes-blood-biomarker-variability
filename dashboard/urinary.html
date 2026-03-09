@@ -1366,8 +1366,8 @@
 
             <div class="filter-side-rail">
               <div class="filter-test-picker">
-                <label for="filter-tests-search">Choose tests to include</label>
-                <input id="filter-tests-search" type="search" placeholder="Search tests..." />
+                <label for="filter-tests-search">Choose categories to include</label>
+                <input id="filter-tests-search" type="search" placeholder="Search categories..." />
                 <div class="filter-test-actions">
                   <button id="filter-tests-select-all" type="button">Select all visible</button>
                   <button id="filter-tests-select-core" type="button">Core clinical only</button>
@@ -1483,7 +1483,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1773054173';
+    const DATA_VERSION = '1773054780';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -2048,27 +2048,26 @@
       const visible = Array.from(filterTestsBiomarkersEl.options).filter(o => !o.hidden);
       const selectedVisible = visible.filter(o => o.selected).length;
       const selectedTotal = Array.from(filterTestsBiomarkersEl.selectedOptions).length;
-      filterTestsSelectionCountEl.textContent = `${selectedTotal} selected (${selectedVisible}/${visible.length} visible)`;
+      filterTestsSelectionCountEl.textContent = `${selectedTotal} categories selected (${selectedVisible}/${visible.length} visible)`;
     }
 
     function renderFilterTestsBiomarkerOptions(selectCore=false) {
       const prev = new Set(state.filterTestsSelectionSet || []);
       const rows = state.metadata
-        .filter(m => filterTestsIncludeEnvEl.checked || !Boolean(m.is_environmental))
-        .slice()
-        .sort((a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || '')));
+        .filter(m => filterTestsIncludeEnvEl.checked || !Boolean(m.is_environmental));
+      const categories = sortedCategories(rows, true);
       const coreSet = new Set(
         rows
           .filter(m => Boolean(m.is_core_clinical))
-          .map(m => m.biomarker_id)
+          .map(m => m.category || 'Other Clinical')
       );
       filterTestsBiomarkersEl.innerHTML = '';
       const shouldDefaultAll = prev.size === 0 && !selectCore;
-      for (const m of rows) {
+      for (const category of categories) {
         const opt = document.createElement('option');
-        opt.value = m.biomarker_id;
-        opt.textContent = m.display_name || m.biomarker_name || m.biomarker_id;
-        opt.selected = selectCore ? coreSet.has(m.biomarker_id) : (shouldDefaultAll ? true : prev.has(m.biomarker_id));
+        opt.value = category;
+        opt.textContent = category;
+        opt.selected = selectCore ? coreSet.has(category) : (shouldDefaultAll ? true : prev.has(category));
         filterTestsBiomarkersEl.appendChild(opt);
       }
       applyFilterTestsSearch();
@@ -2089,7 +2088,13 @@
     }
 
     function getFilterTestsSelectedBiomarkers() {
-      return new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+      const selectedCategories = new Set(Array.from(filterTestsBiomarkersEl.selectedOptions).map(o => o.value));
+      return new Set(
+        state.metadata
+          .filter(m => (filterTestsIncludeEnvEl.checked || !Boolean(m.is_environmental)))
+          .filter(m => selectedCategories.has(m.category || 'Other Clinical'))
+          .map(m => m.biomarker_id)
+      );
     }
 
     function renderOptions() {
@@ -3933,7 +3938,7 @@
       }
 
       if (!selectedBiomarkers.size) {
-        filterTestsSummaryEl.textContent = 'No tests selected. Pick one or more tests in the selector above.';
+        filterTestsSummaryEl.textContent = 'No categories selected. Pick one or more categories in the selector above.';
         filterTestsTableEl.innerHTML = '';
         state.filterResults = [];
         state.filterPlotSelectionSet = new Set();
