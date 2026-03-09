@@ -608,6 +608,7 @@
       flex-wrap: wrap;
       gap: 8px;
       align-content: flex-start;
+      align-items: flex-start;
     }
     .filter-expression-dropzone.drag-over,
     .filter-stage-slot.drag-over {
@@ -621,15 +622,43 @@
       max-width: 56ch;
     }
     .filter-stage-slot {
-      width: 12px;
+      flex: 0 0 auto;
+      min-width: 80px;
       min-height: 42px;
+      padding: 0 12px;
       border-radius: 999px;
-      border: 1px dashed transparent;
-      transition: border-color 120ms ease, background-color 120ms ease;
+      border: 1px dashed rgba(15, 118, 110, 0.22);
+      background: rgba(255,255,255,0.9);
+      color: var(--ink-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      appearance: none;
+      transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+    }
+    .filter-stage-slot:hover {
+      color: var(--accent-strong);
+      border-color: rgba(15, 118, 110, 0.42);
+      background: rgba(15,118,110,0.08);
+    }
+    .filter-stage-slot.is-empty-slot {
+      width: 100%;
+      min-width: 0;
+      min-height: 56px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.45;
     }
     .filter-stage-token {
       display: inline-flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
       min-height: 42px;
       padding: 8px 10px;
@@ -639,6 +668,7 @@
       box-shadow: 0 10px 18px rgba(16, 42, 67, 0.08);
       cursor: grab;
       user-select: none;
+      max-width: min(100%, 760px);
     }
     .filter-stage-token[data-kind="clause"] {
       border-color: rgba(15,118,110,0.24);
@@ -658,12 +688,15 @@
       text-transform: uppercase;
     }
     .filter-stage-token span {
+      flex: 1 1 220px;
       font-size: 13px;
       color: var(--ink-soft);
+      overflow-wrap: anywhere;
     }
     .filter-token-actions {
       display: inline-flex;
       gap: 4px;
+      margin-left: auto;
     }
     .filter-token-actions button,
     .clause-card-actions button {
@@ -1445,7 +1478,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1773048916';
+    const DATA_VERSION = '1773049568';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -3476,8 +3509,11 @@
         const slot = document.createElement('button');
         slot.type = 'button';
         slot.className = 'filter-stage-slot';
+        if (!tokens.length) slot.classList.add('is-empty-slot');
         if (state.filterStageInsertIndex === index) slot.classList.add('drag-over');
-        slot.textContent = tokens.length ? 'Insert here' : 'Drop clauses here or click to choose insertion point';
+        slot.textContent = tokens.length ? 'Insert' : 'Drop clauses here or click to choose the first insertion point';
+        slot.setAttribute('aria-label', tokens.length ? `Insert at position ${index + 1}` : 'Choose first insertion point');
+        slot.title = tokens.length ? 'Insert here' : 'Choose first insertion point';
         attachFilterStageSlotHandlers(slot, index);
         filterStageEl.appendChild(slot);
       };
