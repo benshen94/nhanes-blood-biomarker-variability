@@ -161,6 +161,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - raw scatter sample (age vs value) for the selected biomarker
   - `Plot Skewness`: classic moment skewness vs age (distribution asymmetry per age bin).
   - `Plot Quantile Skewness`: Bowley/Galton quantile skewness vs age, defined as `(Q3 + Q1 - 2*median) / (Q3 - Q1)`.
+    - the dashboard estimates `Q1`, `median`, and `Q3` with the Harrell-Davis quantile estimator before computing this metric, to reduce tie/rounding artifacts in coarse lab measurements
   - `Full View`: a 2x2 dashboard view that shows `Median`, `Standard deviation`, `CV`, and one selectable skewness panel for the selected biomarker.
     - use the `Full view skew metric` selector to choose either classic `Skewness` or `Quantile skewness`
     - each subplot shows the NHANES Spearman rho with age above the panel

@@ -1603,7 +1603,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1773067218';
+    const DATA_VERSION = '1773068090';
     const HAS_CLALIT = true;
     const SPECIMEN_TITLE = 'Blood';
     const SPECIMEN_LABEL = 'blood';
@@ -2595,7 +2595,10 @@
         return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>skewness=${formatNum(point.skewness, 4)}<br>median=${formatNum(point.median, 4)}<br>mean=${formatNum(point.mean, 4)}<br>cv=${formatNum(point.cv, 4)}`;
       }
       if (statKey === 'quantile_skewness') {
-        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}<br>q25=${formatNum(point.q25, 4)}<br>median=${formatNum(point.median, 4)}<br>q75=${formatNum(point.q75, 4)}<br>skewness=${formatNum(point.skewness, 4)}`;
+        const q25 = point.hd_q25 ?? point.q25;
+        const median = point.hd_median ?? point.median;
+        const q75 = point.hd_q75 ?? point.q75;
+        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}<br>hd_q25=${formatNum(q25, 4)}<br>hd_median=${formatNum(median, 4)}<br>hd_q75=${formatNum(q75, 4)}<br>skewness=${formatNum(point.skewness, 4)}`;
       }
       return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>median=${formatNum(point.median, 4)}<br>q25=${formatNum(point.q25, 4)}<br>q75=${formatNum(point.q75, 4)}<br>mean=${formatNum(point.mean, 4)}<br>std=${formatNum(point.std, 4)}<br>cv=${formatNum(point.cv, 4)}<br>skewness=${formatNum(point.skewness, 4)}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}`;
     }
@@ -2607,7 +2610,7 @@
         const maleRho = Number(metric?.male?.spearman_rho);
         const femaleText = Number.isFinite(femaleRho) ? `Female &rho;<sub>S</sub>=${formatNum(femaleRho, 4)}` : 'Female &rho;<sub>S</sub>=NA';
         const maleText = Number.isFinite(maleRho) ? `Male &rho;<sub>S</sub>=${formatNum(maleRho, 4)}` : 'Male &rho;<sub>S</sub>=NA';
-        return `${femaleText} &nbsp;&middot;&nbsp; ${maleText}`;
+        return `${femaleText}<br>${maleText}`;
       }
       const rho = Number(metric?.spearman_rho);
       const cohortLabelText = cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled';
@@ -2765,7 +2768,7 @@
           const rowIndex = mobile ? index : Math.floor(index / 2);
           const colIndex = mobile ? 0 : index % 2;
           const x = mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77);
-          const y = mobile ? (0.955 - (rowIndex * 0.235)) : (0.93 - (rowIndex * 0.47));
+          const y = mobile ? (1.02 - (rowIndex * 0.245)) : (rowIndex === 0 ? 1.07 : 0.555);
           return {
             xref: 'paper',
             yref: 'paper',
@@ -2774,6 +2777,8 @@
             showarrow: false,
             align: 'center',
             text: `<b>${dashboardMetricConfig(statKey).title}</b><br><span style="font-size:${mobile ? 10 : 11}px">${dashboardMetricRhoText(state.metricsById.get(id), cohort, trimMode, statKey)}</span>`,
+            xanchor: 'center',
+            yanchor: 'bottom',
             font: { size: mobile ? 13 : 14, color: '#102a43' },
           };
         });
@@ -2797,7 +2802,7 @@
           yaxis3: { title: dashboardMetricConfig(skewStatKey).yAxisTitle },
           xaxis4: { title: 'Age (years)' },
           yaxis4: { title: dashboardMetricConfig('cv').yAxisTitle },
-          margin: mobile ? { t: 128, l: 58, r: 18, b: 118 } : { t: 148, l: 70, r: 24, b: 110 },
+          margin: mobile ? { t: 156, l: 58, r: 18, b: 118 } : { t: 186, l: 70, r: 24, b: 110 },
         }, mobile), { responsive: true, displaylogo: false });
         return;
       }
