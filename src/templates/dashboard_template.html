@@ -1104,6 +1104,7 @@
                 <button id="mode-std" class="mode-btn" type="button">Plot SD</button>
                 <button id="mode-mean" class="mode-btn" type="button">Plot Median</button>
                 <button id="mode-skew" class="mode-btn" type="button">Plot Skewness</button>
+                <button id="mode-qskew" class="mode-btn" type="button">Plot Quantile Skewness</button>
                 <button id="mode-full" class="mode-btn" type="button">Full View</button>
               </div>
             </div>
@@ -1195,6 +1196,7 @@
               <option value="std">Standard deviation vs age</option>
               <option value="mean">Mean vs age</option>
               <option value="skewness">Skewness vs age</option>
+              <option value="quantile_skewness">Quantile skewness vs age</option>
             </select>
           </label>
           <label>Category
@@ -1238,6 +1240,7 @@
               <option value="std">Standard deviation vs age (Spearman rho)</option>
               <option value="mean">Mean vs age (Spearman rho)</option>
               <option value="skewness">Skewness vs age (Spearman rho)</option>
+              <option value="quantile_skewness">Quantile skewness vs age (Spearman rho)</option>
             </select>
           </label>
           <label>Y axis statistic
@@ -1246,6 +1249,7 @@
               <option value="std">Standard deviation vs age (Spearman rho)</option>
               <option value="mean" selected>Mean vs age (Spearman rho)</option>
               <option value="skewness">Skewness vs age (Spearman rho)</option>
+              <option value="quantile_skewness">Quantile skewness vs age (Spearman rho)</option>
             </select>
           </label>
           <label>Cohort
@@ -1290,6 +1294,7 @@
               <option value="std">Standard deviation vs age (Spearman rho)</option>
               <option value="mean">Mean vs age (Spearman rho)</option>
               <option value="skewness">Skewness vs age (Spearman rho)</option>
+              <option value="quantile_skewness">Quantile skewness vs age (Spearman rho)</option>
             </select>
           </label>
           <label>Cohort
@@ -1390,6 +1395,7 @@
                   <option value="std">Standard deviation</option>
                   <option value="mean">Mean</option>
                   <option value="skewness">Skewness</option>
+                  <option value="quantile_skewness">Quantile skewness</option>
                 </select>
               </label>
               <label>Metric
@@ -1510,7 +1516,8 @@
                   <option value="cv">CV normalized to age ~30</option>
                   <option value="std">Standard deviation normalized to age ~30</option>
                   <option value="skewness">Skewness normalized to age ~30</option>
-                  <option value="full">Full view (2x2 all metrics)</option>
+                  <option value="quantile_skewness">Quantile skewness normalized to age ~30</option>
+                  <option value="full">Full view (all metrics)</option>
                 </select>
               </label>
             </div>
@@ -1560,7 +1567,8 @@
             <li><b>Plot CV</b>: age-binned CV trend.</li>
             <li><b>Plot SD</b>: age-binned standard deviation trend.</li>
             <li><b>Plot Median</b>: age-binned median with interquartile band (25th-75th percentile) and raw scatter sample.</li>
-            <li><b>Plot Skewness</b>: age-binned skewness trend (shape/asymmetry of per-bin values).</li>
+            <li><b>Plot Skewness</b>: age-binned classic moment skewness trend (shape/asymmetry of per-bin values).</li>
+            <li><b>Plot Quantile Skewness</b>: Bowley/Galton skewness, <span class="mono">(Q3 + Q1 - 2*median) / (Q3 - Q1)</span>, which is more robust to tail noise.</li>
             <li>Sex view: pooled, female, male, or both on the same chart (female red, male blue).</li>
             <li>Optional robust mode uses configurable symmetric trimming within each age bin (for example 10-90, 20-80, 25-75) before computing summaries.</li>
             <li>Raw scatter is sampled for performance and readability.</li>
@@ -1598,6 +1606,7 @@
     const modeStdBtn = document.getElementById('mode-std');
     const modeMeanBtn = document.getElementById('mode-mean');
     const modeSkewBtn = document.getElementById('mode-skew');
+    const modeQuantSkewBtn = document.getElementById('mode-qskew');
     const modeFullBtn = document.getElementById('mode-full');
     const statusChip = document.getElementById('status-chip');
     const heroTitleEl = document.getElementById('hero-title');
@@ -1802,6 +1811,7 @@
       if (mode === 'std') return 'std';
       if (mode === 'mean') return 'mean';
       if (mode === 'skewness') return 'skewness';
+      if (mode === 'quantile_skewness') return 'quantile_skewness';
       return 'cv';
     }
 
@@ -1809,6 +1819,7 @@
       if (statKey === 'std') return 'Standard deviation';
       if (statKey === 'mean') return 'Mean';
       if (statKey === 'skewness') return 'Skewness';
+      if (statKey === 'quantile_skewness') return 'Quantile skewness';
       return 'CV';
     }
 
@@ -2064,12 +2075,14 @@
               std: m.std_trends || {},
               mean: m.mean_trends || {},
               skewness: m.skewness_trends || {},
+              quantile_skewness: m.quantile_skewness_trends || {},
             },
             sex_metrics_by_stat: m.sex_metrics_by_stat || {
               cv: m.sex_metrics || {},
               std: m.sex_std_metrics || {},
               mean: m.sex_mean_metrics || {},
               skewness: m.sex_skewness_metrics || {},
+              quantile_skewness: m.sex_quantile_skewness_metrics || {},
             },
           };
         });
@@ -2369,12 +2382,14 @@
         std: pooled.std_trends || {},
         mean: pooled.mean_trends || {},
         skewness: pooled.skewness_trends || {},
+        quantile_skewness: pooled.quantile_skewness_trends || {},
       };
       const sexByStat = pooled.sex_metrics_by_stat || {
         cv: pooled.sex_metrics || {},
         std: pooled.sex_std_metrics || {},
         mean: pooled.sex_mean_metrics || {},
         skewness: pooled.sex_skewness_metrics || {},
+        quantile_skewness: pooled.sex_quantile_skewness_metrics || {},
       };
       const trendByMode = trendsByStat[statKey] || {};
       const pooledMetric = trendByMode[trimMode] || trendByMode.all || null;
@@ -2410,11 +2425,13 @@
       modeStdBtn.classList.toggle('active', mode === 'std');
       modeMeanBtn.classList.toggle('active', mode === 'mean');
       modeSkewBtn.classList.toggle('active', mode === 'skewness');
+      modeQuantSkewBtn.classList.toggle('active', mode === 'quantile_skewness');
       modeFullBtn.classList.toggle('active', mode === 'full');
       modeCvBtn.setAttribute('aria-pressed', mode === 'cv' ? 'true' : 'false');
       modeStdBtn.setAttribute('aria-pressed', mode === 'std' ? 'true' : 'false');
       modeMeanBtn.setAttribute('aria-pressed', mode === 'mean' ? 'true' : 'false');
       modeSkewBtn.setAttribute('aria-pressed', mode === 'skewness' ? 'true' : 'false');
+      modeQuantSkewBtn.setAttribute('aria-pressed', mode === 'quantile_skewness' ? 'true' : 'false');
       modeFullBtn.setAttribute('aria-pressed', mode === 'full' ? 'true' : 'false');
     }
 
@@ -2438,7 +2455,7 @@
       return {
         x: points.map(p => p.age_mid),
         y: points.map(p => p[valueField]),
-        text: points.map(p => hoverTextFn ? hoverTextFn(p) : `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}<br>skewness=${formatNum(p.skewness, 4)}`),
+        text: points.map(p => hoverTextFn ? hoverTextFn(p) : `age_bin=${p.age_bin}<br>n=${p.n}<br>mean=${formatNum(p.mean, 4)}<br>std=${formatNum(p.std, 4)}<br>cv=${formatNum(p.cv, 4)}<br>skewness=${formatNum(p.skewness, 4)}<br>quantile_skewness=${formatNum(p.quantile_skewness, 4)}`),
         mode: 'lines+markers',
         type: 'scatter',
         marker: { size: points.map(p => p.passes_n_threshold ? 8 : 5), color },
@@ -2494,6 +2511,16 @@
           includeRaw: false,
         };
       }
+      if (statKey === 'quantile_skewness') {
+        return {
+          title: 'Quantile Skewness',
+          yAxisTitle: 'Quantile skewness (Bowley/Galton)',
+          field: 'quantile_skewness',
+          supportsClalit: true,
+          includeBand: false,
+          includeRaw: false,
+        };
+      }
       return {
         title: 'Median',
         yAxisTitle: 'Median biomarker value',
@@ -2515,7 +2542,10 @@
       if (statKey === 'skewness') {
         return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>skewness=${formatNum(point.skewness, 4)}<br>median=${formatNum(point.median, 4)}<br>mean=${formatNum(point.mean, 4)}<br>cv=${formatNum(point.cv, 4)}`;
       }
-      return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>median=${formatNum(point.median, 4)}<br>q25=${formatNum(point.q25, 4)}<br>q75=${formatNum(point.q75, 4)}<br>mean=${formatNum(point.mean, 4)}<br>std=${formatNum(point.std, 4)}<br>cv=${formatNum(point.cv, 4)}<br>skewness=${formatNum(point.skewness, 4)}`;
+      if (statKey === 'quantile_skewness') {
+        return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}<br>q25=${formatNum(point.q25, 4)}<br>median=${formatNum(point.median, 4)}<br>q75=${formatNum(point.q75, 4)}<br>skewness=${formatNum(point.skewness, 4)}`;
+      }
+      return `${prefix}<br>age_bin=${point.age_bin}<br>n=${point.n}<br>median=${formatNum(point.median, 4)}<br>q25=${formatNum(point.q25, 4)}<br>q75=${formatNum(point.q75, 4)}<br>mean=${formatNum(point.mean, 4)}<br>std=${formatNum(point.std, 4)}<br>cv=${formatNum(point.cv, 4)}<br>skewness=${formatNum(point.skewness, 4)}<br>quantile_skewness=${formatNum(point.quantile_skewness, 4)}`;
     }
 
     function dashboardMetricRhoText(record, cohort, trimMode, statKey) {
@@ -2661,7 +2691,7 @@
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       const plotEl = document.getElementById('plot');
       if (state.mode === 'full') {
-        const statKeys = ['mean', 'std', 'skewness', 'cv'];
+        const statKeys = ['mean', 'std', 'skewness', 'quantile_skewness', 'cv'];
         const legendSeen = new Set();
         const traces = [];
         for (let i = 0; i < statKeys.length; i += 1) {
@@ -2675,14 +2705,14 @@
             legendSeen,
           }));
         }
-        plotEl.style.height = mobile ? '1500px' : '980px';
-        const rows = mobile ? 4 : 2;
+        plotEl.style.height = mobile ? '1840px' : '1180px';
+        const rows = mobile ? 5 : 3;
         const columns = mobile ? 1 : 2;
         const annotations = statKeys.map((statKey, index) => {
           const rowIndex = mobile ? index : Math.floor(index / 2);
           const colIndex = mobile ? 0 : index % 2;
           const x = mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77);
-          const y = mobile ? (0.98 - (rowIndex * 0.245)) : (rowIndex === 0 ? 0.995 : 0.495);
+          const y = mobile ? (0.985 - (rowIndex * 0.196)) : (0.995 - (rowIndex * 0.33));
           return {
             xref: 'paper',
             yref: 'paper',
@@ -2711,7 +2741,9 @@
           xaxis3: { title: 'Age (years)' },
           yaxis3: { title: dashboardMetricConfig('skewness').yAxisTitle },
           xaxis4: { title: 'Age (years)' },
-          yaxis4: { title: dashboardMetricConfig('cv').yAxisTitle },
+          yaxis4: { title: dashboardMetricConfig('quantile_skewness').yAxisTitle },
+          xaxis5: { title: 'Age (years)' },
+          yaxis5: { title: dashboardMetricConfig('cv').yAxisTitle },
           margin: mobile ? { t: 110, l: 58, r: 18, b: 88 } : { t: 110, l: 70, r: 24, b: 76 },
         }, mobile), { responsive: true, displaylogo: false });
         return;
@@ -2743,8 +2775,8 @@
     function metricsForView(rows, cohort, trimMode, statKey='cv') {
       const out = [];
       for (const rec of rows) {
-        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {} };
-        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {} };
+        const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {}, quantile_skewness: {} };
+        const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {}, quantile_skewness: {} };
         const trends = trendsByStat[statKey] || {};
         const sexByMode = sexByStat[statKey] || {};
         const tr = trends[trimMode] || trends.all || null;
@@ -2788,8 +2820,8 @@
     }
 
     function metricForRecord(rec, cohort, trimMode, statKey='cv') {
-      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {} };
-      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {} };
+      const trendsByStat = rec.trends_by_stat || { cv: rec.trends || {}, std: rec.std_trends || {}, mean: {}, skewness: {}, quantile_skewness: {} };
+      const sexByStat = rec.sex_metrics_by_stat || { cv: rec.sex_metrics_by_mode || {}, std: rec.sex_std_metrics || {}, mean: {}, skewness: {}, quantile_skewness: {} };
       const trends = trendsByStat[statKey] || {};
       const sexByMode = sexByStat[statKey] || {};
       const tr = trends[trimMode] || trends.all || null;
@@ -3548,6 +3580,8 @@
           ? 'MED'
           : clause.stat === 'skewness'
             ? 'SK'
+            : clause.stat === 'quantile_skewness'
+              ? 'QSK'
             : 'CV';
       const metricHtml = clause.field === 'spearman_rho'
         ? `&rho;<sub>${statSuffix}</sub>`
@@ -4179,6 +4213,14 @@
           hoverLabel: 'Skewness',
         };
       }
+      if (metric === 'quantile_skewness') {
+        return {
+          field: 'quantile_skewness',
+          title: 'Filtered Test Quantile Skewness Overlay (baseline age ~30)',
+          yAxisTitle: 'Normalized quantile skewness (value / age~30 quantile skewness)',
+          hoverLabel: 'Quantile skewness',
+        };
+      }
       return {
         field: 'median',
         title: 'Filtered Test Median Overlay (baseline age ~30)',
@@ -4292,7 +4334,7 @@
       const mobile = window.matchMedia('(max-width: 760px)').matches;
       const plotEl = document.getElementById('filter-tests-plot');
       if (selectedMetric === 'full') {
-        const statKeys = ['median', 'std', 'skewness', 'cv'];
+        const statKeys = ['median', 'std', 'skewness', 'quantile_skewness', 'cv'];
         const legendSeen = new Set();
         const traces = [];
         const notes = [];
@@ -4301,13 +4343,14 @@
           traces.push(...built.traces);
           notes.push(...built.notes);
         }
-        plotEl.style.height = mobile ? '1500px' : '980px';
-        const rows = mobile ? 4 : 2;
+        plotEl.style.height = mobile ? '1840px' : '1180px';
+        const rows = mobile ? 5 : 3;
         const columns = mobile ? 1 : 2;
         const labels = {
           median: 'Median normalized to age ~30',
           std: 'Standard deviation normalized to age ~30',
           skewness: 'Skewness normalized to age ~30',
+          quantile_skewness: 'Quantile skewness normalized to age ~30',
           cv: 'CV normalized to age ~30',
         };
         const annotations = statKeys.map((statKey, index) => {
@@ -4317,7 +4360,7 @@
             xref: 'paper',
             yref: 'paper',
             x: mobile ? 0.5 : (colIndex === 0 ? 0.23 : 0.77),
-            y: mobile ? (0.98 - (rowIndex * 0.245)) : (rowIndex === 0 ? 0.995 : 0.495),
+            y: mobile ? (0.985 - (rowIndex * 0.196)) : (0.995 - (rowIndex * 0.33)),
             showarrow: false,
             align: 'center',
             text: `<b>${labels[statKey]}</b>`,
@@ -4341,12 +4384,14 @@
           xaxis3: { title: 'Age (years)' },
           yaxis3: { title: filterPlotMetricConfig('skewness').yAxisTitle },
           xaxis4: { title: 'Age (years)' },
-          yaxis4: { title: filterPlotMetricConfig('cv').yAxisTitle },
+          yaxis4: { title: filterPlotMetricConfig('quantile_skewness').yAxisTitle },
+          xaxis5: { title: 'Age (years)' },
+          yaxis5: { title: filterPlotMetricConfig('cv').yAxisTitle },
           margin: mobile ? { t: 66, l: 58, r: 18, b: 88 } : { t: 74, l: 70, r: 24, b: 76 },
         }, mobile), { responsive: true, displaylogo: false });
         filterTestsPlotSummaryEl.textContent = notes.length
-          ? `${traces.length} traces rendered across all four metrics. ${notes.length} traces were skipped because a baseline near age 30 was unavailable or zero.`
-          : `${traces.length} traces rendered across all four metrics from ${included.length} filtered tests.`;
+          ? `${traces.length} traces rendered across all five metrics. ${notes.length} traces were skipped because a baseline near age 30 was unavailable or zero.`
+          : `${traces.length} traces rendered across all five metrics from ${included.length} filtered tests.`;
         return;
       }
       plotEl.style.height = '';
@@ -4753,6 +4798,11 @@
       });
       modeSkewBtn.addEventListener('click', async () => {
         setMode('skewness');
+        renderRankTable();
+        if (state.currentId) await renderPlot(state.currentId);
+      });
+      modeQuantSkewBtn.addEventListener('click', async () => {
+        setMode('quantile_skewness');
         renderRankTable();
         if (state.currentId) await renderPlot(state.currentId);
       });

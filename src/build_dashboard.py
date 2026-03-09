@@ -2896,8 +2896,18 @@ def compute_binned_long(
     )
     grouped["cv"] = grouped["std"] / grouped["mean"].abs()
     grouped.loc[grouped["mean"].abs() < 1e-8, "cv"] = np.nan
+    grouped["quantile_skewness"] = quantile_skewness_from_stats(grouped["q25"], grouped["median"], grouped["q75"])
     grouped["passes_n_threshold"] = grouped["n"] >= 30
     return grouped.reset_index(drop=True)
+
+
+def quantile_skewness_from_stats(q25, median, q75):
+    q25_s = pd.to_numeric(q25, errors="coerce")
+    median_s = pd.to_numeric(median, errors="coerce")
+    q75_s = pd.to_numeric(q75, errors="coerce")
+    denom = q75_s - q25_s
+    out = (q75_s + q25_s - 2.0 * median_s) / denom
+    return out.where(denom.abs() > 1e-12, np.nan)
 
 
 def trend_from_points(points: list[dict], value_key: str) -> dict:
@@ -3030,6 +3040,7 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
             median_v = float(np.average(g_age['median'], weights=g_age['n']))
             q25_v = float(np.average(g_age['q25'], weights=g_age['n'])) if 'q25' in g_age.columns else None
             q75_v = float(np.average(g_age['q75'], weights=g_age['n'])) if 'q75' in g_age.columns else None
+            qskew_v = quantile_skewness_from_stats(pd.Series([q25_v]), pd.Series([median_v]), pd.Series([q75_v])).iloc[0]
             
             p = {
                 "age_bin": str(age_bin),
@@ -3040,6 +3051,7 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
                 "median": median_v,
                 "q25": q25_v,
                 "q75": q75_v,
+                "quantile_skewness": float(qskew_v) if pd.notna(qskew_v) else None,
                 "cv": float(cv_v),
                 "passes_n_threshold": True
             }
@@ -3061,6 +3073,7 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
             median_v = float(np.average(g_age['median'], weights=g_age['n']))
             q25_v = float(np.average(g_age['q25'], weights=g_age['n'])) if 'q25' in g_age.columns else None
             q75_v = float(np.average(g_age['q75'], weights=g_age['n'])) if 'q75' in g_age.columns else None
+            qskew_v = quantile_skewness_from_stats(pd.Series([q25_v]), pd.Series([median_v]), pd.Series([q75_v])).iloc[0]
             
             p = {
                 "age_bin": str(age_bin),
@@ -3071,6 +3084,7 @@ def process_clalit_data(clalit_f: pd.DataFrame, clalit_m: pd.DataFrame, mapping:
                 "median": median_v,
                 "q25": q25_v,
                 "q75": q75_v,
+                "quantile_skewness": float(qskew_v) if pd.notna(qskew_v) else None,
                 "cv": float(cv_v),
                 "passes_n_threshold": True
             }
@@ -3201,6 +3215,7 @@ def build_outputs(
                 p10_v = getattr(r, "p10", np.nan)
                 p90_v = getattr(r, "p90", np.nan)
                 skew_v = getattr(r, "skewness", np.nan)
+                qskew_v = getattr(r, "quantile_skewness", np.nan)
                 cv_v = getattr(r, "cv", np.nan)
                 pts.append(
                     {
@@ -3215,6 +3230,7 @@ def build_outputs(
                         "p10": float(p10_v) if pd.notna(p10_v) else None,
                         "p90": float(p90_v) if pd.notna(p90_v) else None,
                         "skewness": float(skew_v) if pd.notna(skew_v) else None,
+                        "quantile_skewness": float(qskew_v) if pd.notna(qskew_v) else None,
                         "cv": float(cv_v) if pd.notna(cv_v) else None,
                         "passes_n_threshold": bool(getattr(r, "passes_n_threshold")),
                     }
@@ -3240,10 +3256,12 @@ def build_outputs(
     pooled_trends_by_mode_std: dict[str, dict[str, dict]] = {}
     pooled_trends_by_mode_mean: dict[str, dict[str, dict]] = {}
     pooled_trends_by_mode_skew: dict[str, dict[str, dict]] = {}
+    pooled_trends_by_mode_qskew: dict[str, dict[str, dict]] = {}
     sex_trends_by_mode_cv: dict[str, dict[str, dict[str, dict]]] = {}
     sex_trends_by_mode_std: dict[str, dict[str, dict[str, dict]]] = {}
     sex_trends_by_mode_mean: dict[str, dict[str, dict[str, dict]]] = {}
     sex_trends_by_mode_skew: dict[str, dict[str, dict[str, dict]]] = {}
+    sex_trends_by_mode_qskew: dict[str, dict[str, dict[str, dict]]] = {}
 
     if long_df is not None and not long_df.empty:
         use = long_df[["biomarker_id", "age_years", "value", "sex"]].dropna(subset=["biomarker_id", "age_years", "value"])
@@ -3274,6 +3292,9 @@ def build_outputs(
             pooled_trends_by_mode_skew[mode] = {
                 bid: trend_from_points(pts, "skewness") for bid, pts in pooled_pts.items()
             }
+            pooled_trends_by_mode_qskew[mode] = {
+                bid: trend_from_points(pts, "quantile_skewness") for bid, pts in pooled_pts.items()
+            }
             sex_trends_by_mode_cv[mode] = {
                 bid: {sx: trend_from_points(pts, "cv") for sx, pts in by_sex.items()} for bid, by_sex in sex_pts.items()
             }
@@ -3285,6 +3306,10 @@ def build_outputs(
             }
             sex_trends_by_mode_skew[mode] = {
                 bid: {sx: trend_from_points(pts, "skewness") for sx, pts in by_sex.items()}
+                for bid, by_sex in sex_pts.items()
+            }
+            sex_trends_by_mode_qskew[mode] = {
+                bid: {sx: trend_from_points(pts, "quantile_skewness") for sx, pts in by_sex.items()}
                 for bid, by_sex in sex_pts.items()
             }
 
@@ -3336,6 +3361,8 @@ def build_outputs(
                 base[col] = np.nan
         if "skewness" not in base.columns:
             base["skewness"] = np.nan
+        if "quantile_skewness" not in base.columns:
+            base["quantile_skewness"] = quantile_skewness_from_stats(base["q25"], base["median"], base["q75"])
         for pct in TRIM_PCTS:
             mode = trim_mode_key(pct)
             pooled_points_by_mode[mode] = grouped_to_points_map(base)
@@ -3351,11 +3378,15 @@ def build_outputs(
             pooled_trends_by_mode_skew[mode] = {
                 bid: trend_from_points(pts, "skewness") for bid, pts in pooled_points_by_mode[mode].items()
             }
+            pooled_trends_by_mode_qskew[mode] = {
+                bid: trend_from_points(pts, "quantile_skewness") for bid, pts in pooled_points_by_mode[mode].items()
+            }
             sex_points_by_mode[mode] = {}
             sex_trends_by_mode_cv[mode] = {}
             sex_trends_by_mode_std[mode] = {}
             sex_trends_by_mode_mean[mode] = {}
             sex_trends_by_mode_skew[mode] = {}
+            sex_trends_by_mode_qskew[mode] = {}
 
     if catalog_df is not None and not catalog_df.empty:
         need = [
@@ -3432,13 +3463,15 @@ def build_outputs(
         trends_std = {mode: pooled_trends_by_mode_std.get(mode, {}).get(bid, fallback_other) for mode in modes}
         trends_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, fallback_other) for mode in modes}
         trends_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, fallback_other) for mode in modes}
+        trends_qskew = {mode: pooled_trends_by_mode_qskew.get(mode, {}).get(bid, fallback_other) for mode in modes}
         sex_metrics_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in modes}
         sex_metrics_std = {mode: sex_trends_by_mode_std.get(mode, {}).get(bid, {}) for mode in modes}
         sex_metrics_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in modes}
         sex_metrics_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in modes}
+        sex_metrics_qskew = {mode: sex_trends_by_mode_qskew.get(mode, {}).get(bid, {}) for mode in modes}
         trend_all = trends_cv.get("all", fallback_cv)
 
-        c_trends = {"cv": {}, "std": {}, "mean": {}, "skewness": {}}
+        c_trends = {"cv": {}, "std": {}, "mean": {}, "skewness": {}, "quantile_skewness": {}}
         for c_sex, pts in clalit_data_map.get(bid, {}).items():
             if not pts:
                 continue
@@ -3446,6 +3479,7 @@ def build_outputs(
             c_trends["std"][c_sex] = trend_from_points(pts, "std")
             c_trends["mean"][c_sex] = trend_from_points(pts, "mean")
             c_trends["skewness"][c_sex] = trend_from_points(pts, "skewness")
+            c_trends["quantile_skewness"][c_sex] = trend_from_points(pts, "quantile_skewness")
 
         metrics.append(
             {
@@ -3461,21 +3495,25 @@ def build_outputs(
                 "std_trends": trends_std,
                 "mean_trends": trends_mean,
                 "skewness_trends": trends_skew,
+                "quantile_skewness_trends": trends_qskew,
                 "trends_by_stat": {
                     "cv": trends_cv,
                     "std": trends_std,
                     "mean": trends_mean,
                     "skewness": trends_skew,
+                    "quantile_skewness": trends_qskew,
                 },
                 "sex_metrics": sex_metrics_cv,
                 "sex_std_metrics": sex_metrics_std,
                 "sex_mean_metrics": sex_metrics_mean,
                 "sex_skewness_metrics": sex_metrics_skew,
+                "sex_quantile_skewness_metrics": sex_metrics_qskew,
                 "sex_metrics_by_stat": {
                     "cv": sex_metrics_cv,
                     "std": sex_metrics_std,
                     "mean": sex_metrics_mean,
                     "skewness": sex_metrics_skew,
+                    "quantile_skewness": sex_metrics_qskew,
                 },
                 "clalit_trends": c_trends,
             }
@@ -3496,10 +3534,12 @@ def build_outputs(
         trends_by_filter_std = {mode: pooled_trends_by_mode_std.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         trends_by_filter_mean = {mode: pooled_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         trends_by_filter_skew = {mode: pooled_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        trends_by_filter_qskew = {mode: pooled_trends_by_mode_qskew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_trends_filter_cv = {mode: sex_trends_by_mode_cv.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_trends_filter_std = {mode: sex_trends_by_mode_std.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_trends_filter_mean = {mode: sex_trends_by_mode_mean.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_trends_filter_skew = {mode: sex_trends_by_mode_skew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
+        sex_trends_filter_qskew = {mode: sex_trends_by_mode_qskew.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         all_points = points_by_filter.get("all", [])
         series_payloads[rel_path] = {
             "biomarker_id": bid,
@@ -3527,21 +3567,25 @@ def build_outputs(
             "std_trends": trends_by_filter_std,
             "mean_trends": trends_by_filter_mean,
             "skewness_trends": trends_by_filter_skew,
+            "quantile_skewness_trends": trends_by_filter_qskew,
             "trends_by_stat": {
                 "cv": trends_by_filter_cv,
                 "std": trends_by_filter_std,
                 "mean": trends_by_filter_mean,
                 "skewness": trends_by_filter_skew,
+                "quantile_skewness": trends_by_filter_qskew,
             },
             "sex_metrics": sex_trends_filter_cv,
             "sex_std_metrics": sex_trends_filter_std,
             "sex_mean_metrics": sex_trends_filter_mean,
             "sex_skewness_metrics": sex_trends_filter_skew,
+            "sex_quantile_skewness_metrics": sex_trends_filter_qskew,
             "sex_metrics_by_stat": {
                 "cv": sex_trends_filter_cv,
                 "std": sex_trends_filter_std,
                 "mean": sex_trends_filter_mean,
                 "skewness": sex_trends_filter_skew,
+                "quantile_skewness": sex_trends_filter_qskew,
             },
             "clalit_data": clalit_data_map.get(str(bid)),
         }

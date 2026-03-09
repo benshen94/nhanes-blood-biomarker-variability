@@ -62,15 +62,22 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertEqual(len(metadata), 1)
         metric = metrics[0]
         std_trend = metric["trends_by_stat"]["std"]["all"]
+        qskew_trend = metric["trends_by_stat"]["quantile_skewness"]["all"]
         self.assertEqual(std_trend["n_bins"], 5)
         self.assertGreater(std_trend["spearman_rho"], 0.9)
+        self.assertEqual(qskew_trend["n_bins"], 5)
         self.assertIn("std_trends", metric)
         self.assertIn("sex_std_metrics", metric)
+        self.assertIn("quantile_skewness_trends", metric)
+        self.assertIn("sex_quantile_skewness_metrics", metric)
 
         payload = next(iter(series_payloads.values()))
         self.assertIn("std_trends", payload)
         self.assertIn("std", payload["trends_by_stat"])
         self.assertIn("sex_std_metrics", payload)
+        self.assertIn("quantile_skewness_trends", payload)
+        self.assertIn("quantile_skewness", payload["trends_by_stat"])
+        self.assertIn("sex_quantile_skewness_metrics", payload)
 
     def test_process_clalit_data_supports_scaled_targets(self):
         clalit = pd.DataFrame(
@@ -102,6 +109,7 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertAlmostEqual(pooled["median"], 14.3 * 0.07767, places=6)
         self.assertAlmostEqual(pooled["q25"], 13.0 * 0.07767, places=6)
         self.assertAlmostEqual(pooled["q75"], 15.7 * 0.07767, places=6)
+        self.assertAlmostEqual(pooled["quantile_skewness"], (15.7 + 13.0 - 2 * 14.3) / (15.7 - 13.0), places=6)
 
     def test_rendered_dashboard_disables_native_search_autocomplete(self):
         html = render_dashboard_html(
