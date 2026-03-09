@@ -507,11 +507,44 @@
       margin: 6px 0 0;
       width: 100%;
     }
-    .clause-builder {
+    .filter-lab {
+      display: grid;
+      gap: 16px;
+    }
+    .filter-workshop,
+    .filter-stage-shell,
+    .filter-side-rail,
+    .filter-plot-shell {
       border: 1px solid var(--border);
-      border-radius: 16px;
-      background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.96));
-      padding: 14px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.98));
+      box-shadow: var(--shadow-sm);
+    }
+    .filter-workshop,
+    .filter-stage-shell,
+    .filter-side-rail,
+    .filter-plot-shell {
+      padding: 16px;
+    }
+    .filter-section-head {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .filter-section-head h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .filter-section-head p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+    .filter-workshop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
       margin-bottom: 12px;
     }
     .clause-actions {
@@ -519,71 +552,220 @@
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 8px;
+      margin-top: 4px;
     }
     .clause-actions button {
       border: 1px solid var(--border);
       background: var(--surface-strong);
-      border-radius: 10px;
-      padding: 8px 12px;
+      border-radius: 12px;
+      padding: 10px 14px;
       cursor: pointer;
       font-size: 12px;
       font-weight: 700;
       color: var(--ink-soft);
     }
-    .clause-row {
+    .filter-composer-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .filter-stage-toolbar {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      align-items: end;
-      margin-bottom: 8px;
-      padding-bottom: 8px;
-      border-bottom: 1px dashed rgba(16, 42, 67, 0.12);
+      margin-bottom: 12px;
     }
-    .clause-row:last-child {
-      margin-bottom: 0;
-      padding-bottom: 0;
-      border-bottom: 0;
-    }
-    .clause-row label {
-      text-transform: none;
-      letter-spacing: 0;
-      font-size: 12px;
-      min-width: 160px;
-    }
-    .clause-row select,
-    .clause-row input {
-      margin: 3px 0 0 0;
-      width: 180px;
-    }
-    .clause-remove-btn {
-      border: 1px solid #f1c6be;
-      background: #fff4f3;
-      color: #9f1239;
-      border-radius: 8px;
-      padding: 6px 10px;
+    .filter-stage-toolbar button,
+    .filter-side-actions button,
+    .filter-plot-actions button {
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      border-radius: 12px;
+      padding: 9px 12px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+    .filter-stage-toolbar button.primary,
+    .filter-side-actions button.primary,
+    .filter-plot-actions button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
+    }
+    .filter-expression-dropzone {
+      min-height: 116px;
+      border: 1px dashed rgba(15, 118, 110, 0.38);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at top left, rgba(15,118,110,0.08), transparent 36%),
+        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,248,251,0.96));
+      padding: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-content: flex-start;
+    }
+    .filter-expression-dropzone.drag-over,
+    .filter-stage-slot.drag-over {
+      border-color: var(--focus);
+      background: rgba(14, 165, 233, 0.08);
+    }
+    .filter-stage-empty {
+      color: var(--ink-muted);
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 56ch;
+    }
+    .filter-stage-slot {
+      width: 12px;
+      min-height: 42px;
+      border-radius: 999px;
+      border: 1px dashed transparent;
+      transition: border-color 120ms ease, background-color 120ms ease;
+    }
+    .filter-stage-token {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      box-shadow: 0 10px 18px rgba(16, 42, 67, 0.08);
+      cursor: grab;
+      user-select: none;
+    }
+    .filter-stage-token[data-kind="clause"] {
+      border-color: rgba(15,118,110,0.24);
+      background: rgba(15,118,110,0.08);
+    }
+    .filter-stage-token[data-kind="operator"] {
+      border-color: rgba(37,99,235,0.2);
+      background: rgba(37,99,235,0.08);
+    }
+    .filter-stage-token[data-kind="paren"] {
+      border-color: rgba(180,83,9,0.2);
+      background: rgba(180,83,9,0.08);
+    }
+    .filter-stage-token strong {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .filter-stage-token span {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+    .filter-token-actions {
+      display: inline-flex;
+      gap: 4px;
+    }
+    .filter-token-actions button,
+    .clause-card-actions button {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.9);
+      border-radius: 10px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+    .filter-expression-preview {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(16, 42, 67, 0.04);
+      border: 1px solid rgba(16, 42, 67, 0.08);
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+    .filter-expression-preview.invalid {
+      border-color: rgba(209, 73, 91, 0.26);
+      background: rgba(209, 73, 91, 0.08);
+      color: #8a1737;
+    }
+    .filter-clause-library {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .clause-card {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      box-shadow: 0 10px 18px rgba(16, 42, 67, 0.05);
+    }
+    .clause-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(15,118,110,0.14);
+    }
+    .clause-card-head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .clause-card-code {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      min-height: 32px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(15,118,110,0.12);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .clause-card-summary {
+      margin: 0;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .clause-card-meta {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+    .clause-card-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-side-rail {
+      display: grid;
+      gap: 12px;
     }
     .filter-results {
       max-height: 520px;
       overflow: auto;
       border: 1px solid var(--border);
       border-radius: 16px;
-      margin-top: 12px;
       background: var(--surface-strong);
     }
     .filter-summary {
       font-size: 13px;
       color: var(--ink-soft);
-      margin: 10px 0;
+      margin: 0;
     }
     .filter-test-picker {
       border: 1px solid var(--border);
       border-radius: 16px;
       background: var(--surface-strong);
       padding: 14px;
-      margin-bottom: 12px;
     }
     .filter-test-actions {
       display: flex;
@@ -605,9 +787,61 @@
       font-size: 12px;
       color: var(--ink-muted);
     }
+    .filter-side-actions,
+    .filter-plot-actions,
+    .filter-results-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-results-toolbar {
+      justify-content: space-between;
+      margin: 12px 0 10px;
+    }
+    .filter-side-actions {
+      justify-content: space-between;
+    }
     #filter-tests-biomarkers {
       height: 220px;
       margin-top: 4px;
+    }
+    .filter-table-toggle {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+    .filter-row-label {
+      display: grid;
+      gap: 3px;
+    }
+    .filter-row-label strong {
+      font-size: 13px;
+      color: var(--ink);
+    }
+    .filter-row-label span {
+      font-size: 11px;
+      color: var(--ink-muted);
+    }
+    .filter-plot-shell {
+      margin-top: 6px;
+    }
+    .filter-plot-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .filter-plot-summary {
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin-bottom: 10px;
+    }
+    #filter-tests-plot {
+      width: 100%;
+      height: 620px;
+      border-radius: 14px;
+      overflow: hidden;
     }
     #compare-plot { width: 100%; height: 640px; }
     #compare-clalit-plot { width: 100%; height: 480px; }
@@ -658,6 +892,8 @@
       #scatter-plot { height: 560px; }
       #hist-plot { height: 520px; }
       #waterfall-plot { height: 620px; }
+      .filter-composer-grid { grid-template-columns: 1fr; }
+      #filter-tests-plot { height: 540px; }
     }
     @media (max-width: 760px) {
       .nav-row { align-items: flex-start; padding: 14px; }
@@ -679,9 +915,8 @@
       .filter-controls label { width: 100%; }
       .filter-controls select,
       .filter-controls input { width: 100%; }
-      .clause-row label { width: 100%; min-width: 0; }
-      .clause-row select,
-      .clause-row input { width: 100%; }
+      .filter-workshop-grid { grid-template-columns: 1fr; }
+      .filter-results-toolbar { align-items: flex-start; }
       .scatter-controls label { width: 100%; }
       .scatter-controls select,
       .scatter-controls input { width: 100%; }
@@ -693,6 +928,7 @@
       .waterfall-controls label { width: 100%; }
       .waterfall-controls select,
       .waterfall-controls input { width: 100%; }
+      #filter-tests-plot { height: 480px; }
     }
     @media (max-width: 520px) {
       .specimen-tabs .tab-btn,
@@ -1006,50 +1242,143 @@
         <div class="panel-header">
           <div>
             <h2 class="panel-title">Filter Tests</h2>
-            <p class="panel-copy">Build multi-clause trend filters, limit the candidate list, and open any matching biomarker back in the dashboard plot.</p>
+            <p class="panel-copy">Build reusable clauses, compose nested logical expressions, export filtered tables, and compare filtered trajectories in one place.</p>
           </div>
         </div>
-        <div class="filter-controls">
-          <label>Sex group
-            <select id="filter-tests-cohort">
-              <option value="both" selected>Both (Female + Male)</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select>
-          </label>
-          <label>Symmetric trim (% per tail)
-            <input id="filter-tests-trim-slider" type="range" min="0" max="25" step="5" value="10" />
-            <div id="filter-tests-trim-label" class="trim-caption">10% each tail kept out -> using 10-90 percentile band</div>
-          </label>
-          <label>Clause combiner
-            <select id="filter-tests-logic">
-              <option value="and" selected>AND</option>
-              <option value="or">OR</option>
-            </select>
-          </label>
-          <label class="check-label"><input id="filter-tests-include-env" type="checkbox" /> Include environmental/toxicant</label>
-        </div>
-        <div class="clause-builder">
-          <div class="clause-actions">
-            <button id="filter-tests-add-clause" type="button">Add clause</button>
-            <button id="filter-tests-run" type="button">Filter tests</button>
+        <div class="filter-lab">
+          <div class="filter-controls">
+            <label>Sex group
+              <select id="filter-tests-cohort">
+                <option value="both" selected>Both (Female + Male)</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+              </select>
+            </label>
+            <label>Symmetric trim (% per tail)
+              <input id="filter-tests-trim-slider" type="range" min="0" max="25" step="5" value="10" />
+              <div id="filter-tests-trim-label" class="trim-caption">10% each tail kept out -> using 10-90 percentile band</div>
+            </label>
+            <label class="check-label"><input id="filter-tests-include-env" type="checkbox" /> Include environmental/toxicant</label>
           </div>
-          <div id="filter-tests-clauses"></div>
-        </div>
-        <div class="filter-test-picker">
-          <label for="filter-tests-search">Choose tests to include</label>
-          <input id="filter-tests-search" type="search" placeholder="Search tests..." />
-          <div class="filter-test-actions">
-            <button id="filter-tests-select-all" type="button">Select all visible</button>
-            <button id="filter-tests-select-core" type="button">Core clinical only</button>
-            <button id="filter-tests-clear" type="button">Clear selection</button>
-            <span id="filter-tests-selection-count" class="filter-test-hint"></span>
+
+          <div class="filter-workshop">
+            <div class="filter-section-head">
+              <h3>Clause Workshop</h3>
+              <p>Create or refine a reusable clause, then insert it into the logical stage by button or drag-and-drop.</p>
+            </div>
+            <div class="filter-workshop-grid">
+              <label>Statistic
+                <select id="filter-clause-stat">
+                  <option value="cv">CV</option>
+                  <option value="std">Standard deviation</option>
+                  <option value="mean">Mean</option>
+                  <option value="skewness">Skewness</option>
+                </select>
+              </label>
+              <label>Metric
+                <select id="filter-clause-field">
+                  <option value="spearman_rho">Spearman rho</option>
+                  <option value="spearman_p">Spearman p-value</option>
+                  <option value="n_bins">n bins</option>
+                  <option value="linear_slope_per_year">Slope/year</option>
+                  <option value="linear_slope_log_per_year">Slope log/year</option>
+                </select>
+              </label>
+              <label>Condition
+                <select id="filter-clause-op">
+                  <option value="<">less than (&lt;)</option>
+                  <option value="<=">less or equal (&lt;=)</option>
+                  <option value=">">greater than (&gt;)</option>
+                  <option value=">=">greater or equal (&gt;=)</option>
+                  <option value="==">equal (==)</option>
+                  <option value="!=">not equal (!=)</option>
+                </select>
+              </label>
+              <label>Threshold
+                <input id="filter-clause-value" type="number" step="0.01" value="0.5" />
+              </label>
+            </div>
+            <div class="clause-actions">
+              <button id="filter-clause-save" class="primary" type="button">Save Clause</button>
+              <button id="filter-clause-insert" type="button">Insert Selected Clause</button>
+              <button id="filter-clause-clear" type="button">Clear Workshop</button>
+              <span id="filter-clause-editing" class="filter-test-hint">Drafting a new clause.</span>
+            </div>
           </div>
-          <select id="filter-tests-biomarkers" multiple></select>
-        </div>
-        <div id="filter-tests-summary" class="filter-summary"></div>
-        <div class="filter-results">
-          <table id="filter-tests-table"></table>
+
+          <div class="filter-composer-grid">
+            <div class="filter-stage-shell">
+              <div class="filter-section-head">
+                <h3>Logical Stage</h3>
+                <p>Compose nested expressions such as <span class="mono">C1 AND (C2 OR C3)</span>. Drag clauses onto the stage or add operators by hand.</p>
+              </div>
+              <div class="filter-stage-toolbar">
+                <button id="filter-stage-insert-clause" class="primary" type="button">Insert Clause</button>
+                <button id="filter-stage-insert-and" type="button">AND</button>
+                <button id="filter-stage-insert-or" type="button">OR</button>
+                <button id="filter-stage-insert-open" type="button">(</button>
+                <button id="filter-stage-insert-close" type="button">)</button>
+              </div>
+              <div id="filter-stage" class="filter-expression-dropzone" aria-live="polite"></div>
+              <div id="filter-expression-preview" class="filter-expression-preview">Build an expression from clauses and operators.</div>
+              <div class="filter-section-head" style="margin-top:12px;">
+                <h3>Available Clauses</h3>
+                <p>Select to edit, drag onto the stage, or insert from the toolbar.</p>
+              </div>
+              <div id="filter-clause-library" class="filter-clause-library"></div>
+            </div>
+
+            <div class="filter-side-rail">
+              <div class="filter-test-picker">
+                <label for="filter-tests-search">Choose tests to include</label>
+                <input id="filter-tests-search" type="search" placeholder="Search tests..." />
+                <div class="filter-test-actions">
+                  <button id="filter-tests-select-all" type="button">Select all visible</button>
+                  <button id="filter-tests-select-core" type="button">Core clinical only</button>
+                  <button id="filter-tests-clear" type="button">Clear selection</button>
+                  <span id="filter-tests-selection-count" class="filter-test-hint"></span>
+                </div>
+                <select id="filter-tests-biomarkers" multiple></select>
+              </div>
+
+              <div class="card">
+                <div class="filter-side-actions">
+                  <button id="filter-tests-run" class="primary" type="button">Filter Tests</button>
+                  <button id="filter-tests-export" type="button">Export CSV</button>
+                </div>
+                <div id="filter-tests-summary" class="filter-summary"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-results-toolbar">
+            <span id="filter-tests-plot-count" class="filter-test-hint">No filtered tests selected for plotting yet.</span>
+            <div class="filter-plot-actions">
+              <button id="filter-tests-plot-all" type="button">Plot all filtered</button>
+              <button id="filter-tests-plot-none" type="button">Clear plotted</button>
+            </div>
+          </div>
+
+          <div class="filter-results">
+            <table id="filter-tests-table"></table>
+          </div>
+
+          <div class="filter-plot-shell">
+            <div class="filter-section-head">
+              <h3>Filtered Test Overlay</h3>
+              <p>Overlay normalized trajectories for the filtered tests. Use the filtered table checkboxes to remove individual tests from the plot.</p>
+            </div>
+            <div class="filter-plot-controls">
+              <label>Plot metric
+                <select id="filter-tests-plot-stat">
+                  <option value="median">Median normalized to age ~30</option>
+                  <option value="cv">CV normalized to age ~30</option>
+                </select>
+              </label>
+            </div>
+            <div id="filter-tests-plot-summary" class="filter-plot-summary">Run a filter to populate the overlay plot.</div>
+            <div id="filter-tests-plot"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1116,7 +1445,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1772962440';
+    const DATA_VERSION = '1773048916';
     const HAS_CLALIT = false;
     const SPECIMEN_TITLE = 'Urinary';
     const SPECIMEN_LABEL = 'urinary';
@@ -1190,7 +1519,6 @@
     const filterTestsCohortEl = document.getElementById('filter-tests-cohort');
     const filterTestsTrimSliderEl = document.getElementById('filter-tests-trim-slider');
     const filterTestsTrimLabelEl = document.getElementById('filter-tests-trim-label');
-    const filterTestsLogicEl = document.getElementById('filter-tests-logic');
     const filterTestsIncludeEnvEl = document.getElementById('filter-tests-include-env');
     const filterTestsSearchEl = document.getElementById('filter-tests-search');
     const filterTestsBiomarkersEl = document.getElementById('filter-tests-biomarkers');
@@ -1198,11 +1526,31 @@
     const filterTestsSelectCoreBtn = document.getElementById('filter-tests-select-core');
     const filterTestsClearBtn = document.getElementById('filter-tests-clear');
     const filterTestsSelectionCountEl = document.getElementById('filter-tests-selection-count');
-    const filterTestsAddClauseBtn = document.getElementById('filter-tests-add-clause');
     const filterTestsRunBtn = document.getElementById('filter-tests-run');
-    const filterTestsClausesEl = document.getElementById('filter-tests-clauses');
+    const filterClauseStatEl = document.getElementById('filter-clause-stat');
+    const filterClauseFieldEl = document.getElementById('filter-clause-field');
+    const filterClauseOpEl = document.getElementById('filter-clause-op');
+    const filterClauseValueEl = document.getElementById('filter-clause-value');
+    const filterClauseSaveBtn = document.getElementById('filter-clause-save');
+    const filterClauseInsertBtn = document.getElementById('filter-clause-insert');
+    const filterClauseClearBtn = document.getElementById('filter-clause-clear');
+    const filterClauseEditingEl = document.getElementById('filter-clause-editing');
+    const filterStageInsertClauseBtn = document.getElementById('filter-stage-insert-clause');
+    const filterStageInsertAndBtn = document.getElementById('filter-stage-insert-and');
+    const filterStageInsertOrBtn = document.getElementById('filter-stage-insert-or');
+    const filterStageInsertOpenBtn = document.getElementById('filter-stage-insert-open');
+    const filterStageInsertCloseBtn = document.getElementById('filter-stage-insert-close');
+    const filterStageEl = document.getElementById('filter-stage');
+    const filterExpressionPreviewEl = document.getElementById('filter-expression-preview');
+    const filterClauseLibraryEl = document.getElementById('filter-clause-library');
     const filterTestsSummaryEl = document.getElementById('filter-tests-summary');
     const filterTestsTableEl = document.getElementById('filter-tests-table');
+    const filterTestsExportBtn = document.getElementById('filter-tests-export');
+    const filterTestsPlotCountEl = document.getElementById('filter-tests-plot-count');
+    const filterTestsPlotAllBtn = document.getElementById('filter-tests-plot-all');
+    const filterTestsPlotNoneBtn = document.getElementById('filter-tests-plot-none');
+    const filterTestsPlotStatEl = document.getElementById('filter-tests-plot-stat');
+    const filterTestsPlotSummaryEl = document.getElementById('filter-tests-plot-summary');
     const waterfallSearchEl = document.getElementById('waterfall-search');
     const waterfallOptionsEl = document.getElementById('waterfall-biomarker-options');
     const waterfallBiomarkerEl = document.getElementById('waterfall-biomarker');
@@ -1246,7 +1594,15 @@
       scatterLabels: false,
       waterfallId: null,
       filterClauseNextId: 1,
+      filterClauses: [],
+      filterSelectedClauseId: null,
+      filterStageTokens: [],
+      filterStageInsertIndex: null,
+      filterTokenNextId: 1,
+      filterResults: [],
+      filterExpressionPlan: null,
       filterTestsSelectionSet: new Set(),
+      filterPlotSelectionSet: new Set(),
     };
 
     const WATERFALL_AGE_BINS = [
@@ -2863,71 +3219,6 @@
       }, mobile), { responsive: true, displaylogo: false });
     }
 
-    function createFilterClauseRow(initial = {}) {
-      const clauseId = state.filterClauseNextId++;
-      const row = document.createElement('div');
-      row.className = 'clause-row';
-      row.dataset.clauseId = String(clauseId);
-      const statVal = initial.stat || 'cv';
-      const fieldVal = initial.field || 'spearman_rho';
-      const opVal = initial.op || '<';
-      const valueVal = Number.isFinite(Number(initial.value)) ? Number(initial.value) : 0.5;
-      row.innerHTML = `
-        <label>Statistic
-          <select data-part="stat">
-            <option value="cv"${statVal === 'cv' ? ' selected' : ''}>CV</option>
-            <option value="std"${statVal === 'std' ? ' selected' : ''}>Standard deviation</option>
-            <option value="mean"${statVal === 'mean' ? ' selected' : ''}>Mean</option>
-            <option value="skewness"${statVal === 'skewness' ? ' selected' : ''}>Skewness</option>
-          </select>
-        </label>
-        <label>Metric
-          <select data-part="field">
-            <option value="spearman_rho"${fieldVal === 'spearman_rho' ? ' selected' : ''}>Spearman rho</option>
-            <option value="spearman_p"${fieldVal === 'spearman_p' ? ' selected' : ''}>Spearman p-value</option>
-            <option value="n_bins"${fieldVal === 'n_bins' ? ' selected' : ''}>n bins</option>
-            <option value="linear_slope_per_year"${fieldVal === 'linear_slope_per_year' ? ' selected' : ''}>Slope/year</option>
-            <option value="linear_slope_log_per_year"${fieldVal === 'linear_slope_log_per_year' ? ' selected' : ''}>Slope log/year</option>
-          </select>
-        </label>
-        <label>Condition
-          <select data-part="op">
-            <option value="<"${opVal === '<' ? ' selected' : ''}>less than (&lt;)</option>
-            <option value="<="${opVal === '<=' ? ' selected' : ''}>less or equal (&lt;=)</option>
-            <option value=">"${opVal === '>' ? ' selected' : ''}>greater than (&gt;)</option>
-            <option value=">="${opVal === '>=' ? ' selected' : ''}>greater or equal (&gt;=)</option>
-            <option value="=="${opVal === '==' ? ' selected' : ''}>equal (==)</option>
-            <option value="!="${opVal === '!=' ? ' selected' : ''}>not equal (!=)</option>
-          </select>
-        </label>
-        <label>Threshold
-          <input data-part="value" type="number" step="0.01" value="${valueVal}" />
-        </label>
-        <button class="clause-remove-btn" type="button" data-part="remove">Remove</button>
-      `;
-      const removeBtn = row.querySelector('[data-part="remove"]');
-      removeBtn.addEventListener('click', () => {
-        row.remove();
-        if (!filterTestsClausesEl.children.length) {
-          filterTestsClausesEl.appendChild(createFilterClauseRow({}));
-        }
-      });
-      return row;
-    }
-
-    function readFilterClauses() {
-      const clauses = [];
-      for (const row of Array.from(filterTestsClausesEl.querySelectorAll('.clause-row'))) {
-        const stat = row.querySelector('[data-part="stat"]')?.value || 'cv';
-        const field = row.querySelector('[data-part="field"]')?.value || 'spearman_rho';
-        const op = row.querySelector('[data-part="op"]')?.value || '<';
-        const threshold = Number(row.querySelector('[data-part="value"]')?.value);
-        if (!Number.isFinite(threshold)) continue;
-        clauses.push({ stat, field, op, threshold });
-      }
-      return clauses;
-    }
-
     function metricFieldValue(metric, field) {
       if (!metric) return Number.NaN;
       if (field === 'spearman_rho') return Number(metric.spearman_rho);
@@ -2961,25 +3252,575 @@
       return false;
     }
 
-    function filterTestsClauseLabel(clause, i) {
-      const stat = statLabel(clause.stat);
-      const field = clause.field === 'spearman_rho'
-        ? 'rho'
-        : clause.field === 'spearman_p'
-          ? 'p'
-          : clause.field === 'n_bins'
-            ? 'n_bins'
-            : clause.field === 'linear_slope_per_year'
-              ? 'slope/year'
-              : 'log-slope/year';
-      return `Clause ${i + 1}: ${stat} ${field} ${clause.op} ${clause.threshold}`;
+    function filterClauseCode(clause) {
+      return `C${clause.id}`;
     }
 
-    function renderFilterTests() {
-      const clauses = readFilterClauses();
+    function filterFieldLabel(field) {
+      if (field === 'spearman_rho') return 'Spearman rho';
+      if (field === 'spearman_p') return 'Spearman p-value';
+      if (field === 'n_bins') return 'n bins';
+      if (field === 'linear_slope_per_year') return 'Slope/year';
+      if (field === 'linear_slope_log_per_year') return 'Slope log/year';
+      return field;
+    }
+
+    function filterClauseSummary(clause) {
+      return `${statLabel(clause.stat)} ${filterFieldLabel(clause.field)} ${clause.op} ${formatNum(clause.threshold, 4)}`;
+    }
+
+    function getFilterClauseDraft() {
+      const threshold = Number(filterClauseValueEl.value);
+      if (!Number.isFinite(threshold)) return null;
+      return {
+        stat: filterClauseStatEl.value || 'cv',
+        field: filterClauseFieldEl.value || 'spearman_rho',
+        op: filterClauseOpEl.value || '<',
+        threshold,
+      };
+    }
+
+    function resetFilterClauseWorkshop() {
+      filterClauseStatEl.value = 'cv';
+      filterClauseFieldEl.value = 'spearman_rho';
+      filterClauseOpEl.value = '<';
+      filterClauseValueEl.value = '0.5';
+      state.filterSelectedClauseId = null;
+      filterClauseEditingEl.textContent = 'Drafting a new clause.';
+    }
+
+    function populateFilterClauseWorkshop(clause) {
+      if (!clause) return resetFilterClauseWorkshop();
+      filterClauseStatEl.value = clause.stat || 'cv';
+      filterClauseFieldEl.value = clause.field || 'spearman_rho';
+      filterClauseOpEl.value = clause.op || '<';
+      filterClauseValueEl.value = String(clause.threshold ?? 0.5);
+      state.filterSelectedClauseId = clause.id;
+      filterClauseEditingEl.textContent = `Editing ${filterClauseCode(clause)}.`;
+    }
+
+    function getFilterClauseById(clauseId) {
+      return state.filterClauses.find(clause => clause.id === clauseId) || null;
+    }
+
+    function ensureStageInsertIndex(index) {
+      if (!Number.isInteger(index)) return state.filterStageTokens.length;
+      return Math.max(0, Math.min(state.filterStageTokens.length, index));
+    }
+
+    function setFilterStageInsertIndex(index) {
+      state.filterStageInsertIndex = ensureStageInsertIndex(index);
+      renderFilterStage();
+    }
+
+    function upsertFilterClause(shouldInsert = false) {
+      const draft = getFilterClauseDraft();
+      if (!draft) {
+        filterClauseEditingEl.textContent = 'Threshold must be numeric.';
+        return null;
+      }
+      let clause = null;
+      if (state.filterSelectedClauseId !== null) {
+        clause = getFilterClauseById(state.filterSelectedClauseId);
+        if (clause) Object.assign(clause, draft);
+      }
+      if (!clause) {
+        clause = { id: state.filterClauseNextId++, ...draft };
+        state.filterClauses.push(clause);
+      }
+      state.filterSelectedClauseId = clause.id;
+      filterClauseEditingEl.textContent = `Saved ${filterClauseCode(clause)}.`;
+      renderFilterClauseLibrary();
+      renderFilterStage();
+      if (shouldInsert) insertFilterStageToken({ kind: 'clause', value: clause.id });
+      return clause;
+    }
+
+    function removeFilterClause(clauseId) {
+      state.filterClauses = state.filterClauses.filter(clause => clause.id !== clauseId);
+      state.filterStageTokens = state.filterStageTokens.filter(token => !(token.kind === 'clause' && token.value === clauseId));
+      if (state.filterSelectedClauseId === clauseId) resetFilterClauseWorkshop();
+      state.filterStageInsertIndex = ensureStageInsertIndex(state.filterStageInsertIndex);
+      renderFilterClauseLibrary();
+      renderFilterStage();
+    }
+
+    function buildStageToken(kind, value) {
+      return { id: state.filterTokenNextId++, kind, value };
+    }
+
+    function insertFilterStageToken(tokenLike, index = state.filterStageInsertIndex) {
+      const token = buildStageToken(tokenLike.kind, tokenLike.value);
+      const insertAt = ensureStageInsertIndex(index);
+      state.filterStageTokens.splice(insertAt, 0, token);
+      state.filterStageInsertIndex = insertAt + 1;
+      renderFilterStage();
+      return token;
+    }
+
+    function moveFilterStageToken(tokenId, direction) {
+      const idx = state.filterStageTokens.findIndex(token => token.id === tokenId);
+      if (idx < 0) return;
+      const next = idx + direction;
+      if (next < 0 || next >= state.filterStageTokens.length) return;
+      const [token] = state.filterStageTokens.splice(idx, 1);
+      state.filterStageTokens.splice(next, 0, token);
+      state.filterStageInsertIndex = next + 1;
+      renderFilterStage();
+    }
+
+    function deleteFilterStageToken(tokenId) {
+      const idx = state.filterStageTokens.findIndex(token => token.id === tokenId);
+      if (idx < 0) return;
+      state.filterStageTokens.splice(idx, 1);
+      state.filterStageInsertIndex = ensureStageInsertIndex(idx);
+      renderFilterStage();
+    }
+
+    function parseDraggedFilterPayload(event) {
+      const raw = event.dataTransfer?.getData('text/plain');
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function setDragPayload(event, payload) {
+      if (!event.dataTransfer) return;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', JSON.stringify(payload));
+    }
+
+    function filterStageTokenText(token) {
+      if (token.kind === 'clause') {
+        const clause = getFilterClauseById(token.value);
+        return clause ? filterClauseCode(clause) : 'Missing clause';
+      }
+      if (token.kind === 'operator') return token.value;
+      return token.value;
+    }
+
+    function filterStageExpressionText(tokens = state.filterStageTokens) {
+      return tokens.map(token => filterStageTokenText(token)).join(' ');
+    }
+
+    function attachFilterStageSlotHandlers(slot, index) {
+      slot.addEventListener('click', () => setFilterStageInsertIndex(index));
+      slot.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        slot.classList.add('drag-over');
+      });
+      slot.addEventListener('dragleave', () => {
+        slot.classList.remove('drag-over');
+      });
+      slot.addEventListener('drop', (event) => {
+        event.preventDefault();
+        slot.classList.remove('drag-over');
+        const payload = parseDraggedFilterPayload(event);
+        if (!payload) return;
+        if (payload.source === 'library' && payload.clauseId !== undefined) {
+          insertFilterStageToken({ kind: 'clause', value: Number(payload.clauseId) }, index);
+          return;
+        }
+        if (payload.source === 'stage' && payload.tokenId !== undefined) {
+          const fromIdx = state.filterStageTokens.findIndex(token => token.id === Number(payload.tokenId));
+          if (fromIdx < 0) return;
+          const [token] = state.filterStageTokens.splice(fromIdx, 1);
+          const insertAt = fromIdx < index ? index - 1 : index;
+          state.filterStageTokens.splice(ensureStageInsertIndex(insertAt), 0, token);
+          state.filterStageInsertIndex = ensureStageInsertIndex(insertAt) + 1;
+          renderFilterStage();
+        }
+      });
+    }
+
+    function renderFilterClauseLibrary() {
+      filterClauseLibraryEl.innerHTML = '';
+      if (!state.filterClauses.length) {
+        filterClauseLibraryEl.innerHTML = '<div class="filter-stage-empty">Save a clause from the workshop to start building an expression.</div>';
+        return;
+      }
+      for (const clause of state.filterClauses) {
+        const card = document.createElement('article');
+        card.className = 'clause-card';
+        if (state.filterSelectedClauseId === clause.id) card.style.borderColor = 'rgba(15,118,110,0.45)';
+        card.draggable = true;
+        card.innerHTML = `
+          <div class="clause-card-head">
+            <div class="clause-card-code">${filterClauseCode(clause)}</div>
+            <div class="clause-card-meta">${statLabel(clause.stat)}</div>
+          </div>
+          <div class="clause-card-summary">${filterClauseSummary(clause)}</div>
+          <div class="clause-card-actions">
+            <button type="button" data-action="edit">Edit</button>
+            <button type="button" data-action="insert">Insert</button>
+            <button type="button" data-action="delete">Delete</button>
+          </div>
+        `;
+        card.addEventListener('dragstart', (event) => {
+          setDragPayload(event, { source: 'library', clauseId: clause.id });
+        });
+        card.querySelector('[data-action="edit"]').addEventListener('click', () => populateFilterClauseWorkshop(clause));
+        card.querySelector('[data-action="insert"]').addEventListener('click', () => insertFilterStageToken({ kind: 'clause', value: clause.id }));
+        card.querySelector('[data-action="delete"]').addEventListener('click', () => removeFilterClause(clause.id));
+        filterClauseLibraryEl.appendChild(card);
+      }
+    }
+
+    function renderFilterStage() {
+      filterStageEl.innerHTML = '';
+      const tokens = state.filterStageTokens;
+      const renderSlot = (index) => {
+        const slot = document.createElement('button');
+        slot.type = 'button';
+        slot.className = 'filter-stage-slot';
+        if (state.filterStageInsertIndex === index) slot.classList.add('drag-over');
+        slot.textContent = tokens.length ? 'Insert here' : 'Drop clauses here or click to choose insertion point';
+        attachFilterStageSlotHandlers(slot, index);
+        filterStageEl.appendChild(slot);
+      };
+      renderSlot(0);
+      if (!tokens.length) {
+        const empty = document.createElement('div');
+        empty.className = 'filter-stage-empty';
+        empty.textContent = 'The stage is empty. Save a clause, then insert it here with operators and parentheses.';
+        filterStageEl.appendChild(empty);
+      }
+      for (let i = 0; i < tokens.length; i += 1) {
+        const token = tokens[i];
+        const pill = document.createElement('div');
+        pill.className = 'filter-stage-token';
+        pill.dataset.kind = token.kind;
+        pill.draggable = true;
+        pill.innerHTML = `
+          <strong>${filterStageTokenText(token)}</strong>
+          <span>${token.kind === 'clause' ? (getFilterClauseById(token.value) ? filterClauseSummary(getFilterClauseById(token.value)) : 'Missing clause') : token.kind === 'operator' ? 'Logical operator' : 'Grouping parenthesis'}</span>
+          <div class="filter-token-actions">
+            <button type="button" data-action="left" aria-label="Move token left">←</button>
+            <button type="button" data-action="right" aria-label="Move token right">→</button>
+            <button type="button" data-action="remove" aria-label="Remove token">×</button>
+          </div>
+        `;
+        pill.addEventListener('dragstart', (event) => {
+          setDragPayload(event, { source: 'stage', tokenId: token.id });
+        });
+        const clause = token.kind === 'clause' ? getFilterClauseById(token.value) : null;
+        if (clause) {
+          pill.addEventListener('dblclick', () => populateFilterClauseWorkshop(clause));
+        }
+        pill.querySelector('[data-action="left"]').addEventListener('click', () => moveFilterStageToken(token.id, -1));
+        pill.querySelector('[data-action="right"]').addEventListener('click', () => moveFilterStageToken(token.id, 1));
+        pill.querySelector('[data-action="remove"]').addEventListener('click', () => deleteFilterStageToken(token.id));
+        filterStageEl.appendChild(pill);
+        renderSlot(i + 1);
+      }
+      const plan = buildFilterExpressionPlan(tokens);
+      state.filterExpressionPlan = plan.ok ? plan : null;
+      filterExpressionPreviewEl.textContent = plan.message;
+    }
+
+    function buildFilterExpressionPlan(tokens) {
+      if (!tokens.length) {
+        return { ok: false, message: 'Build an expression from clauses and operators.' };
+      }
+      const clauseIds = [];
+      const postfix = [];
+      const opStack = [];
+      let expectOperand = true;
+      let depth = 0;
+      const precedence = { OR: 1, AND: 2 };
+      for (const token of tokens) {
+        if (token.kind === 'clause') {
+          if (!expectOperand) return { ok: false, message: 'Expression error: add AND/OR between clauses.' };
+          if (!getFilterClauseById(token.value)) return { ok: false, message: `Expression error: ${filterStageTokenText(token)} is missing from the clause library.` };
+          postfix.push({ kind: 'clause', value: token.value });
+          clauseIds.push(token.value);
+          expectOperand = false;
+          continue;
+        }
+        if (token.kind === 'paren') {
+          if (token.value === '(') {
+            if (!expectOperand) return { ok: false, message: 'Expression error: opening parenthesis must follow AND/OR.' };
+            opStack.push(token);
+            depth += 1;
+            continue;
+          }
+          if (expectOperand) return { ok: false, message: 'Expression error: closing parenthesis cannot follow AND/OR.' };
+          depth -= 1;
+          if (depth < 0) return { ok: false, message: 'Expression error: closing parenthesis has no matching opening parenthesis.' };
+          while (opStack.length && !(opStack[opStack.length - 1].kind === 'paren' && opStack[opStack.length - 1].value === '(')) {
+            postfix.push(opStack.pop());
+          }
+          if (!opStack.length) return { ok: false, message: 'Expression error: closing parenthesis has no matching opening parenthesis.' };
+          opStack.pop();
+          expectOperand = false;
+          continue;
+        }
+        if (token.kind === 'operator') {
+          if (expectOperand) return { ok: false, message: 'Expression error: operator must come after a clause or closing parenthesis.' };
+          const value = String(token.value || '').toUpperCase();
+          while (opStack.length) {
+            const top = opStack[opStack.length - 1];
+            if (top.kind !== 'operator') break;
+            if (precedence[top.value] >= precedence[value]) postfix.push(opStack.pop());
+            else break;
+          }
+          opStack.push({ kind: 'operator', value });
+          expectOperand = true;
+          continue;
+        }
+        return { ok: false, message: 'Expression error: unsupported token on stage.' };
+      }
+      if (expectOperand) return { ok: false, message: 'Expression error: expression cannot end with AND/OR or an opening parenthesis.' };
+      if (depth !== 0) return { ok: false, message: 'Expression error: parentheses are unbalanced.' };
+      while (opStack.length) {
+        const top = opStack.pop();
+        if (top.kind === 'paren') return { ok: false, message: 'Expression error: parentheses are unbalanced.' };
+        postfix.push(top);
+      }
+      const expressionText = filterStageExpressionText(tokens);
+      const uniqueClauseIds = Array.from(new Set(clauseIds));
+      return { ok: true, postfix, clauseIds: uniqueClauseIds, expressionText, message: `Expression ready: ${expressionText}` };
+    }
+
+    function evaluateFilterExpression(plan, clauseMatchMap) {
+      if (!plan?.ok) return false;
+      const stack = [];
+      for (const token of plan.postfix) {
+        if (token.kind === 'clause') {
+          stack.push(Boolean(clauseMatchMap.get(token.value)));
+          continue;
+        }
+        const right = stack.pop();
+        const left = stack.pop();
+        if (token.value === 'AND') stack.push(Boolean(left) && Boolean(right));
+        else stack.push(Boolean(left) || Boolean(right));
+      }
+      return stack.length === 1 ? Boolean(stack[0]) : false;
+    }
+
+    function csvEscape(value) {
+      if (value === null || value === undefined) return '';
+      const text = String(value);
+      if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+      return text;
+    }
+
+    function downloadTextFile(filename, content, mimeType = 'text/plain;charset=utf-8') {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 250);
+    }
+
+    function plotColorAt(index, total) {
+      const hue = Math.round((index * 360) / Math.max(1, total));
+      return `hsl(${hue}, 68%, 42%)`;
+    }
+
+    function nearestBaselinePoint(points, field) {
+      const candidates = points
+        .filter(point => Number.isFinite(Number(point[field])))
+        .slice()
+        .sort((a, b) => Math.abs(Number(a.age_mid) - 30) - Math.abs(Number(b.age_mid) - 30));
+      return candidates[0] || null;
+    }
+
+    function normalizedFilterPlotPoints(points, field) {
+      const baselinePoint = nearestBaselinePoint(points, field);
+      const baseline = Number(baselinePoint?.[field]);
+      if (!Number.isFinite(baseline) || baseline === 0) return null;
+      const normalized = points
+        .filter(point => Number.isFinite(Number(point[field])))
+        .map(point => ({
+          age_mid: Number(point.age_mid),
+          age_bin: point.age_bin,
+          raw: Number(point[field]),
+          normalized: Number(point[field]) / baseline,
+          n: Number(point.n),
+        }))
+        .filter(point => Number.isFinite(point.age_mid) && Number.isFinite(point.normalized));
+      if (!normalized.length) return null;
+      return {
+        baselineAge: Number(baselinePoint.age_mid),
+        baselineValue: baseline,
+        points: normalized,
+      };
+    }
+
+    function filterPlotPointSets(series, cohort, trimMode) {
+      if (!series) return [];
+      if (cohort === 'both') {
+        return [
+          { key: 'female', label: 'Female', points: pickPointsByCohort(series, 'female', trimMode) || [] },
+          { key: 'male', label: 'Male', points: pickPointsByCohort(series, 'male', trimMode) || [] },
+        ];
+      }
+      return [{ key: cohort, label: cohort === 'female' ? 'Female' : cohort === 'male' ? 'Male' : 'Pooled', points: pickPointsByCohort(series, cohort, trimMode) || [] }];
+    }
+
+    async function renderFilterTestsPlot() {
+      const results = state.filterResults || [];
+      const included = results.filter(result => state.filterPlotSelectionSet.has(result.id));
+      if (!included.length) {
+        filterTestsPlotCountEl.textContent = 'No filtered tests selected for plotting yet.';
+        filterTestsPlotSummaryEl.textContent = 'Run a filter and keep one or more rows checked to render the overlay plot.';
+        Plotly.newPlot('filter-tests-plot', [], applyPlotTheme({
+          title: 'No filtered tests selected',
+          xaxis: { title: 'Age (years)' },
+          yaxis: { title: 'Normalized value' },
+        }, window.matchMedia('(max-width: 760px)').matches), { responsive: true, displaylogo: false });
+        return;
+      }
+      filterTestsPlotCountEl.textContent = `${included.length} filtered tests currently plotted.`;
+      const field = (filterTestsPlotStatEl.value || 'median') === 'cv' ? 'cv' : 'median';
+      const trimMode = trimPctToMode(filterTestsTrimSliderEl.value);
+      const cohort = filterTestsCohortEl.value || 'both';
+      const traces = [];
+      const notes = [];
+      const seriesList = await Promise.all(included.map(result => loadSeries(result.id)));
+      let traceIndex = 0;
+      for (let i = 0; i < included.length; i += 1) {
+        const result = included[i];
+        const series = seriesList[i];
+        const pointSets = filterPlotPointSets(series, cohort, trimMode);
+        for (const pointSet of pointSets) {
+          const normalized = normalizedFilterPlotPoints(pointSet.points, field);
+          if (!normalized) {
+            notes.push(`${result.display_name} (${pointSet.label}) skipped: no usable age~30 baseline.`);
+            continue;
+          }
+          const color = plotColorAt(traceIndex, Math.max(1, included.length * (cohort === 'both' ? 2 : 1)));
+          traces.push({
+            x: normalized.points.map(point => point.age_mid),
+            y: normalized.points.map(point => point.normalized),
+            mode: 'lines+markers',
+            type: 'scatter',
+            name: cohort === 'both' ? `${result.display_name} (${pointSet.label})` : result.display_name,
+            marker: { size: 6, color },
+            line: { width: 2, color },
+            customdata: normalized.points.map(point => [result.display_name, pointSet.label, point.age_bin, point.n, point.raw, normalized.baselineAge, normalized.baselineValue]),
+            hovertemplate: '%{customdata[0]}<br>cohort=%{customdata[1]}<br>age_bin=%{customdata[2]}<br>n=%{customdata[3]}<br>raw=%{customdata[4]:.4f}<br>baseline age=%{customdata[5]:.0f}<br>baseline value=%{customdata[6]:.4f}<br>normalized=%{y:.4f}<extra></extra>',
+          });
+          traceIndex += 1;
+        }
+      }
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('filter-tests-plot', traces, applyPlotTheme({
+        title: field === 'cv' ? 'Filtered Test CV Overlay (baseline age ~30)' : 'Filtered Test Median Overlay (baseline age ~30)',
+        xaxis: { title: 'Age (years)' },
+        yaxis: { title: field === 'cv' ? 'Normalized CV (value / age~30 CV)' : 'Normalized median (value / age~30 median)' },
+      }, mobile), { responsive: true, displaylogo: false });
+      filterTestsPlotSummaryEl.textContent = notes.length
+        ? `${traces.length} traces rendered. ${notes.length} skipped because a baseline near age 30 was unavailable or zero.`
+        : `${traces.length} traces rendered from ${included.length} filtered tests.`;
+    }
+
+    function exportFilterTestsCsv() {
+      const results = state.filterResults || [];
+      const plan = state.filterExpressionPlan;
+      if (!results.length || !plan?.ok) {
+        filterTestsSummaryEl.textContent = 'Run a valid filter before exporting CSV.';
+        return;
+      }
+      const clauses = plan.clauseIds.map(id => getFilterClauseById(id)).filter(Boolean);
+      const headers = ['biomarker_id', 'display_name', 'category', 'plot_included'];
+      for (const clause of clauses) {
+        headers.push(`${filterClauseCode(clause)} match`);
+        headers.push(`${filterClauseCode(clause)} value`);
+        headers.push(`${filterClauseCode(clause)} definition`);
+      }
+      const lines = [headers.map(csvEscape).join(',')];
+      for (const result of results) {
+        const row = [result.id, result.display_name, result.category, state.filterPlotSelectionSet.has(result.id) ? 'yes' : 'no'];
+        for (const clause of clauses) {
+          const metricValue = result.clauseValueMap.get(clause.id);
+          row.push(result.clauseMatchMap.get(clause.id) ? 'true' : 'false');
+          row.push(Number.isFinite(metricValue) ? String(metricValue) : '');
+          row.push(filterClauseSummary(clause));
+        }
+        lines.push(row.map(csvEscape).join(','));
+      }
+      const fileName = `filtered_${SPECIMEN_LABEL.replace(/\s+/g, '_')}_tests.csv`;
+      downloadTextFile(fileName, `${lines.join('\n')}\n`, 'text/csv;charset=utf-8');
+    }
+
+    function renderFilterResultsTable(results, plan) {
+      if (!results.length) {
+        filterTestsTableEl.innerHTML = '';
+        return;
+      }
+      const clauses = plan.clauseIds.map(id => getFilterClauseById(id)).filter(Boolean);
+      let html = '<thead><tr><th>Plot</th><th>Biomarker</th><th>Category</th>';
+      for (const clause of clauses) {
+        html += `<th>${filterClauseCode(clause)}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+      for (const result of results) {
+        html += `<tr data-id="${result.id}">`;
+        html += `<td><input class="filter-table-toggle" type="checkbox" ${state.filterPlotSelectionSet.has(result.id) ? 'checked' : ''} aria-label="Toggle ${result.display_name} in overlay plot" /></td>`;
+        html += `<td><button class="filter-row-label" type="button">${result.display_name}</button></td>`;
+        html += `<td>${result.category}</td>`;
+        for (const clause of clauses) {
+          const value = result.clauseValueMap.get(clause.id);
+          const pass = result.clauseMatchMap.get(clause.id);
+          html += `<td>${pass ? '✓' : '✕'} ${Number.isFinite(value) ? formatNum(value, 4) : 'NA'}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</tbody>';
+      filterTestsTableEl.innerHTML = html;
+      for (const row of Array.from(filterTestsTableEl.querySelectorAll('tbody tr'))) {
+        const biomarkerId = row.getAttribute('data-id');
+        const toggle = row.querySelector('.filter-table-toggle');
+        const openBtn = row.querySelector('.filter-row-label');
+        toggle?.addEventListener('click', (event) => {
+          event.stopPropagation();
+          if (!biomarkerId) return;
+          if (toggle.checked) state.filterPlotSelectionSet.add(biomarkerId);
+          else state.filterPlotSelectionSet.delete(biomarkerId);
+          renderFilterTestsPlot();
+        });
+        row.addEventListener('click', async (event) => {
+          if (event.target instanceof HTMLElement && event.target.closest('.filter-table-toggle')) return;
+          const id = biomarkerId;
+          if (!id) return;
+          if (Array.from(selectEl.options).some(option => option.value === id)) {
+            selectEl.value = id;
+            state.currentId = id;
+          }
+          await activateTopTab('dashboard', { syncHash: true });
+          renderMetrics(id);
+          await renderPlot(id);
+        });
+        openBtn?.addEventListener('click', async (event) => {
+          event.stopPropagation();
+          const id = biomarkerId;
+          if (!id) return;
+          if (Array.from(selectEl.options).some(option => option.value === id)) {
+            selectEl.value = id;
+            state.currentId = id;
+          }
+          await activateTopTab('dashboard', { syncHash: true });
+          renderMetrics(id);
+          await renderPlot(id);
+        });
+      }
+    }
+
+    async function renderFilterTests() {
+      const plan = buildFilterExpressionPlan(state.filterStageTokens);
+      state.filterExpressionPlan = plan.ok ? plan : null;
+      filterExpressionPreviewEl.textContent = plan.message;
       const cohort = filterTestsCohortEl.value || 'both';
       const trimMode = trimPctToMode(filterTestsTrimSliderEl.value);
-      const logic = (filterTestsLogicEl.value || 'and').toLowerCase() === 'or' ? 'or' : 'and';
       const selectedBiomarkers = getFilterTestsSelectedBiomarkers();
       const rows = getAllMetricsEnriched().filter(r => {
         if (!selectedBiomarkers.has(r.biomarker_id)) return false;
@@ -2988,70 +3829,59 @@
       });
       state.filterTestsSelectionSet = selectedBiomarkers;
 
-      if (!clauses.length) {
-        filterTestsSummaryEl.textContent = 'Add at least one valid clause to run filtering.';
+      if (!plan.ok) {
+        filterTestsSummaryEl.textContent = plan.message;
         filterTestsTableEl.innerHTML = '';
+        state.filterResults = [];
+        state.filterPlotSelectionSet = new Set();
+        await renderFilterTestsPlot();
         return;
       }
 
       if (!selectedBiomarkers.size) {
         filterTestsSummaryEl.textContent = 'No tests selected. Pick one or more tests in the selector above.';
         filterTestsTableEl.innerHTML = '';
+        state.filterResults = [];
+        state.filterPlotSelectionSet = new Set();
+        await renderFilterTestsPlot();
         return;
       }
 
       const hits = [];
       for (const rec of rows) {
-        const clauseValues = [];
-        const clauseMatches = [];
-        for (const clause of clauses) {
+        const clauseValueMap = new Map();
+        const clauseMatchMap = new Map();
+        for (const clauseId of plan.clauseIds) {
+          const clause = getFilterClauseById(clauseId);
+          if (!clause) continue;
           const metric = metricForRecord(rec, cohort, trimMode, clause.stat);
           const value = cohort === 'both'
             ? metricFieldValueBoth(metric, clause.field)
             : metricFieldValue(metric, clause.field);
-          clauseValues.push(value);
-          clauseMatches.push(compareClauseValue(value, clause.op, clause.threshold));
+          clauseValueMap.set(clause.id, value);
+          clauseMatchMap.set(clause.id, compareClauseValue(value, clause.op, clause.threshold));
         }
-        const pass = logic === 'or' ? clauseMatches.some(Boolean) : clauseMatches.every(Boolean);
+        const pass = evaluateFilterExpression(plan, clauseMatchMap);
         if (!pass) continue;
         hits.push({
           id: rec.biomarker_id,
           display_name: rec.display_name,
           category: rec.category || 'Other Clinical',
-          values: clauseValues,
+          clauseValueMap,
+          clauseMatchMap,
         });
       }
 
       hits.sort((a, b) => a.display_name.localeCompare(b.display_name));
-      filterTestsSummaryEl.textContent = `${hits.length} / ${rows.length} ${SPECIMEN_LABEL} tests matched (${logic.toUpperCase()}, ${trimLabelFromPct(filterTestsTrimSliderEl.value)}, cohort: ${cohort}).`;
-
-      let html = '<thead><tr><th>Biomarker</th><th>Category</th>';
-      for (let i = 0; i < clauses.length; i += 1) {
-        html += `<th>${filterTestsClauseLabel(clauses[i], i)}</th>`;
-      }
-      html += '</tr></thead><tbody>';
-      for (const hit of hits) {
-        html += `<tr data-id="${hit.id}"><td>${hit.display_name}</td><td>${hit.category}</td>`;
-        for (const v of hit.values) html += `<td>${formatNum(v, 4)}</td>`;
-        html += '</tr>';
-      }
-      html += '</tbody>';
-      filterTestsTableEl.innerHTML = html;
-
-      for (const tr of filterTestsTableEl.querySelectorAll('tbody tr')) {
-        tr.style.cursor = 'pointer';
-        tr.onclick = async () => {
-          const id = tr.getAttribute('data-id');
-          if (!id) return;
-          if (Array.from(selectEl.options).some(o => o.value === id)) {
-            selectEl.value = id;
-            state.currentId = id;
-          }
-          await activateTopTab('dashboard', { syncHash: true });
-          renderMetrics(id);
-          await renderPlot(id);
-        };
-      }
+      state.filterResults = hits;
+      const hitIds = new Set(hits.map(hit => hit.id));
+      const retainedSelection = new Set(Array.from(state.filterPlotSelectionSet).filter(id => hitIds.has(id)));
+      state.filterPlotSelectionSet = (retainedSelection.size > 0 && retainedSelection.size < hits.length)
+        ? retainedSelection
+        : new Set(hits.slice(0, 12).map(hit => hit.id));
+      filterTestsSummaryEl.textContent = `${hits.length} / ${rows.length} ${SPECIMEN_LABEL} tests matched (${plan.expressionText}; ${trimLabelFromPct(filterTestsTrimSliderEl.value)}; cohort: ${cohort}).`;
+      renderFilterResultsTable(hits, plan);
+      await renderFilterTestsPlot();
     }
 
     async function applySearch() {
@@ -3133,14 +3963,21 @@
       renderWaterfallOptions();
       filterTestsCohortEl.value = 'both';
       filterTestsIncludeEnvEl.checked = false;
-      filterTestsLogicEl.value = 'and';
-      filterTestsClausesEl.innerHTML = '';
-      filterTestsClausesEl.appendChild(createFilterClauseRow({ stat: 'cv', field: 'spearman_rho', op: '<', value: 0.5 }));
       renderFilterTestsBiomarkerOptions(false);
+      resetFilterClauseWorkshop();
+      const defaultClause = upsertFilterClause(false);
+      state.filterStageTokens = [];
+      state.filterStageInsertIndex = 0;
+      if (defaultClause) {
+        state.filterStageTokens.push(buildStageToken('clause', defaultClause.id));
+        state.filterStageInsertIndex = 1;
+      }
+      renderFilterClauseLibrary();
+      renderFilterStage();
 
       await refreshDashboardFromFilters();
       renderComparePlot();
-      renderFilterTests();
+      await renderFilterTests();
       renderScatterPlot();
       renderHistogramPlot();
       await renderWaterfallPlot(state.waterfallId);
@@ -3413,8 +4250,33 @@
         if (state.currentId) renderPlot(state.currentId);
         renderWaterfallPlot(state.waterfallId);
       });
-      filterTestsAddClauseBtn.addEventListener('click', () => {
-        filterTestsClausesEl.appendChild(createFilterClauseRow({}));
+      filterClauseSaveBtn.addEventListener('click', () => {
+        upsertFilterClause(false);
+      });
+      filterClauseInsertBtn.addEventListener('click', () => {
+        const clause = upsertFilterClause(false);
+        if (clause) insertFilterStageToken({ kind: 'clause', value: clause.id });
+      });
+      filterClauseClearBtn.addEventListener('click', () => {
+        resetFilterClauseWorkshop();
+      });
+      filterStageInsertClauseBtn.addEventListener('click', () => {
+        const clause = state.filterSelectedClauseId !== null
+          ? getFilterClauseById(state.filterSelectedClauseId)
+          : upsertFilterClause(false);
+        if (clause) insertFilterStageToken({ kind: 'clause', value: clause.id });
+      });
+      filterStageInsertAndBtn.addEventListener('click', () => {
+        insertFilterStageToken({ kind: 'operator', value: 'AND' });
+      });
+      filterStageInsertOrBtn.addEventListener('click', () => {
+        insertFilterStageToken({ kind: 'operator', value: 'OR' });
+      });
+      filterStageInsertOpenBtn.addEventListener('click', () => {
+        insertFilterStageToken({ kind: 'paren', value: '(' });
+      });
+      filterStageInsertCloseBtn.addEventListener('click', () => {
+        insertFilterStageToken({ kind: 'paren', value: ')' });
       });
       filterTestsRunBtn.addEventListener('click', () => {
         renderFilterTests();
@@ -3426,15 +4288,14 @@
         scatterCohortEl.value = v === 'both' ? 'both' : v;
         histCohortEl.value = v === 'both' ? 'both' : v;
         if (v !== 'both') waterfallCohortEl.value = v;
+        renderFilterTests();
       });
       filterTestsTrimSliderEl.addEventListener('input', () => {
         setAllTrimSliders(filterTestsTrimSliderEl.value);
+        renderFilterTests();
       });
       filterTestsIncludeEnvEl.addEventListener('change', () => {
         renderFilterTestsBiomarkerOptions(false);
-        renderFilterTests();
-      });
-      filterTestsLogicEl.addEventListener('change', () => {
         renderFilterTests();
       });
       filterTestsSearchEl.addEventListener('input', () => {
@@ -3458,6 +4319,22 @@
         for (const o of Array.from(filterTestsBiomarkersEl.options)) o.selected = false;
         state.filterTestsSelectionSet = new Set();
         updateFilterTestsSelectionCount();
+      });
+      filterTestsExportBtn.addEventListener('click', () => {
+        exportFilterTestsCsv();
+      });
+      filterTestsPlotAllBtn.addEventListener('click', () => {
+        state.filterPlotSelectionSet = new Set((state.filterResults || []).map(result => result.id));
+        renderFilterResultsTable(state.filterResults || [], state.filterExpressionPlan || { clauseIds: [] });
+        renderFilterTestsPlot();
+      });
+      filterTestsPlotNoneBtn.addEventListener('click', () => {
+        state.filterPlotSelectionSet = new Set();
+        renderFilterResultsTable(state.filterResults || [], state.filterExpressionPlan || { clauseIds: [] });
+        renderFilterTestsPlot();
+      });
+      filterTestsPlotStatEl.addEventListener('change', () => {
+        renderFilterTestsPlot();
       });
       waterfallMinNEl.addEventListener('change', () => {
         renderWaterfallPlot(state.waterfallId);

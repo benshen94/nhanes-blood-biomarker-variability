@@ -201,8 +201,9 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - Controls:
   - sex group: `Female`, `Male`, or `Both (Female + Male)`
   - symmetric trim slider (shared globally)
-  - logical combiner: `AND` or `OR`
-  - add/remove any number of clauses
+  - `Clause Workshop` for creating and editing reusable clauses
+  - `Logical Stage` for nested expressions such as `C1 AND (C2 OR C3)`
+  - stage tokens can be inserted by button and reordered/removed directly on the stage
   - searchable multi-select test picker with quick actions (`Select all visible`, `Core clinical only`, `Clear selection`)
   - optional include/exclude environmental-toxicant assays
 - Clause fields:
@@ -211,7 +212,13 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - comparator: `<`, `<=`, `>`, `>=`, `==`, `!=`
   - numeric threshold
 - Output:
-  - matching biomarker table for the active specimen page (blood or urinary), with clause values per biomarker
+  - matching biomarker table for the active specimen page (blood or urinary), with per-clause pass/value columns
+  - per-row plot toggle checkbox so filtered tests can be included or removed from the overlay plot without changing the filter
+  - `Export CSV` downloads the current filtered table, including the clause definitions, clause match flags, and clause metric values used for each returned biomarker
+  - `Filtered Test Overlay` plot can switch between:
+    - median normalized to the nearest age-30 bin
+    - CV normalized to the nearest age-30 bin
+  - in `Both` cohort mode, overlay traces are split into female and male trajectories for each selected biomarker
   - clicking a result opens that biomarker in `Dashboard`
 
 ## Scatter tab
