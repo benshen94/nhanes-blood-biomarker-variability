@@ -621,19 +621,19 @@
       max-width: 56ch;
     }
     .filter-stage-token {
-      display: inline-flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      min-height: 42px;
-      padding: 8px 10px;
-      border-radius: 14px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+      column-gap: 10px;
+      row-gap: 6px;
+      padding: 8px 10px 7px;
+      border-radius: 12px;
       border: 1px solid var(--border);
       background: var(--surface-strong);
-      box-shadow: 0 10px 18px rgba(16, 42, 67, 0.08);
+      box-shadow: 0 8px 16px rgba(16, 42, 67, 0.06);
       cursor: grab;
       user-select: none;
-      max-width: min(100%, 760px);
+      max-width: min(100%, 420px);
     }
     .filter-stage-token[data-kind="clause"] {
       border-color: rgba(15,118,110,0.24);
@@ -642,28 +642,66 @@
     .filter-stage-token[data-kind="operator"] {
       border-color: rgba(37,99,235,0.2);
       background: rgba(37,99,235,0.08);
+      grid-template-columns: auto;
+      max-width: max-content;
+      justify-items: center;
     }
     .filter-stage-token[data-kind="paren"] {
       border-color: rgba(180,83,9,0.2);
       background: rgba(180,83,9,0.08);
+      grid-template-columns: auto;
+      max-width: max-content;
+      justify-items: center;
     }
     .filter-stage-token strong {
-      font-size: 12px;
+      font-size: 11px;
+      line-height: 1.1;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
+    .filter-stage-token .token-main {
+      display: contents;
+    }
     .filter-stage-token span {
-      flex: 1 1 220px;
-      font-size: 13px;
+      font-size: 11px;
+      line-height: 1.2;
       color: var(--ink-soft);
       overflow-wrap: anywhere;
+      white-space: nowrap;
+    }
+    .filter-stage-token[data-kind="operator"] span,
+    .filter-stage-token[data-kind="paren"] span {
+      display: none;
     }
     .filter-token-actions {
+      grid-column: 1 / -1;
       display: inline-flex;
       gap: 4px;
-      margin-left: auto;
+      justify-content: flex-end;
     }
-    .filter-token-actions button,
+    .filter-token-actions button {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.9);
+      border-radius: 999px;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+    .filter-stage-token[data-kind="operator"] .filter-token-actions,
+    .filter-stage-token[data-kind="paren"] .filter-token-actions {
+      gap: 3px;
+      justify-content: center;
+    }
+    .filter-stage-token[data-kind="operator"] .filter-token-actions button,
+    .filter-stage-token[data-kind="paren"] .filter-token-actions button {
+      width: 24px;
+      height: 24px;
+      font-size: 9px;
+    }
     .clause-card-actions button {
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.9);
@@ -3266,6 +3304,33 @@
       return `${statLabel(clause.stat)} ${filterFieldLabel(clause.field)} ${clause.op} ${formatNum(clause.threshold, 4)}`;
     }
 
+    function formatCompactClauseThreshold(value) {
+      if (!Number.isFinite(value)) return 'NA';
+      const fixed = value.toFixed(Math.abs(value) >= 10 ? 2 : 4);
+      const trimmed = fixed.replace(/\.?0+$/, '');
+      return trimmed === '-0' ? '0' : trimmed;
+    }
+
+    function filterClauseCompactSummary(clause) {
+      const statSuffix = clause.stat === 'std'
+        ? 'SD'
+        : clause.stat === 'mean'
+          ? 'MED'
+          : clause.stat === 'skewness'
+            ? 'SK'
+            : 'CV';
+      const metricHtml = clause.field === 'spearman_rho'
+        ? `&rho;<sub>${statSuffix}</sub>`
+        : clause.field === 'spearman_p'
+          ? `p<sub>${statSuffix}</sub>`
+          : clause.field === 'n_bins'
+            ? `n<sub>${statSuffix}</sub>`
+          : clause.field === 'linear_slope_per_year'
+              ? `m<sub>${statSuffix}</sub>`
+              : `logm<sub>${statSuffix}</sub>`;
+      return `${metricHtml} ${clause.op} ${formatCompactClauseThreshold(clause.threshold)}`;
+    }
+
     function getFilterClauseDraft() {
       const threshold = Number(filterClauseValueEl.value);
       if (!Number.isFinite(threshold)) return null;
@@ -3461,9 +3526,14 @@
         pill.className = 'filter-stage-token';
         pill.dataset.kind = token.kind;
         pill.draggable = true;
+        const clauseSummaryHtml = token.kind === 'clause'
+          ? (getFilterClauseById(token.value) ? filterClauseCompactSummary(getFilterClauseById(token.value)) : 'Missing clause')
+          : '';
         pill.innerHTML = `
-          <strong>${filterStageTokenText(token)}</strong>
-          <span>${token.kind === 'clause' ? (getFilterClauseById(token.value) ? filterClauseSummary(getFilterClauseById(token.value)) : 'Missing clause') : token.kind === 'operator' ? 'Logical operator' : 'Grouping parenthesis'}</span>
+          <div class="token-main">
+            <strong>${filterStageTokenText(token)}</strong>
+            <span>${clauseSummaryHtml}</span>
+          </div>
           <div class="filter-token-actions">
             <button type="button" data-action="left" aria-label="Move token left">←</button>
             <button type="button" data-action="right" aria-label="Move token right">→</button>
