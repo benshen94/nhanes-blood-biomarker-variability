@@ -474,6 +474,7 @@
     .info-card li { margin: 8px 0; }
     .mono { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
     .compare-controls,
+    .sr-controls,
     .filter-controls,
     .scatter-controls,
     .hist-controls,
@@ -489,6 +490,7 @@
       background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.94));
     }
     .compare-controls label,
+    .sr-controls label,
     .filter-controls label,
     .scatter-controls label,
     .hist-controls label,
@@ -500,6 +502,7 @@
       color: var(--ink-soft);
     }
     .compare-controls select, .compare-controls input,
+    .sr-controls select, .sr-controls input,
     .filter-controls select, .filter-controls input,
     .scatter-controls select, .scatter-controls input,
     .hist-controls select, .hist-controls input,
@@ -507,6 +510,62 @@
       margin: 6px 0 0;
       width: 100%;
     }
+    .sr-selected {
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+    }
+    .sr-stat-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .sr-stat-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(244,248,251,0.92), rgba(255,255,255,0.98));
+      padding: 12px;
+    }
+    .sr-stat-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .sr-stat-card span {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .sr-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 14px 0 20px 0;
+    }
+    .sr-section-head {
+      margin: 18px 0 10px 0;
+    }
+    .sr-section-head h3 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+    }
+    .sr-section-head p {
+      margin: 0;
+      color: var(--ink-soft);
+    }
+    #sr-qq-plot { height: 460px; }
+    #sr-r2-plot,
+    #sr-coef-plot { height: 300px; }
     .filter-lab {
       display: grid;
       gap: 16px;
@@ -1024,9 +1083,15 @@
       #plot { height: 380px; }
       #compare-plot { height: 500px; }
       #compare-clalit-plot { height: 440px; }
+      #sr-qq-plot { height: 380px; }
+      #sr-r2-plot,
+      #sr-coef-plot { height: 260px; }
       .compare-controls label { width: 100%; }
       .compare-controls select,
       .compare-controls input { width: 100%; }
+      .sr-controls label { width: 100%; }
+      .sr-controls select,
+      .sr-controls input { width: 100%; }
       .filter-controls label { width: 100%; }
       .filter-controls select,
       .filter-controls input { width: 100%; }
@@ -1044,6 +1109,7 @@
       .waterfall-controls label { width: 100%; }
       .waterfall-controls select,
       .waterfall-controls input { width: 100%; }
+      .sr-mini-grid { grid-template-columns: 1fr; }
       #filter-tests-plot { height: 480px; }
     }
     @media (max-width: 520px) {
@@ -1087,6 +1153,7 @@
           <button id="tab-scatter" class="tab-btn" type="button">Scatter Plot</button>
           <button id="tab-hist" class="tab-btn" type="button">Histograms</button>
           <button id="tab-waterfall" class="tab-btn" type="button">Waterfall</button>
+          __SR_COMPARISON_TAB__
           <button id="tab-info" class="tab-btn" type="button">Info & Methods</button>
         </div>
       </div>
@@ -1365,6 +1432,8 @@
       </div>
     </div>
 
+    __SR_COMPARISON_PANEL__
+
     <div id="panel-filter-tests" class="panel">
       <div class="card">
         <div class="panel-header">
@@ -1606,6 +1675,7 @@
     const DATA_BASE = '__DATA_BASE__';
     const DATA_VERSION = '__DATA_VERSION__';
     const HAS_CLALIT = __HAS_CLALIT__;
+    const HAS_SR_COMPARISON = __HAS_SR_COMPARISON__;
     const SPECIMEN_TITLE = '__SPECIMEN_TITLE__';
     const SPECIMEN_LABEL = '__SPECIMEN_LOWER__';
 
@@ -1631,6 +1701,7 @@
     const tabScatterBtn = document.getElementById('tab-scatter');
     const tabHistBtn = document.getElementById('tab-hist');
     const tabWaterfallBtn = document.getElementById('tab-waterfall');
+    const tabSrComparisonBtn = document.getElementById('tab-sr-comparison');
     const tabInfoBtn = document.getElementById('tab-info');
     const specimenLinks = Array.from(document.querySelectorAll('.specimen-link'));
     const panelDashboard = document.getElementById('panel-dashboard');
@@ -1639,6 +1710,7 @@
     const panelScatter = document.getElementById('panel-scatter');
     const panelHist = document.getElementById('panel-hist');
     const panelWaterfall = document.getElementById('panel-waterfall');
+    const panelSrComparison = document.getElementById('panel-sr-comparison');
     const panelInfo = document.getElementById('panel-info');
     const compareClalitTitleEl = document.getElementById('compare-clalit-title');
     const compareSortEl = document.getElementById('compare-sort');
@@ -1727,6 +1799,14 @@
     const waterfallTrimSliderEl = document.getElementById('waterfall-trim-slider');
     const waterfallTrimLabelEl = document.getElementById('waterfall-trim-label');
     const waterfallMinNEl = document.getElementById('waterfall-min-n');
+    const srSelectedBiomarkerEl = document.getElementById('sr-selected-biomarker');
+    const srAgeBinSliderEl = document.getElementById('sr-age-bin-slider');
+    const srAgeBinLabelEl = document.getElementById('sr-age-bin-label');
+    const srSortFieldEl = document.getElementById('sr-sort-field');
+    const srSortDirectionEl = document.getElementById('sr-sort-direction');
+    const srSummaryStripEl = document.getElementById('sr-summary-strip');
+    const srRankTableEl = document.getElementById('sr-rank-table');
+    const srBinTableEl = document.getElementById('sr-bin-table');
 
     const CATEGORY_PRIORITY = {
       'Routine - CBC': 1,
@@ -1776,6 +1856,9 @@
       filterPlotSelectionSet: new Set(),
       fullViewSkewMetric: 'skewness',
       filterFullViewSkewMetric: 'skewness',
+      srAgeBinIndex: 6,
+      srSortField: 'mean_r2',
+      srSortDirection: 'desc',
     };
 
     const WATERFALL_AGE_BINS = [
@@ -1790,7 +1873,24 @@
     ];
 
     const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
-    const TOP_TABS = ['dashboard', 'compare', 'filter-tests', 'scatter', 'hist', 'waterfall', 'info'];
+    const SR_COMPARISON_AGE_BINS = [
+      { label: '20-24', age_mid: 22.5 },
+      { label: '25-29', age_mid: 27.5 },
+      { label: '30-34', age_mid: 32.5 },
+      { label: '35-39', age_mid: 37.5 },
+      { label: '40-44', age_mid: 42.5 },
+      { label: '45-49', age_mid: 47.5 },
+      { label: '50-54', age_mid: 52.5 },
+      { label: '55-59', age_mid: 57.5 },
+      { label: '60-64', age_mid: 62.5 },
+      { label: '65-69', age_mid: 67.5 },
+      { label: '70-74', age_mid: 72.5 },
+      { label: '75-79', age_mid: 77.5 },
+      { label: '80-84', age_mid: 82.5 },
+    ];
+    const TOP_TABS = HAS_SR_COMPARISON
+      ? ['dashboard', 'compare', 'filter-tests', 'scatter', 'hist', 'waterfall', 'sr-comparison', 'info']
+      : ['dashboard', 'compare', 'filter-tests', 'scatter', 'hist', 'waterfall', 'info'];
     const TOP_TAB_SET = new Set(TOP_TABS);
     const FILTER_STATEMENT_BANK_KEY = `nhanes-filter-bank:${String(SPECIMEN_LABEL || 'specimen').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
@@ -1822,6 +1922,15 @@
       const p = normalizeTrimPct(pct);
       if (p <= 0) return 'Using all values (0-100)';
       return `${p}% each tail kept out -> using ${p}-${100 - p} percentile band`;
+    }
+
+    function srAgeBinAt(index) {
+      const idx = Math.max(0, Math.min(SR_COMPARISON_AGE_BINS.length - 1, Number(index ?? state.srAgeBinIndex ?? 0)));
+      return SR_COMPARISON_AGE_BINS[idx];
+    }
+
+    function selectedSrAgeBinLabel() {
+      return srAgeBinAt(state.srAgeBinIndex).label;
     }
 
     function modeToStat(mode) {
@@ -1914,6 +2023,12 @@
           sub: `Explore full age-stratified value distributions for a selected ${SPECIMEN_LABEL} biomarker.`,
         };
       }
+      if (tabName === 'sr-comparison') {
+        return {
+          title: `NHANES ${SPECIMEN_TITLE} SR Comparison`,
+          sub: `Match pooled ${SPECIMEN_LABEL} biomarker distributions against the SR-model X distribution across age bins.`,
+        };
+      }
       if (tabName === 'info') {
         return {
           title: `NHANES ${SPECIMEN_TITLE} Info & Methods`,
@@ -1997,6 +2112,7 @@
       const isScatter = resolved === 'scatter';
       const isHist = resolved === 'hist';
       const isWaterfall = resolved === 'waterfall';
+      const isSrComparison = resolved === 'sr-comparison';
       const isInfo = resolved === 'info';
       setButtonState(tabDashboardBtn, isDash);
       setButtonState(tabCompareBtn, isCompare);
@@ -2004,6 +2120,7 @@
       setButtonState(tabScatterBtn, isScatter);
       setButtonState(tabHistBtn, isHist);
       setButtonState(tabWaterfallBtn, isWaterfall);
+      setButtonState(tabSrComparisonBtn, isSrComparison);
       setButtonState(tabInfoBtn, isInfo);
       panelDashboard.classList.toggle('active', isDash);
       panelCompare.classList.toggle('active', isCompare);
@@ -2011,6 +2128,7 @@
       panelScatter.classList.toggle('active', isScatter);
       panelHist.classList.toggle('active', isHist);
       panelWaterfall.classList.toggle('active', isWaterfall);
+      if (panelSrComparison) panelSrComparison.classList.toggle('active', isSrComparison);
       panelInfo.classList.toggle('active', isInfo);
       panelDashboard.setAttribute('aria-hidden', isDash ? 'false' : 'true');
       panelCompare.setAttribute('aria-hidden', isCompare ? 'false' : 'true');
@@ -2018,6 +2136,7 @@
       panelScatter.setAttribute('aria-hidden', isScatter ? 'false' : 'true');
       panelHist.setAttribute('aria-hidden', isHist ? 'false' : 'true');
       panelWaterfall.setAttribute('aria-hidden', isWaterfall ? 'false' : 'true');
+      if (panelSrComparison) panelSrComparison.setAttribute('aria-hidden', isSrComparison ? 'false' : 'true');
       panelInfo.setAttribute('aria-hidden', isInfo ? 'false' : 'true');
       const copy = heroCopy(resolved);
       if (heroTitleEl) heroTitleEl.textContent = copy.title;
@@ -2041,6 +2160,8 @@
         renderHistogramPlot();
       } else if (resolved === 'waterfall') {
         await renderWaterfallPlot(state.waterfallId);
+      } else if (resolved === 'sr-comparison') {
+        await renderSRComparison(state.currentId);
       }
     }
 
@@ -3381,6 +3502,365 @@
       }, mobile), { responsive: true, displaylogo: false });
     }
 
+    function syncSharedBiomarkerSelection(id) {
+      if (!id) return;
+      state.currentId = id;
+      if (Array.from(selectEl.options).some(option => option.value === id)) {
+        selectEl.value = id;
+      }
+      if (Array.from(waterfallBiomarkerEl.options).some(option => option.value === id)) {
+        waterfallBiomarkerEl.value = id;
+        state.waterfallId = id;
+      }
+    }
+
+    function srSummaryForRecord(record) {
+      return record?.sr_comparison_summary || null;
+    }
+
+    function srDetailForSeries(series) {
+      return series?.sr_comparison || null;
+    }
+
+    function srBinRowForLabel(rows, ageBinLabel) {
+      if (!Array.isArray(rows)) return null;
+      return rows.find(row => row.age_bin === ageBinLabel) || null;
+    }
+
+    function sortableNumber(value) {
+      if (value === null || value === undefined || value === '') return Number.NaN;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : Number.NaN;
+    }
+
+    function plotNoData(targetId, title, body) {
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot(targetId, [], applyPlotTheme({
+        title,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 0.5,
+          y: 0.55,
+          showarrow: false,
+          align: 'center',
+          text: body,
+          font: { size: mobile ? 11 : 13, color: '#5f6b7a' },
+        }],
+        xaxis: { visible: false },
+        yaxis: { visible: false },
+        showlegend: false,
+      }, mobile), { responsive: true, displaylogo: false });
+    }
+
+    function renderSrSummaryStrip(record, detail) {
+      if (!srSummaryStripEl) return;
+      const summary = srSummaryForRecord(record);
+      if (!summary) {
+        srSummaryStripEl.innerHTML = '<div class="sr-stat-card"><strong>SR summary</strong><span>NA</span></div>';
+        return;
+      }
+
+      const currentBinLabel = selectedSrAgeBinLabel();
+      const currentDetailRow = srBinRowForLabel(detail?.bins || [], currentBinLabel);
+      const currentSummaryRow = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
+      const cards = [
+        ['Selected bin', currentBinLabel],
+        ['Current R²', formatNum(currentDetailRow?.r2 ?? currentSummaryRow?.r2, 4)],
+        ['Current m', formatNum(currentDetailRow?.slope_m, 4)],
+        ['Current c', formatNum(currentDetailRow?.intercept_c, 4)],
+        ['Mean R²', formatNum(summary.mean_r2, 4)],
+        ['Min R²', formatNum(summary.min_r2, 4)],
+        ['Mean m', formatNum(summary.mean_slope_m, 4)],
+        ['Mean c', formatNum(summary.mean_intercept_c, 4)],
+        ['Valid bins', String(summary.valid_bin_count ?? 'NA')],
+      ];
+      srSummaryStripEl.innerHTML = cards
+        .map(([label, value]) => `<div class="sr-stat-card"><strong>${label}</strong><span>${value}</span></div>`)
+        .join('');
+    }
+
+    function renderSrQQPlot(record, detail, displayName) {
+      const currentBinLabel = selectedSrAgeBinLabel();
+      const row = srBinRowForLabel(detail?.bins || [], currentBinLabel);
+      if (!row || !Array.isArray(row.qq_sr_values) || row.qq_sr_values.length < 2 || !Array.isArray(row.qq_biomarker_values) || row.qq_biomarker_values.length < 2) {
+        plotNoData(
+          'sr-qq-plot',
+          `${displayName} — SR Q-Q plot`,
+          `No valid SR comparison data for age bin ${currentBinLabel}.`
+        );
+        return;
+      }
+
+      const x = row.qq_sr_values.map(Number);
+      const y = row.qq_biomarker_values.map(Number);
+      const xMin = Math.min(...x);
+      const xMax = Math.max(...x);
+      const fitY = [row.slope_m * xMin + row.intercept_c, row.slope_m * xMax + row.intercept_c];
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+
+      Plotly.newPlot('sr-qq-plot', [
+        {
+          type: 'scatter',
+          mode: 'markers',
+          x,
+          y,
+          marker: { color: '#0f766e', size: 7, opacity: 0.82 },
+          name: 'Quantile pairs',
+          hovertemplate: 'SR quantile=%{x:.4f}<br>Biomarker quantile=%{y:.4f}<extra></extra>',
+        },
+        {
+          type: 'scatter',
+          mode: 'lines',
+          x: [xMin, xMax],
+          y: fitY,
+          line: { color: '#b45309', width: 2.5 },
+          name: 'Fit line',
+          hovertemplate: `m=${formatNum(row.slope_m, 4)}<br>c=${formatNum(row.intercept_c, 4)}<extra></extra>`,
+        },
+      ], applyPlotTheme({
+        title: `${displayName} vs SR model — Q-Q plot (${currentBinLabel})`,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.08,
+          showarrow: false,
+          text: `R²=${formatNum(row.r2, 4)} | m=${formatNum(row.slope_m, 4)} | c=${formatNum(row.intercept_c, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | SR n=${row.sr_n ?? 'NA'}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: { title: 'SR model X quantiles' },
+        yaxis: { title: `${displayName} quantiles` },
+      }, mobile), { responsive: true, displaylogo: false });
+    }
+
+    function renderSrR2Plot(record, detail) {
+      const rows = detail?.bins || [];
+      const x = rows.map(row => row.age_bin);
+      const y = rows.map(row => row.r2);
+      if (!rows.length || y.every(value => value === null || value === undefined || Number.isNaN(Number(value)))) {
+        plotNoData('sr-r2-plot', 'R² across age bins', 'No valid age-bin R² values are available for this biomarker.');
+        return;
+      }
+
+      const currentBinLabel = selectedSrAgeBinLabel();
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('sr-r2-plot', [
+        {
+          type: 'scatter',
+          mode: 'lines+markers',
+          x,
+          y,
+          marker: {
+            color: x.map(label => label === currentBinLabel ? '#b45309' : '#0f766e'),
+            size: x.map(label => label === currentBinLabel ? 10 : 7),
+          },
+          line: { color: '#0f766e', width: 2 },
+          name: 'R²',
+          hovertemplate: 'age_bin=%{x}<br>R²=%{y:.4f}<extra></extra>',
+        },
+      ], applyPlotTheme({
+        title: 'R² across age bins',
+        xaxis: { title: 'Age bin' },
+        yaxis: { title: 'R²', range: [0, 1.02] },
+        showlegend: false,
+      }, mobile), { responsive: true, displaylogo: false });
+    }
+
+    function renderSrCoefficientPlot(record, detail) {
+      const rows = detail?.bins || [];
+      const slopeValues = rows.map(row => row.slope_m);
+      const interceptValues = rows.map(row => row.intercept_c);
+      const hasSlope = slopeValues.some(value => value !== null && value !== undefined && !Number.isNaN(Number(value)));
+      const hasIntercept = interceptValues.some(value => value !== null && value !== undefined && !Number.isNaN(Number(value)));
+      if (!rows.length || (!hasSlope && !hasIntercept)) {
+        plotNoData('sr-coef-plot', 'QQ coefficients across age bins', 'No valid slope or intercept values are available for this biomarker.');
+        return;
+      }
+
+      const currentBinLabel = selectedSrAgeBinLabel();
+      const x = rows.map(row => row.age_bin);
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('sr-coef-plot', [
+        {
+          type: 'scatter',
+          mode: 'lines+markers',
+          x,
+          y: slopeValues,
+          marker: {
+            color: x.map(label => label === currentBinLabel ? '#1d4ed8' : '#2563eb'),
+            size: x.map(label => label === currentBinLabel ? 10 : 7),
+          },
+          line: { color: '#2563eb', width: 2 },
+          name: 'Slope m',
+          hovertemplate: 'age_bin=%{x}<br>m=%{y:.4f}<extra></extra>',
+          yaxis: 'y',
+        },
+        {
+          type: 'scatter',
+          mode: 'lines+markers',
+          x,
+          y: interceptValues,
+          marker: {
+            color: x.map(label => label === currentBinLabel ? '#b45309' : '#d97706'),
+            size: x.map(label => label === currentBinLabel ? 10 : 7),
+          },
+          line: { color: '#d97706', width: 2 },
+          name: 'Intercept c',
+          hovertemplate: 'age_bin=%{x}<br>c=%{y:.4f}<extra></extra>',
+          yaxis: 'y2',
+        },
+      ], applyPlotTheme({
+        title: 'QQ fit coefficients across age bins',
+        xaxis: { title: 'Age bin' },
+        yaxis: { title: 'Slope m' },
+        yaxis2: {
+          title: 'Intercept c',
+          overlaying: 'y',
+          side: 'right',
+          showgrid: false,
+        },
+      }, mobile), { responsive: true, displaylogo: false });
+    }
+
+    function renderSrRankTable(selectedId) {
+      if (!srRankTableEl) return;
+      const currentBinLabel = selectedSrAgeBinLabel();
+      const sortField = srSortFieldEl?.value || state.srSortField || 'mean_r2';
+      const sortDirection = srSortDirectionEl?.value || state.srSortDirection || 'desc';
+      state.srSortField = sortField;
+      state.srSortDirection = sortDirection;
+
+      const rows = getAllMetricsEnriched()
+        .map(record => ({ ...record, srSummary: srSummaryForRecord(record) }))
+        .filter(record => record.srSummary);
+
+      function sortableValue(record) {
+        if (sortField === 'current_bin_r2') {
+          const current = srBinRowForLabel(record.srSummary.r2_by_age_bin || [], currentBinLabel);
+          return sortableNumber(current?.r2);
+        }
+        return sortableNumber(record.srSummary?.[sortField]);
+      }
+
+      rows.sort((left, right) => {
+        const a = sortableValue(left);
+        const b = sortableValue(right);
+        const aFinite = Number.isFinite(a);
+        const bFinite = Number.isFinite(b);
+        if (!aFinite && !bFinite) return left.display_name.localeCompare(right.display_name);
+        if (!aFinite) return 1;
+        if (!bFinite) return -1;
+        if (a === b) return left.display_name.localeCompare(right.display_name);
+        return sortDirection === 'asc' ? (a - b) : (b - a);
+      });
+
+      let html = '<thead><tr><th>Biomarker</th><th>Category</th><th>Current bin R²</th><th>Mean R²</th><th>Min R²</th><th>Median R²</th><th>Mean m</th><th>SD m</th><th>Mean c</th><th>SD c</th><th>Valid bins</th></tr></thead><tbody>';
+      for (const record of rows) {
+        const summary = record.srSummary;
+        const current = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
+        const selectedAttr = record.biomarker_id === selectedId ? ' style="background: rgba(15,118,110,0.12);"' : '';
+        html += `<tr data-id="${record.biomarker_id}"${selectedAttr}>`
+          + `<td>${record.display_name}</td>`
+          + `<td>${record.category || 'Other Clinical'}</td>`
+          + `<td>${formatNum(current?.r2, 4)}</td>`
+          + `<td>${formatNum(summary.mean_r2, 4)}</td>`
+          + `<td>${formatNum(summary.min_r2, 4)}</td>`
+          + `<td>${formatNum(summary.median_r2, 4)}</td>`
+          + `<td>${formatNum(summary.mean_slope_m, 4)}</td>`
+          + `<td>${formatNum(summary.slope_m_sd, 4)}</td>`
+          + `<td>${formatNum(summary.mean_intercept_c, 4)}</td>`
+          + `<td>${formatNum(summary.intercept_c_sd, 4)}</td>`
+          + `<td>${summary.valid_bin_count ?? 'NA'}</td>`
+          + '</tr>';
+      }
+      html += '</tbody>';
+      srRankTableEl.innerHTML = html;
+
+      for (const row of srRankTableEl.querySelectorAll('tbody tr')) {
+        row.style.cursor = 'pointer';
+        row.onclick = async () => {
+          const id = row.getAttribute('data-id');
+          syncSharedBiomarkerSelection(id);
+          renderMetrics(id);
+          await renderPlot(id);
+          await renderSRComparison(id);
+        };
+      }
+    }
+
+    function renderSrBinTable(detail) {
+      if (!srBinTableEl) return;
+      const rows = detail?.bins || [];
+      if (!rows.length) {
+        srBinTableEl.innerHTML = '<tbody><tr><td>No SR detail rows available.</td></tr></tbody>';
+        return;
+      }
+
+      const currentBinLabel = selectedSrAgeBinLabel();
+      let html = '<thead><tr><th>Age bin</th><th>R²</th><th>m</th><th>c</th><th>NHANES n</th><th>SR n</th><th>NHANES Q1</th><th>NHANES median</th><th>NHANES Q3</th><th>SR Q1</th><th>SR median</th><th>SR Q3</th></tr></thead><tbody>';
+      for (const row of rows) {
+        const selectedAttr = row.age_bin === currentBinLabel ? ' style="background: rgba(15,118,110,0.12);"' : '';
+        html += `<tr${selectedAttr}>`
+          + `<td>${row.age_bin}</td>`
+          + `<td>${formatNum(row.r2, 4)}</td>`
+          + `<td>${formatNum(row.slope_m, 4)}</td>`
+          + `<td>${formatNum(row.intercept_c, 4)}</td>`
+          + `<td>${row.nhanes_n ?? 'NA'}</td>`
+          + `<td>${row.sr_n ?? 'NA'}</td>`
+          + `<td>${formatNum(row.nhanes_q1, 4)}</td>`
+          + `<td>${formatNum(row.nhanes_median, 4)}</td>`
+          + `<td>${formatNum(row.nhanes_q3, 4)}</td>`
+          + `<td>${formatNum(row.sr_q1, 4)}</td>`
+          + `<td>${formatNum(row.sr_median, 4)}</td>`
+          + `<td>${formatNum(row.sr_q3, 4)}</td>`
+          + '</tr>';
+      }
+      html += '</tbody>';
+      srBinTableEl.innerHTML = html;
+    }
+
+    async function renderSRComparison(biomarkerId = null) {
+      if (!HAS_SR_COMPARISON) return;
+
+      const available = getAllMetricsEnriched().filter(record => srSummaryForRecord(record));
+      if (!available.length) {
+        if (srSelectedBiomarkerEl) srSelectedBiomarkerEl.textContent = 'No SR comparison payload is available for this dashboard build.';
+        if (srSummaryStripEl) srSummaryStripEl.innerHTML = '';
+        if (srRankTableEl) srRankTableEl.innerHTML = '';
+        if (srBinTableEl) srBinTableEl.innerHTML = '';
+        plotNoData('sr-qq-plot', 'SR comparison unavailable', 'Build the SR comparison payload to enable this tab.');
+        plotNoData('sr-r2-plot', 'R² across age bins', 'No SR comparison payload is available.');
+        plotNoData('sr-coef-plot', 'QQ coefficients across age bins', 'No SR comparison payload is available.');
+        return;
+      }
+
+      let id = biomarkerId || state.currentId || selectEl.value || available[0].biomarker_id;
+      let record = state.metricsById.get(id);
+      if (!srSummaryForRecord(record)) {
+        id = available[0].biomarker_id;
+        record = state.metricsById.get(id);
+      }
+      syncSharedBiomarkerSelection(id);
+      renderMetrics(id);
+
+      const md = state.metadataById.get(id) || {};
+      const displayName = md.display_name || record?.biomarker_name || id;
+      const category = md.category || 'Other Clinical';
+      if (srSelectedBiomarkerEl) {
+        srSelectedBiomarkerEl.textContent = `${displayName} · ${category}`;
+      }
+
+      const series = await loadSeries(id);
+      const detail = srDetailForSeries(series);
+      renderSrSummaryStrip(record, detail);
+      renderSrQQPlot(record, detail, displayName);
+      renderSrR2Plot(record, detail);
+      renderSrCoefficientPlot(record, detail);
+      renderSrRankTable(id);
+      renderSrBinTable(detail);
+    }
+
     function renderRankTable() {
       const tbl = document.getElementById('rank-table');
       const visible = new Set(getDashboardMetadata().map(m => m.biomarker_id));
@@ -4675,6 +5155,7 @@
         state.waterfallId = hit.biomarker_id;
         renderMetrics(hit.biomarker_id);
         await renderPlot(hit.biomarker_id);
+        if (HAS_SR_COMPARISON) await renderSRComparison(hit.biomarker_id);
       }
     }
 
@@ -4689,6 +5170,7 @@
       }
       renderMetrics(id);
       await renderPlot(id);
+      if (HAS_SR_COMPARISON) await renderSRComparison(id);
     }
 
     async function init() {
@@ -4710,9 +5192,17 @@
       compareIncludeEnvEl.checked = false;
       scatterIncludeEnvEl.checked = false;
       histIncludeEnvEl.checked = false;
+      if (srAgeBinSliderEl) srAgeBinSliderEl.value = String(state.srAgeBinIndex);
+      if (srAgeBinLabelEl) srAgeBinLabelEl.textContent = selectedSrAgeBinLabel();
+      if (srSortFieldEl) srSortFieldEl.value = state.srSortField;
+      if (srSortDirectionEl) srSortDirectionEl.value = state.srSortDirection;
       if (!HAS_CLALIT) {
         if (hideClalitWrapEl) hideClalitWrapEl.style.display = 'none';
         if (compareClalitTitleEl) compareClalitTitleEl.textContent = 'External Cohort Agreement';
+      }
+      if (!HAS_SR_COMPARISON) {
+        if (tabSrComparisonBtn) tabSrComparisonBtn.style.display = 'none';
+        if (panelSrComparison) panelSrComparison.style.display = 'none';
       }
       const tabPairs = [
         [tabDashboardBtn, panelDashboard],
@@ -4721,6 +5211,7 @@
         [tabScatterBtn, panelScatter],
         [tabHistBtn, panelHist],
         [tabWaterfallBtn, panelWaterfall],
+        [tabSrComparisonBtn, panelSrComparison],
         [tabInfoBtn, panelInfo],
       ];
       for (const [btn, panel] of tabPairs) {
@@ -4758,6 +5249,7 @@
       renderScatterPlot();
       renderHistogramPlot();
       await renderWaterfallPlot(state.waterfallId);
+      if (HAS_SR_COMPARISON) await renderSRComparison(state.currentId);
 
       statusChip.textContent = `Ready: ${state.metadata.length} ${SPECIMEN_LABEL} biomarkers indexed`;
 
@@ -4778,6 +5270,9 @@
       });
       tabWaterfallBtn.addEventListener('click', () => {
         activateTopTab('waterfall', { syncHash: true }).catch(console.error);
+      });
+      tabSrComparisonBtn?.addEventListener('click', () => {
+        activateTopTab('sr-comparison', { syncHash: true }).catch(console.error);
       });
       tabInfoBtn.addEventListener('click', () => {
         activateTopTab('info', { syncHash: true }).catch(console.error);
@@ -4829,6 +5324,7 @@
         }
         renderMetrics(id);
         await renderPlot(id);
+        if (HAS_SR_COMPARISON) await renderSRComparison(id);
       });
       searchEl.addEventListener('change', applySearch);
       searchEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') applySearch(); });
@@ -5148,6 +5644,19 @@
       waterfallMinNEl.addEventListener('change', () => {
         renderWaterfallPlot(state.waterfallId);
       });
+      srAgeBinSliderEl?.addEventListener('input', async () => {
+        state.srAgeBinIndex = Number(srAgeBinSliderEl.value || 0);
+        if (srAgeBinLabelEl) srAgeBinLabelEl.textContent = selectedSrAgeBinLabel();
+        await renderSRComparison(state.currentId);
+      });
+      srSortFieldEl?.addEventListener('change', () => {
+        state.srSortField = srSortFieldEl.value || 'mean_r2';
+        renderSrRankTable(state.currentId);
+      });
+      srSortDirectionEl?.addEventListener('change', () => {
+        state.srSortDirection = srSortDirectionEl.value || 'desc';
+        renderSrRankTable(state.currentId);
+      });
       window.addEventListener('hashchange', () => {
         const hashTab = topTabFromHash();
         const fallbackToDashboard = hashTab === null;
@@ -5162,11 +5671,17 @@
         const scatterEl = document.getElementById('scatter-plot');
         const histEl = document.getElementById('hist-plot');
         const waterfallEl = document.getElementById('waterfall-plot');
+        const srQqEl = document.getElementById('sr-qq-plot');
+        const srR2El = document.getElementById('sr-r2-plot');
+        const srCoefEl = document.getElementById('sr-coef-plot');
         if (plotEl) Plotly.Plots.resize(plotEl);
         if (compareEl) Plotly.Plots.resize(compareEl);
         if (scatterEl) Plotly.Plots.resize(scatterEl);
         if (histEl) Plotly.Plots.resize(histEl);
         if (waterfallEl) Plotly.Plots.resize(waterfallEl);
+        if (srQqEl) Plotly.Plots.resize(srQqEl);
+        if (srR2El) Plotly.Plots.resize(srR2El);
+        if (srCoefEl) Plotly.Plots.resize(srCoefEl);
       });
       const initialHashTab = topTabFromHash();
       await activateTopTab(initialHashTab || 'dashboard', {

@@ -1,0 +1,35 @@
+{
+  "built_at_unix": 1774195462,
+  "duration_seconds": 32.99,
+  "long_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/data/processed/biomarker_long.parquet",
+  "out_root": "projects/sr_comparison/blood",
+  "sr_script_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py",
+  "sr_package_root": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python",
+  "sr_source": "rerun",
+  "sr_model": {
+    "n_sim": 100000,
+    "tmax": 120,
+    "save_times": 1
+  },
+  "age_bins": [
+    "20-24",
+    "25-29",
+    "30-34",
+    "35-39",
+    "40-44",
+    "45-49",
+    "50-54",
+    "55-59",
+    "60-64",
+    "65-69",
+    "70-74",
+    "75-79",
+    "80-84"
+  ],
+  "trim_rule": {
+    "lo": 0.03,
+    "hi": 0.97
+  },
+  "min_bin_n": 30,
+  "biomarker_count": 689
+}

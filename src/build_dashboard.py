@@ -19,6 +19,8 @@ from scipy.stats import spearmanr
 from nhanes_common import ensure_dir
 
 
+
+ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "dashboard_template.html"
 
 
@@ -3192,6 +3194,7 @@ def build_outputs(
     clalit_f_df: pd.DataFrame | None = None,
     clalit_m_df: pd.DataFrame | None = None,
     clalit_map: dict | None = None,
+    sr_comparison_bundle: dict | None = None,
 ) -> tuple[pd.DataFrame, list[dict], dict[str, str], dict[str, dict]]:
     cv_df = cv_df.copy()
     long_df, catalog_df = append_neutrophil_lymphocyte_ratio(long_df, catalog_df, specimen_kind)
@@ -3435,6 +3438,8 @@ def build_outputs(
     metadata = metadata.sort_values(["category_rank", "display_name", "biomarker_id"]).reset_index(drop=True)
 
     clalit_data_map = process_clalit_data(clalit_f_df, clalit_m_df, clalit_map)
+    sr_summary_by_id = (sr_comparison_bundle or {}).get("summary_by_biomarker") or {}
+    sr_detail_by_id = (sr_comparison_bundle or {}).get("detail_by_biomarker") or {}
 
     metrics: list[dict] = []
     for r in metadata.itertuples(index=False):
@@ -3516,6 +3521,7 @@ def build_outputs(
                     "quantile_skewness": sex_metrics_qskew,
                 },
                 "clalit_trends": c_trends,
+                "sr_comparison_summary": sr_summary_by_id.get(bid),
             }
         )
 
@@ -3588,6 +3594,7 @@ def build_outputs(
                 "quantile_skewness": sex_trends_filter_qskew,
             },
             "clalit_data": clalit_data_map.get(str(bid)),
+            "sr_comparison": sr_detail_by_id.get(bid),
         }
 
     return metadata, metrics, series_index, series_payloads
@@ -3598,18 +3605,94 @@ def render_dashboard_html(
     specimen_title: str,
     specimen_lower: str,
     has_clalit: bool,
-    specimen_switch_link: str,
+    has_sr_comparison: bool = False,
+    specimen_switch_link: str = "",
 ) -> str:
     data_version = str(int(time.time()))
     template = TEMPLATE_PATH.read_text(encoding="utf-8") if TEMPLATE_PATH.exists() else HTML_TEMPLATE
+    sr_tab_html = '<button id="tab-sr-comparison" class="tab-btn" type="button">SR Comparison</button>' if has_sr_comparison else ""
+    sr_panel_html = (
+        """
+    <div id="panel-sr-comparison" class="panel">
+      <div class="card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">SR Comparison</h2>
+            <p class="panel-copy">Compare pooled blood biomarkers against the SR-model `X` distribution with trimmed age-bin Q-Q fits.</p>
+          </div>
+        </div>
+        <div class="sr-controls">
+          <label>Selected biomarker
+            <div id="sr-selected-biomarker" class="sr-selected">Uses the main dashboard biomarker selection.</div>
+          </label>
+          <label>Age bin
+            <input id="sr-age-bin-slider" type="range" min="0" max="12" step="1" value="6" />
+            <div id="sr-age-bin-label" class="trim-caption">50-54</div>
+          </label>
+          <label>Sort main table by
+            <select id="sr-sort-field">
+              <option value="current_bin_r2">Selected-bin R²</option>
+              <option value="mean_r2" selected>Mean R²</option>
+              <option value="min_r2">Minimum R²</option>
+              <option value="median_r2">Median R²</option>
+              <option value="valid_bin_count">Valid bins</option>
+              <option value="mean_slope_m">Mean m</option>
+              <option value="slope_m_sd">SD m</option>
+              <option value="mean_intercept_c">Mean c</option>
+              <option value="intercept_c_sd">SD c</option>
+            </select>
+          </label>
+          <label>Order
+            <select id="sr-sort-direction">
+              <option value="desc" selected>Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </label>
+        </div>
+        <div id="sr-summary-strip" class="sr-stat-strip"></div>
+        <div id="sr-qq-plot"></div>
+        <div class="sr-mini-grid">
+          <div id="sr-r2-plot"></div>
+          <div id="sr-coef-plot"></div>
+        </div>
+        <div class="sr-section-head">
+          <h3>Biomarker Ranking</h3>
+          <p>Click a row to switch the shared biomarker selection and refresh the SR plots.</p>
+        </div>
+        <div class="table-wrap"><table id="sr-rank-table"></table></div>
+        <div class="sr-section-head">
+          <h3>Per-Bin Fit Details</h3>
+          <p>Inspect how `R²`, slope `m`, and intercept `c` change across age bins for the selected biomarker.</p>
+        </div>
+        <div class="table-wrap"><table id="sr-bin-table"></table></div>
+      </div>
+    </div>
+        """.strip("\n")
+        if has_sr_comparison
+        else ""
+    )
     return (
         template.replace("__DATA_VERSION__", data_version)
         .replace("__DATA_BASE__", data_base)
         .replace("__SPECIMEN_TITLE__", specimen_title)
         .replace("__SPECIMEN_LOWER__", specimen_lower)
         .replace("__HAS_CLALIT__", "true" if has_clalit else "false")
+        .replace("__HAS_SR_COMPARISON__", "true" if has_sr_comparison else "false")
+        .replace("__SR_COMPARISON_TAB__", sr_tab_html)
+        .replace("__SR_COMPARISON_PANEL__", sr_panel_html)
         .replace("__SPECIMEN_SWITCH_LINK__", specimen_switch_link)
     )
+
+
+def load_sr_comparison_bundle(root: str | Path | None) -> dict | None:
+    if root is None:
+        return None
+
+    payload_path = Path(root) / "dashboard_payload.json"
+    if not payload_path.exists():
+        return None
+
+    return json.loads(payload_path.read_text(encoding="utf-8"))
 
 
 def write_dashboard_bundle(
@@ -3683,6 +3766,7 @@ def main() -> None:
     ap.add_argument("--clalit-f", default="data/clalit/females_all_statistics.csv")
     ap.add_argument("--clalit-m", default="data/clalit/males_all_statistics.csv")
     ap.add_argument("--clalit-map", default="data/clalit_mapping.json")
+    ap.add_argument("--sr-comparison-root", default=str(ROOT / "projects" / "sr_comparison" / "blood"))
     args = ap.parse_args()
 
     def load_inputs(cv_all_path: str, cv_path: str, metrics_path: str, catalog_path: str, long_path: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None]:
@@ -3724,6 +3808,8 @@ def main() -> None:
         with open(args.clalit_map) as f:
             clalit_map = json.load(f)
     has_blood_clalit = bool(clalit_f is not None and clalit_m is not None and clalit_map)
+    sr_comparison_bundle = load_sr_comparison_bundle(args.sr_comparison_root)
+    has_blood_sr_comparison = bool(sr_comparison_bundle)
 
     blood_metadata, blood_metrics, blood_series_index, blood_series_payloads = build_outputs(
         cv_df=blood_cv_df,
@@ -3736,6 +3822,7 @@ def main() -> None:
         clalit_f_df=clalit_f if has_blood_clalit else None,
         clalit_m_df=clalit_m if has_blood_clalit else None,
         clalit_map=clalit_map if has_blood_clalit else None,
+        sr_comparison_bundle=sr_comparison_bundle,
     )
     urine_metadata, urine_metrics, urine_series_index, urine_series_payloads = build_outputs(
         cv_df=urine_cv_df,
@@ -3796,6 +3883,7 @@ def main() -> None:
             specimen_title="Blood",
             specimen_lower="blood",
             has_clalit=has_blood_clalit,
+            has_sr_comparison=has_blood_sr_comparison,
             specimen_switch_link=blood_switch_links,
         ),
         encoding="utf-8",
@@ -3806,6 +3894,7 @@ def main() -> None:
             specimen_title="Urinary",
             specimen_lower="urinary",
             has_clalit=False,
+            has_sr_comparison=False,
             specimen_switch_link=urine_switch_links,
         ),
         encoding="utf-8",
