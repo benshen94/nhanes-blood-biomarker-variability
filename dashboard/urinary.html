@@ -1673,7 +1673,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1774197263';
+    const DATA_VERSION = '1774200217';
     const HAS_CLALIT = false;
     const HAS_SR_COMPARISON = false;
     const SPECIMEN_TITLE = 'Urinary';
@@ -1799,6 +1799,11 @@
     const waterfallTrimSliderEl = document.getElementById('waterfall-trim-slider');
     const waterfallTrimLabelEl = document.getElementById('waterfall-trim-label');
     const waterfallMinNEl = document.getElementById('waterfall-min-n');
+    const srSearchEl = document.getElementById('sr-search');
+    const srOptionsEl = document.getElementById('sr-biomarker-options');
+    const srBiomarkerEl = document.getElementById('sr-biomarker');
+    const srCategoryFilterEl = document.getElementById('sr-category-filter');
+    const srIncludeEnvEl = document.getElementById('sr-include-env');
     const srSelectedBiomarkerEl = document.getElementById('sr-selected-biomarker');
     const srAgeBinSliderEl = document.getElementById('sr-age-bin-slider');
     const srAgeBinLabelEl = document.getElementById('sr-age-bin-label');
@@ -1859,6 +1864,7 @@
       srAgeBinIndex: 6,
       srSortField: 'mean_r2',
       srSortDirection: 'desc',
+      srCategoryFilter: 'all_core',
     };
 
     const WATERFALL_AGE_BINS = [
@@ -2227,6 +2233,14 @@
       return state.metadata.filter(m => metadataPasses(m, categoryFilterEl.value, includeEnvEl.checked));
     }
 
+    function getSrComparisonRecords() {
+      const categoryValue = srCategoryFilterEl?.value || state.srCategoryFilter || 'all_core';
+      const includeEnv = Boolean(srIncludeEnvEl?.checked);
+      return getAllMetricsEnriched()
+        .filter(record => srSummaryForRecord(record))
+        .filter(record => metadataPasses(record, categoryValue, includeEnv));
+    }
+
     function getAllMetricsEnriched() {
       const byId = state.metadataById;
       return state.metrics
@@ -2450,6 +2464,41 @@
       waterfallBiomarkerEl.value = next;
       state.waterfallId = next;
       return next;
+    }
+
+    function renderSrBiomarkerOptions() {
+      if (!srBiomarkerEl || !srOptionsEl) return null;
+
+      const options = getSrComparisonRecords()
+        .slice()
+        .sort((a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || '')));
+      const previousId = state.currentId || srBiomarkerEl.value || selectEl.value;
+
+      srBiomarkerEl.innerHTML = '';
+      srOptionsEl.innerHTML = '';
+
+      for (const option of options) {
+        const label = option.display_name || option.biomarker_name || option.biomarker_id;
+
+        const selectOption = document.createElement('option');
+        selectOption.value = option.biomarker_id;
+        selectOption.textContent = label;
+        srBiomarkerEl.appendChild(selectOption);
+
+        const datalistOption = document.createElement('option');
+        datalistOption.value = label;
+        srOptionsEl.appendChild(datalistOption);
+      }
+
+      if (!options.length) {
+        return null;
+      }
+
+      const nextId = options.some(option => option.biomarker_id === previousId)
+        ? previousId
+        : options[0].biomarker_id;
+      srBiomarkerEl.value = nextId;
+      return nextId;
     }
 
     function quantile(values, q) {
@@ -3512,6 +3561,13 @@
         waterfallBiomarkerEl.value = id;
         state.waterfallId = id;
       }
+      if (srBiomarkerEl && Array.from(srBiomarkerEl.options).some(option => option.value === id)) {
+        srBiomarkerEl.value = id;
+      }
+      const md = state.metadataById.get(id) || {};
+      if (srSearchEl) {
+        srSearchEl.value = md.display_name || md.biomarker_name || id;
+      }
     }
 
     function srSummaryForRecord(record) {
@@ -3731,9 +3787,8 @@
       state.srSortField = sortField;
       state.srSortDirection = sortDirection;
 
-      const rows = getAllMetricsEnriched()
-        .map(record => ({ ...record, srSummary: srSummaryForRecord(record) }))
-        .filter(record => record.srSummary);
+      const rows = getSrComparisonRecords()
+        .map(record => ({ ...record, srSummary: srSummaryForRecord(record) }));
 
       function sortableValue(record) {
         if (sortField === 'current_bin_r2') {
@@ -3823,24 +3878,25 @@
     async function renderSRComparison(biomarkerId = null) {
       if (!HAS_SR_COMPARISON) return;
 
-      const available = getAllMetricsEnriched().filter(record => srSummaryForRecord(record));
+      const available = getSrComparisonRecords();
       if (!available.length) {
-        if (srSelectedBiomarkerEl) srSelectedBiomarkerEl.textContent = 'No SR comparison payload is available for this dashboard build.';
+        renderSrBiomarkerOptions();
+        if (srSelectedBiomarkerEl) srSelectedBiomarkerEl.textContent = 'No SR biomarkers match the current SR filters.';
         if (srSummaryStripEl) srSummaryStripEl.innerHTML = '';
         if (srRankTableEl) srRankTableEl.innerHTML = '';
         if (srBinTableEl) srBinTableEl.innerHTML = '';
-        plotNoData('sr-qq-plot', 'SR comparison unavailable', 'Build the SR comparison payload to enable this tab.');
-        plotNoData('sr-r2-plot', 'R² across age bins', 'No SR comparison payload is available.');
-        plotNoData('sr-coef-plot', 'QQ coefficients across age bins', 'No SR comparison payload is available.');
+        plotNoData('sr-qq-plot', 'SR comparison unavailable', 'No SR biomarkers match the current category filter.');
+        plotNoData('sr-r2-plot', 'R² across age bins', 'No SR biomarkers match the current category filter.');
+        plotNoData('sr-coef-plot', 'QQ coefficients across age bins', 'No SR biomarkers match the current category filter.');
         return;
       }
 
-      let id = biomarkerId || state.currentId || selectEl.value || available[0].biomarker_id;
-      let record = state.metricsById.get(id);
-      if (!srSummaryForRecord(record)) {
-        id = available[0].biomarker_id;
-        record = state.metricsById.get(id);
+      const visibleId = renderSrBiomarkerOptions();
+      let id = biomarkerId || state.currentId || selectEl.value || visibleId || available[0].biomarker_id;
+      if (!available.some(record => record.biomarker_id === id)) {
+        id = visibleId || available[0].biomarker_id;
       }
+      let record = state.metricsById.get(id);
       syncSharedBiomarkerSelection(id);
       renderMetrics(id);
 
@@ -5159,6 +5215,27 @@
       }
     }
 
+    async function applySrSearch() {
+      if (!srSearchEl) return;
+      const q = srSearchEl.value.toLowerCase().trim();
+      if (!q) return;
+
+      const hit = getSrComparisonRecords().find(
+        record => `${record.display_name || ''} ${record.biomarker_name || ''} ${record.variable_name || ''} ${record.source_files || ''} ${record.source_variables || ''}`
+          .toLowerCase()
+          .includes(q)
+      );
+      if (!hit) return;
+
+      if (srBiomarkerEl) {
+        srBiomarkerEl.value = hit.biomarker_id;
+      }
+      syncSharedBiomarkerSelection(hit.biomarker_id);
+      renderMetrics(hit.biomarker_id);
+      await renderPlot(hit.biomarker_id);
+      await renderSRComparison(hit.biomarker_id);
+    }
+
     async function refreshDashboardFromFilters() {
       const id = renderOptions();
       renderRankTable();
@@ -5226,9 +5303,13 @@
       setAllTrimSliders(10);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
+      if (srCategoryFilterEl) {
+        renderCategorySelect(srCategoryFilterEl, false, state.srCategoryFilter || 'all_core');
+      }
       renderScatterCategoryOptions(false);
       renderHistogramCategoryOptions(false);
       renderWaterfallOptions();
+      renderSrBiomarkerOptions();
       filterTestsCohortEl.value = 'both';
       filterTestsIncludeEnvEl.checked = false;
       renderFilterTestsBiomarkerOptions(false);
@@ -5328,6 +5409,25 @@
       });
       searchEl.addEventListener('change', applySearch);
       searchEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') applySearch(); });
+      srSearchEl?.addEventListener('change', applySrSearch);
+      srSearchEl?.addEventListener('keyup', (e) => { if (e.key === 'Enter') applySrSearch(); });
+      srBiomarkerEl?.addEventListener('change', async () => {
+        const id = srBiomarkerEl.value;
+        if (!id) return;
+        syncSharedBiomarkerSelection(id);
+        renderMetrics(id);
+        await renderPlot(id);
+        await renderSRComparison(id);
+      });
+      srCategoryFilterEl?.addEventListener('change', async () => {
+        state.srCategoryFilter = srCategoryFilterEl.value;
+        await renderSRComparison(srBiomarkerEl?.value || state.currentId);
+      });
+      srIncludeEnvEl?.addEventListener('change', async () => {
+        renderCategorySelect(srCategoryFilterEl, srIncludeEnvEl.checked, srCategoryFilterEl.value);
+        state.srCategoryFilter = srCategoryFilterEl.value;
+        await renderSRComparison(srBiomarkerEl?.value || state.currentId);
+      });
       categoryFilterEl.addEventListener('change', refreshDashboardFromFilters);
       includeEnvEl.addEventListener('change', async () => {
         renderCategorySelect(categoryFilterEl, includeEnvEl.checked, categoryFilterEl.value);

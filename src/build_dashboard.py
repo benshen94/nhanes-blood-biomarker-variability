@@ -3622,8 +3622,19 @@ def render_dashboard_html(
           </div>
         </div>
         <div class="sr-controls">
-          <label>Selected biomarker
-            <div id="sr-selected-biomarker" class="sr-selected">Uses the main dashboard biomarker selection.</div>
+          <label>Search biomarker
+            <input id="sr-search" list="sr-biomarker-options" placeholder="Type biomarker name..." autocomplete="off" spellcheck="false" />
+            <datalist id="sr-biomarker-options"></datalist>
+          </label>
+          <label>Biomarker
+            <select id="sr-biomarker"></select>
+          </label>
+          <label>Category
+            <select id="sr-category-filter"></select>
+          </label>
+          <label class="check-label"><input id="sr-include-env" type="checkbox" /> Include environmental/toxicant</label>
+          <label>Current selection
+            <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its SR Q-Q fit.</div>
           </label>
           <label>Age bin
             <input id="sr-age-bin-slider" type="range" min="0" max="12" step="1" value="6" />
