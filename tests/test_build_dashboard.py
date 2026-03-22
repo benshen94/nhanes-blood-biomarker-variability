@@ -117,13 +117,99 @@ class TestBuildDashboard(unittest.TestCase):
             specimen_title="Blood",
             specimen_lower="blood",
             has_clalit=True,
+            has_sr_comparison=True,
             specimen_switch_link="urinary.html",
         )
 
         self.assertIn('id="search" list="biomarker-options" placeholder="Type name, code, file..." autocomplete="off"', html)
         self.assertIn('id="waterfall-search" list="waterfall-biomarker-options" placeholder="Type biomarker name..." autocomplete="off"', html)
+        self.assertIn('id="tab-sr-comparison"', html)
+        self.assertIn("const HAS_SR_COMPARISON = true;", html)
         self.assertIn('id="full-view-skew-stat"', html)
         self.assertIn('id="filter-tests-full-skew-stat"', html)
+
+
+    def test_build_outputs_merges_sr_comparison_payload(self):
+        long_df = pd.DataFrame(
+            [
+                {
+                    "seqn": 1001,
+                    "cycle_start_year": 2001,
+                    "biomarker_id": "sr-marker",
+                    "age_years": 42.0,
+                    "value": 1.0,
+                    "sex": "female",
+                }
+            ]
+        )
+        catalog_df = pd.DataFrame(
+            [
+                {
+                    "biomarker_id": "sr-marker",
+                    "variable_name": "LBXSR",
+                    "biomarker_name": "SR marker",
+                    "unit": "mg/dL",
+                    "source_file_count": 1,
+                    "source_files": "TEST",
+                    "source_variable_count": 1,
+                    "source_variables": "LBXSR",
+                }
+            ]
+        )
+        sr_bundle = {
+            "summary_by_biomarker": {
+                "sr-marker": {
+                    "mean_r2": 0.91,
+                    "min_r2": 0.84,
+                    "median_r2": 0.90,
+                    "valid_bin_count": 7,
+                    "mean_slope_m": 1.1,
+                    "slope_m_sd": 0.2,
+                    "mean_intercept_c": 0.4,
+                    "intercept_c_sd": 0.1,
+                    "r2_by_age_bin": [{"age_bin": "40-44", "age_mid": 42.5, "r2": 0.88}],
+                }
+            },
+            "detail_by_biomarker": {
+                "sr-marker": {
+                    "bins": [
+                        {
+                            "age_bin": "40-44",
+                            "age_mid": 42.5,
+                            "r2": 0.88,
+                            "slope_m": 1.2,
+                            "intercept_c": 0.3,
+                            "nhanes_n": 55,
+                            "sr_n": 1000,
+                            "nhanes_q1": 0.8,
+                            "nhanes_median": 1.0,
+                            "nhanes_q3": 1.2,
+                            "sr_q1": 0.2,
+                            "sr_median": 0.5,
+                            "sr_q3": 0.9,
+                            "qq_sr_values": [0.2, 0.5, 0.9],
+                            "qq_biomarker_values": [0.8, 1.0, 1.2],
+                        }
+                    ]
+                }
+            },
+        }
+
+        _, metrics, _, series_payloads = build_outputs(
+            cv_df=pd.DataFrame(columns=["biomarker_id", "biomarker_name", "variable_name", "unit"]),
+            metrics_df=pd.DataFrame(),
+            catalog_df=catalog_df,
+            long_df=long_df,
+            raw_sample_n=50,
+            random_seed=42,
+            specimen_kind="blood",
+            sr_comparison_bundle=sr_bundle,
+        )
+
+        self.assertEqual(metrics[0]["sr_comparison_summary"]["mean_r2"], 0.91)
+        payload = next(iter(series_payloads.values()))
+        self.assertIn("sr_comparison", payload)
+        self.assertEqual(payload["sr_comparison"]["bins"][0]["age_bin"], "40-44")
 
     def test_build_outputs_drops_85_plus_age_bin(self):
         rows = []

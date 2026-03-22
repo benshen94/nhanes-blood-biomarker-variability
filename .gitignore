@@ -13,6 +13,7 @@ __pycache__/
 data/raw/
 data/processed/
 output/
+projects/sr_comparison/blood/sr_usa_2019_trajectories.npz
 
 # OS/editor
 .DS_Store

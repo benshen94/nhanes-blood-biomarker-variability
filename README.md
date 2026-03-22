@@ -11,6 +11,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/download_nhanes.py` downloads required NHANES XPT files (lab + demographics + questionnaire modules including `DIQ/MCQ/KIQ/BPQ/OSQ/VIQ/PFQ/HUQ`), with candidate selection controlled by `--candidate-column`.
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data, with candidate selection controlled by `--candidate-column`.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
+- `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds the blood-dashboard Q-Q comparison payload under `projects/sr_comparison/blood/`.
 - `src/build_dashboard.py` builds both static interactive HTML dashboards: blood (`dashboard/index.html`) and urinary (`dashboard/urinary.html`).
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
@@ -26,6 +27,7 @@ python3 src/compute_cv_metrics.py --in data/processed/biomarker_long.parquet --o
 python3 src/download_nhanes.py --manifest data/processed/lab_variable_manifest.parquet --candidate-column is_urine_candidate --download-manifest data/processed/download_manifest_urine.csv
 python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/lab_variable_manifest.parquet --out data/processed/urine --candidate-column is_urine_candidate
 python3 src/compute_cv_metrics.py --in data/processed/urine/biomarker_long.parquet --out data/processed/urine
+python3 src/build_sr_comparison.py --out-root projects/sr_comparison/blood
 python3 src/build_dashboard.py
 python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --png-all-disease-panels-age-out output/km_all_diseases_vs_full_by_age_panels.png --csv-all-disease-age-out output/km_all_diseases_age_summary.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png --png-asthma-age-out output/km_asthma_vs_full_by_age.png --csv-asthma-age-out output/km_asthma_counts_by_age.csv --min-disease-n 100
 python3 src/cluster_km_shapes.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --out-dir output/km_shape_clustering --min-disease-n 100 --k-min 2 --k-max 8 --seed 42
@@ -332,6 +334,30 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `data/processed/biomarker_catalog.parquet`
   - `data/processed/urine/biomarker_catalog.parquet`
 
+## SR comparison tab
+- `SR comparison` is available on the blood dashboard only.
+- Purpose:
+  - compare pooled NHANES blood biomarkers against the SR-model `X` distribution by age-bin shape, not by shared units
+  - quantify Q-Q agreement with `R²` while also exposing the fitted slope `m` and intercept `c`
+- Build inputs:
+  - NHANES blood long table: `data/processed/biomarker_long.parquet`
+  - external SR code rooted at the configured USA 2019 waterfall script + SR package path
+  - cached local output root: `projects/sr_comparison/blood/`
+- Analysis contract:
+  - age bins are `20-24` through `80-84`
+  - SR and NHANES are both trimmed within age bin to the `3rd-97th` percentile band before Q-Q fitting
+  - pooled blood biomarkers only in v1
+  - per-bin fit is `biomarker_quantile = m * sr_quantile + c`
+- UI behavior:
+  - one selected-bin Q-Q plot
+  - one `R²(age)` plot
+  - one coefficient plot for `m(age)` and `c(age)`
+  - main sortable biomarker table with selected-bin `R²`, `mean/min/median R²`, `mean/SD m`, `mean/SD c`, and valid-bin count
+  - secondary per-bin detail table for the selected biomarker
+- Interpretation:
+  - high `R²` means the biomarker and SR model share a similar distribution shape in that age bin
+  - `m` and `c` capture age-dependent scaling and offset differences even when shape agreement remains strong
+
 ## Median mode interpretation
 - `Plot Median` displays the age-binned median and IQR band (25th-75th percentile).
 - Trimming is symmetric by tail and is applied within each age bin before computing plotted summaries and trend metrics.
@@ -345,6 +371,7 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 ## Dashboard validation workflow
 - Regenerate both dashboards after UI or metric-surface changes:
 ```bash
+python3 src/build_sr_comparison.py --out-root projects/sr_comparison/blood
 python3 src/build_dashboard.py
 ```
 - Serve locally for browser validation:
@@ -352,7 +379,7 @@ python3 src/build_dashboard.py
 python3 -m http.server 8765 --directory .
 ```
 - Playwright/manual validation checklist used for the current redesign:
-  - blood tabs: `#dashboard`, `#compare`, `#filter-tests`, `#scatter`, `#hist`, `#waterfall`, `#info`
+  - blood tabs: `#dashboard`, `#compare`, `#filter-tests`, `#scatter`, `#hist`, `#waterfall`, `#sr-comparison`, `#info`
   - urinary spot-checks with preserved hash navigation (for example `urinary.html#compare` and switch back to `index.html#compare`)
   - representative interactions:
     - dashboard mode, cohort, and trim changes
@@ -360,6 +387,7 @@ python3 -m http.server 8765 --directory .
     - scatter X/Y metrics, category filtering, and label toggle
     - histogram metric, cohort, and category filtering
     - waterfall biomarker search/selection, cohort, and minimum-n changes
+    - SR comparison age-bin slider, ranking sort changes, biomarker row switching, and urine fallback from `#sr-comparison` to `#dashboard`
     - filter-tests clause editing and execution
   - keyboard focus visibility across specimen links, top tabs, and form controls
   - mobile-width spot checks for stacked navigation and control layouts
