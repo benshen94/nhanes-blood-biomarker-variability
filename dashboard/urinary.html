@@ -1434,6 +1434,14 @@
               <option value="male">Male</option>
             </select>
           </label>
+          <label id="waterfall-compare-wrap">
+            SR reference
+            <div class="check-label">
+              <input id="waterfall-compare-sr" type="checkbox" />
+              <span>Show SR model X side by side</span>
+            </div>
+            <div class="waterfall-caption">Switches the waterfall to the same 5-year age bins used by the SR comparison tab.</div>
+          </label>
           <label>Symmetric trim (% per tail)
             <input id="waterfall-trim-slider" type="range" min="0" max="25" step="5" value="10" />
             <div id="waterfall-trim-label" class="trim-caption">10% each tail kept out -> using 10-90 percentile band</div>
@@ -1688,7 +1696,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1774200415';
+    const DATA_VERSION = '1774209271';
     const HAS_CLALIT = false;
     const HAS_SR_COMPARISON = false;
     const SPECIMEN_TITLE = 'Urinary';
@@ -1811,6 +1819,8 @@
     const waterfallOptionsEl = document.getElementById('waterfall-biomarker-options');
     const waterfallBiomarkerEl = document.getElementById('waterfall-biomarker');
     const waterfallCohortEl = document.getElementById('waterfall-cohort');
+    const waterfallCompareWrapEl = document.getElementById('waterfall-compare-wrap');
+    const waterfallCompareSrEl = document.getElementById('waterfall-compare-sr');
     const waterfallTrimSliderEl = document.getElementById('waterfall-trim-slider');
     const waterfallTrimLabelEl = document.getElementById('waterfall-trim-label');
     const waterfallMinNEl = document.getElementById('waterfall-min-n');
@@ -1858,6 +1868,7 @@
       metricsById: new Map(),
       metadataById: new Map(),
       cache: new Map(),
+      srWaterfallReference: null,
       mode: 'cv',
       lastSingleMode: 'cv',
       currentId: null,
@@ -1895,19 +1906,19 @@
 
     const WATERFALL_QUARTILE_COLORS = ['#4B0055', '#2E6F95', '#3AB47D', '#F2E419'];
     const SR_COMPARISON_AGE_BINS = [
-      { label: '20-24', age_mid: 22.5 },
-      { label: '25-29', age_mid: 27.5 },
-      { label: '30-34', age_mid: 32.5 },
-      { label: '35-39', age_mid: 37.5 },
-      { label: '40-44', age_mid: 42.5 },
-      { label: '45-49', age_mid: 47.5 },
-      { label: '50-54', age_mid: 52.5 },
-      { label: '55-59', age_mid: 57.5 },
-      { label: '60-64', age_mid: 62.5 },
-      { label: '65-69', age_mid: 67.5 },
-      { label: '70-74', age_mid: 72.5 },
-      { label: '75-79', age_mid: 77.5 },
-      { label: '80-84', age_mid: 82.5 },
+      { label: '20-24', lo: 20, hi: 25, age_mid: 22.5 },
+      { label: '25-29', lo: 25, hi: 30, age_mid: 27.5 },
+      { label: '30-34', lo: 30, hi: 35, age_mid: 32.5 },
+      { label: '35-39', lo: 35, hi: 40, age_mid: 37.5 },
+      { label: '40-44', lo: 40, hi: 45, age_mid: 42.5 },
+      { label: '45-49', lo: 45, hi: 50, age_mid: 47.5 },
+      { label: '50-54', lo: 50, hi: 55, age_mid: 52.5 },
+      { label: '55-59', lo: 55, hi: 60, age_mid: 57.5 },
+      { label: '60-64', lo: 60, hi: 65, age_mid: 62.5 },
+      { label: '65-69', lo: 65, hi: 70, age_mid: 67.5 },
+      { label: '70-74', lo: 70, hi: 75, age_mid: 72.5 },
+      { label: '75-79', lo: 75, hi: 80, age_mid: 77.5 },
+      { label: '80-84', lo: 80, hi: 85, age_mid: 82.5 },
     ];
     const TOP_TABS = HAS_SR_COMPARISON
       ? ['dashboard', 'compare', 'filter-tests', 'scatter', 'hist', 'waterfall', 'sr-comparison', 'info']
@@ -2191,6 +2202,15 @@
       const r = await fetch(`${path}${sep}v=${DATA_VERSION}`, { cache: 'no-store' });
       if (!r.ok) throw new Error(`Failed to fetch ${path}: ${r.status}`);
       return await r.json();
+    }
+
+    async function fetchOptionalJson(path) {
+      try {
+        return await fetchJson(path);
+      } catch (error) {
+        console.warn(`Optional payload missing: ${path}`, error);
+        return null;
+      }
     }
 
     async function loadSeries(biomarkerId) {
@@ -2526,14 +2546,17 @@
       return sorted[base];
     }
 
-    function assignAgeBin(age) {
-      const a = Number(age);
-      if (!Number.isFinite(a)) return null;
-      for (let i = 0; i < WATERFALL_AGE_BINS.length; i += 1) {
-        const b = WATERFALL_AGE_BINS[i];
-        if (a >= b.lo && a < b.hi) return b.label;
+    function ageBinLabelFor(age, ageBins) {
+      const numericAge = Number(age);
+      if (!Number.isFinite(numericAge)) return null;
+      for (const ageBin of ageBins) {
+        if (numericAge >= ageBin.lo && numericAge < ageBin.hi) return ageBin.label;
       }
       return null;
+    }
+
+    function assignAgeBin(age) {
+      return ageBinLabelFor(age, WATERFALL_AGE_BINS);
     }
 
     function gaussianKde(values, xGrid) {
@@ -2568,6 +2591,217 @@
         if (x >= lo && x <= hi) idx.push(i);
       }
       return idx;
+    }
+
+    function waterfallUsesSrReference() {
+      return Boolean(waterfallCompareSrEl?.checked && state.srWaterfallReference);
+    }
+
+    function currentWaterfallAgeBins() {
+      if (waterfallUsesSrReference()) return SR_COMPARISON_AGE_BINS;
+      return WATERFALL_AGE_BINS;
+    }
+
+    function setWaterfallPlotHeight(compareSr) {
+      const waterfallEl = document.getElementById('waterfall-plot');
+      if (!waterfallEl) return;
+      if (!compareSr) {
+        waterfallEl.style.height = '';
+        return;
+      }
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      waterfallEl.style.height = mobile ? '1260px' : '980px';
+    }
+
+    function buildWaterfallRowsFromGroupedValues(groupedValues, ageBins, trimPct, minN, countByLabel = {}) {
+      const rows = [];
+      const trimLo = trimPct / 100;
+      const trimHi = 1 - trimLo;
+
+      for (const ageBin of ageBins) {
+        const label = ageBin.label;
+        const sourceValues = Array.isArray(groupedValues[label]) ? groupedValues[label].slice() : [];
+        const numericValues = sourceValues
+          .map(value => Number(value))
+          .filter(value => Number.isFinite(value))
+          .sort((a, b) => a - b);
+        if (!numericValues.length) continue;
+
+        const totalCount = Number(countByLabel[label] ?? numericValues.length);
+        if (totalCount < minN) continue;
+
+        let trimmedValues = numericValues;
+        if (trimPct > 0) {
+          const loCut = quantile(numericValues, trimLo);
+          const hiCut = quantile(numericValues, trimHi);
+          trimmedValues = numericValues.filter(value => value >= loCut && value <= hiCut);
+        }
+        if (trimmedValues.length < minN) continue;
+
+        rows.push({
+          label,
+          values: trimmedValues,
+          q1: quantile(trimmedValues, 0.25),
+          q2: quantile(trimmedValues, 0.50),
+          q3: quantile(trimmedValues, 0.75),
+          n: totalCount,
+        });
+      }
+
+      return rows;
+    }
+
+    function buildWaterfallRowsFromRawPoints(rawPoints, ageBins, trimPct, minN) {
+      const groupedValues = {};
+      for (const ageBin of ageBins) groupedValues[ageBin.label] = [];
+
+      for (const point of rawPoints || []) {
+        const age = Number(point.age_years);
+        const value = Number(point.value);
+        if (!Number.isFinite(age) || !Number.isFinite(value)) continue;
+
+        const label = ageBinLabelFor(age, ageBins);
+        if (!label) continue;
+
+        groupedValues[label].push(value);
+      }
+
+      return buildWaterfallRowsFromGroupedValues(groupedValues, ageBins, trimPct, minN);
+    }
+
+    function buildWaterfallRowsFromSrReference(srReference, ageBins, trimPct, minN) {
+      if (!srReference || !Array.isArray(srReference.bins)) return [];
+
+      const groupedValues = {};
+      const countByLabel = {};
+      const binByLabel = new Map(srReference.bins.map(bin => [bin.age_bin, bin]));
+
+      for (const ageBin of ageBins) {
+        const referenceBin = binByLabel.get(ageBin.label);
+        if (!referenceBin) continue;
+        groupedValues[ageBin.label] = Array.isArray(referenceBin.values_sample) ? referenceBin.values_sample : [];
+        countByLabel[ageBin.label] = Number(referenceBin.sr_n || 0);
+      }
+
+      return buildWaterfallRowsFromGroupedValues(groupedValues, ageBins, trimPct, minN, countByLabel);
+    }
+
+    function buildWaterfallDensityRows(rows) {
+      if (!rows.length) {
+        return {
+          rows: [],
+          xGrid: [],
+          yPositions: [],
+          xMin: 0,
+          xMax: 1,
+          maxDensity: 0,
+        };
+      }
+
+      let globalMin = Infinity;
+      let globalMax = -Infinity;
+      let allNonNegative = true;
+
+      for (const row of rows) {
+        const rowMin = Math.min(...row.values);
+        const rowMax = Math.max(...row.values);
+        if (rowMin < 0) allNonNegative = false;
+        if (rowMin < globalMin) globalMin = rowMin;
+        if (rowMax > globalMax) globalMax = rowMax;
+      }
+
+      const span = Math.max(1e-6, globalMax - globalMin);
+      const pad = span * 0.08;
+      const xMin = allNonNegative ? 0 : (globalMin - pad);
+      const xMax = globalMax + pad;
+      const gridN = 180;
+      const xGrid = Array.from({ length: gridN }, (_, index) => xMin + (index * (xMax - xMin) / (gridN - 1)));
+      const withDensity = rows.map(row => ({ ...row, density: gaussianKde(row.values, xGrid) }));
+
+      let maxDensity = 0;
+      for (const row of withDensity) {
+        for (const density of row.density) {
+          if (density > maxDensity) maxDensity = density;
+        }
+      }
+
+      const yPositions = withDensity.map((_, index) => withDensity.length - 1 - index);
+      return {
+        rows: withDensity,
+        xGrid,
+        yPositions,
+        xMin,
+        xMax,
+        maxDensity,
+      };
+    }
+
+    function buildWaterfallDensityRowsForAgeBins(rows, ageBins) {
+      const densityData = buildWaterfallDensityRows(rows);
+      const yByLabel = new Map();
+      for (let index = 0; index < ageBins.length; index += 1) {
+        const ageBin = ageBins[index];
+        yByLabel.set(ageBin.label, ageBins.length - 1 - index);
+      }
+      return {
+        ...densityData,
+        yByLabel,
+      };
+    }
+
+    function appendWaterfallPanelTraces(traces, densityData, panelConfig) {
+      const quartileNames = ['Q1', 'Q2', 'Q3', 'Q4'];
+      const amp = 0.82;
+
+      for (let rowIndex = 0; rowIndex < densityData.rows.length; rowIndex += 1) {
+        const row = densityData.rows[rowIndex];
+        const yBase = densityData.yByLabel
+          ? densityData.yByLabel.get(row.label)
+          : densityData.yPositions[rowIndex];
+        if (!Number.isFinite(yBase)) continue;
+
+        const yCurve = row.density.map(density => yBase + (densityData.maxDensity > 0 ? (density / densityData.maxDensity) * amp : 0));
+        const bounds = [Number.NEGATIVE_INFINITY, row.q1, row.q2, row.q3, Number.POSITIVE_INFINITY];
+
+        for (let quartileIndex = 0; quartileIndex < 4; quartileIndex += 1) {
+          const lo = bounds[quartileIndex];
+          const hi = bounds[quartileIndex + 1];
+          const indexes = rangeMask(densityData.xGrid, lo, hi);
+          if (indexes.length < 2) continue;
+
+          const xs = indexes.map(index => densityData.xGrid[index]);
+          const ys = indexes.map(index => yCurve[index]);
+          traces.push({
+            type: 'scatter',
+            mode: 'lines',
+            x: xs.concat(xs.slice().reverse()),
+            y: ys.concat(xs.map(() => yBase).reverse()),
+            xaxis: panelConfig.xaxis,
+            yaxis: panelConfig.yaxis,
+            fill: 'toself',
+            fillcolor: WATERFALL_QUARTILE_COLORS[quartileIndex],
+            line: { color: 'rgba(0,0,0,0)' },
+            name: quartileNames[quartileIndex],
+            legendgroup: quartileNames[quartileIndex],
+            showlegend: Boolean(panelConfig.showLegend && rowIndex === 0),
+            opacity: 0.96,
+            hovertemplate: `${panelConfig.label}<br>${row.label}<br>${quartileNames[quartileIndex]}<br>n=${row.n}<br>Q1=${formatNum(row.q1, 4)}<br>Median=${formatNum(row.q2, 4)}<br>Q3=${formatNum(row.q3, 4)}<extra></extra>`,
+          });
+        }
+
+        traces.push({
+          type: 'scatter',
+          mode: 'lines',
+          x: densityData.xGrid,
+          y: yCurve,
+          xaxis: panelConfig.xaxis,
+          yaxis: panelConfig.yaxis,
+          line: { color: '#111827', width: 1.6 },
+          hovertemplate: `${panelConfig.label}<br>${row.label}<br>n=${row.n}<br>Q1=${formatNum(row.q1, 4)}<br>Median=${formatNum(row.q2, 4)}<br>Q3=${formatNum(row.q3, 4)}<extra>density</extra>`,
+          name: `${panelConfig.label} density`,
+          showlegend: false,
+        });
+      }
     }
 
     function renderMetricRows(title, m, rawTotal, rawCap, statKey) {
@@ -3419,16 +3653,18 @@
     async function renderWaterfallPlot(biomarkerId = null) {
       const id = biomarkerId || waterfallBiomarkerEl.value || state.currentId;
       if (!id) return;
+
       const s = await loadSeries(id);
       if (!s) return;
       state.waterfallId = id;
 
       const cohort = waterfallCohortEl.value || 'pooled';
       const trimPct = normalizeTrimPct(waterfallTrimSliderEl.value);
-      const trimLo = trimPct / 100;
-      const trimHi = 1 - trimLo;
       const minN = Math.max(5, Math.min(1000, Number(waterfallMinNEl.value || 20)));
       waterfallMinNEl.value = String(minN);
+      const compareSr = waterfallUsesSrReference();
+      const ageBins = currentWaterfallAgeBins();
+      setWaterfallPlotHeight(compareSr);
 
       let raw = [];
       if (cohort === 'female' || cohort === 'male') {
@@ -3437,130 +3673,134 @@
         raw = s.raw_sample || [];
       }
 
-      const bins = {};
-      for (const b of WATERFALL_AGE_BINS) bins[b.label] = [];
-      for (const p of raw) {
-        const age = Number(p.age_years);
-        const value = Number(p.value);
-        if (!Number.isFinite(age) || !Number.isFinite(value)) continue;
-        const label = assignAgeBin(age);
-        if (!label) continue;
-        bins[label].push(value);
-      }
+      const biomarkerRows = buildWaterfallRowsFromRawPoints(raw, ageBins, trimPct, minN);
+      const displayName = s.display_name || s.biomarker_name || id;
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
 
-      const rows = [];
-      for (const b of WATERFALL_AGE_BINS) {
-        const vals = (bins[b.label] || []).slice().sort((a, z) => a - z);
-        if (vals.length < minN) continue;
-        let trimmed = vals;
-        if (trimPct > 0) {
-          const loCut = quantile(vals, trimLo);
-          const hiCut = quantile(vals, trimHi);
-          trimmed = vals.filter(v => v >= loCut && v <= hiCut);
-        }
-        if (trimmed.length < minN) continue;
-        const q1 = quantile(trimmed, 0.25);
-        const q2 = quantile(trimmed, 0.50);
-        const q3 = quantile(trimmed, 0.75);
-        rows.push({ label: b.label, values: trimmed, q1, q2, q3, n: trimmed.length });
-      }
-
-      if (!rows.length) {
+      if (!biomarkerRows.length) {
         Plotly.newPlot('waterfall-plot', [], applyPlotTheme({
-          title: 'No age bins pass minimum n for this biomarker/cohort',
-          xaxis: { title: s.display_name || s.biomarker_name || id },
+          title: compareSr
+            ? 'No 5-year age bins pass minimum n for this biomarker/cohort'
+            : 'No age bins pass minimum n for this biomarker/cohort',
+          xaxis: { title: displayName },
           yaxis: { title: 'Age bin' },
         }, mobile), { responsive: true, displaylogo: false });
         return;
       }
 
-      let globalMin = Infinity;
-      let globalMax = -Infinity;
-      let allNonNegative = true;
-      for (const r of rows) {
-        const lo = Math.min(...r.values);
-        const hi = Math.max(...r.values);
-        if (lo < 0) allNonNegative = false;
-        if (lo < globalMin) globalMin = lo;
-        if (hi > globalMax) globalMax = hi;
-      }
-      const span = Math.max(1e-6, globalMax - globalMin);
-      const pad = span * 0.08;
-      const xMin = allNonNegative ? 0 : (globalMin - pad);
-      const xMax = globalMax + pad;
-      const gridN = 180;
-      const xGrid = Array.from({ length: gridN }, (_, i) => xMin + (i * (xMax - xMin) / (gridN - 1)));
-
-      const withDensity = rows.map(r => ({ ...r, density: gaussianKde(r.values, xGrid) }));
-      let maxD = 0;
-      for (const r of withDensity) {
-        for (const d of r.density) if (d > maxD) maxD = d;
-      }
-      const amp = 0.82;
-
-      const traces = [];
-      const quartNames = ['Q1', 'Q2', 'Q3', 'Q4'];
-      const mobile = window.matchMedia('(max-width: 760px)').matches;
-
-      const yPos = withDensity.map((_, idx) => withDensity.length - 1 - idx);
-      for (let rowIdx = 0; rowIdx < withDensity.length; rowIdx += 1) {
-        const r = withDensity[rowIdx];
-        const yBase = yPos[rowIdx];
-        const yCurve = r.density.map(d => yBase + (maxD > 0 ? (d / maxD) * amp : 0));
-        const bounds = [Number.NEGATIVE_INFINITY, r.q1, r.q2, r.q3, Number.POSITIVE_INFINITY];
-
-        for (let q = 0; q < 4; q += 1) {
-          const lo = bounds[q];
-          const hi = bounds[q + 1];
-          const idx = rangeMask(xGrid, lo, hi);
-          if (idx.length < 2) continue;
-          const xs = idx.map(i => xGrid[i]);
-          const ys = idx.map(i => yCurve[i]);
-          traces.push({
-            type: 'scatter',
-            mode: 'lines',
-            x: xs.concat(xs.slice().reverse()),
-            y: ys.concat(xs.map(() => yBase).reverse()),
-            fill: 'toself',
-            fillcolor: WATERFALL_QUARTILE_COLORS[q],
-            line: { color: 'rgba(0,0,0,0)' },
-            name: quartNames[q],
-            legendgroup: quartNames[q],
-            showlegend: rowIdx === 0,
-            opacity: 0.96,
-            hovertemplate: `${r.label}<br>${quartNames[q]}<br>n=${r.n}<br>Q1=${formatNum(r.q1, 4)}<br>Median=${formatNum(r.q2, 4)}<br>Q3=${formatNum(r.q3, 4)}<extra></extra>`,
-          });
-        }
-
-        traces.push({
-          type: 'scatter',
-          mode: 'lines',
-          x: xGrid,
-          y: yCurve,
-          line: { color: '#111827', width: 1.6 },
-          hovertemplate: `${r.label}<br>n=${r.n}<br>Q1=${formatNum(r.q1, 4)}<br>Median=${formatNum(r.q2, 4)}<br>Q3=${formatNum(r.q3, 4)}<extra>density</extra>`,
-          name: `${r.label} density`,
-          showlegend: false,
+      if (!compareSr) {
+        const densityData = buildWaterfallDensityRows(biomarkerRows);
+        const traces = [];
+        appendWaterfallPanelTraces(traces, densityData, {
+          xaxis: 'x',
+          yaxis: 'y',
+          label: displayName,
+          showLegend: true,
         });
+
+        Plotly.newPlot('waterfall-plot', traces, applyPlotTheme({
+          title: `${displayName} — age-stratified waterfall (${cohort})`,
+          annotations: [{
+            xref: 'paper',
+            yref: 'paper',
+            x: 1,
+            y: 1.1,
+            showarrow: false,
+            text: `Outliers: ${trimLabelFromPct(trimPct)}, min n/bin: ${minN}, bins shown: ${densityData.rows.length}`,
+            font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+          }],
+          xaxis: { title: 'Biomarker value' },
+          yaxis: {
+            title: 'Age bin',
+            tickmode: 'array',
+            tickvals: densityData.yPositions,
+            ticktext: densityData.rows.map(row => row.label),
+          },
+          legend: { orientation: 'v', title: { text: 'Quartiles' } },
+        }, mobile), { responsive: true, displaylogo: false });
+        return;
       }
 
+      const srRows = buildWaterfallRowsFromSrReference(state.srWaterfallReference, ageBins, trimPct, minN);
+      if (!srRows.length) {
+        Plotly.newPlot('waterfall-plot', [], applyPlotTheme({
+          title: 'SR reference payload is unavailable for side-by-side waterfall mode',
+          xaxis: { title: displayName },
+          yaxis: { title: 'Age bin' },
+        }, mobile), { responsive: true, displaylogo: false });
+        return;
+      }
+
+      const biomarkerDensity = buildWaterfallDensityRowsForAgeBins(biomarkerRows, ageBins);
+      const srDensity = buildWaterfallDensityRowsForAgeBins(srRows, ageBins);
+      const traces = [];
+      appendWaterfallPanelTraces(traces, biomarkerDensity, {
+        xaxis: 'x',
+        yaxis: 'y',
+        label: `${displayName} (${cohort})`,
+        showLegend: true,
+      });
+      appendWaterfallPanelTraces(traces, srDensity, {
+        xaxis: 'x2',
+        yaxis: 'y2',
+        label: 'SR model X (pooled reference)',
+        showLegend: false,
+      });
+
+      const tickVals = ageBins.map(ageBin => biomarkerDensity.yByLabel.get(ageBin.label));
+      const tickText = ageBins.map(ageBin => ageBin.label);
       Plotly.newPlot('waterfall-plot', traces, applyPlotTheme({
-        title: `${s.display_name || s.biomarker_name} — age-stratified waterfall (${cohort})`,
-        annotations: [{
-          xref: 'paper',
-          yref: 'paper',
-          x: 1,
-          y: 1.1,
-          showarrow: false,
-          text: `Outliers: ${trimLabelFromPct(trimPct)}, min n/bin: ${minN}, bins shown: ${withDensity.length}`,
-          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
-        }],
-        xaxis: { title: 'Biomarker value' },
+        title: `${displayName} vs SR model X — side-by-side waterfall`,
+        annotations: [
+          {
+            xref: 'paper',
+            yref: 'paper',
+            x: 0.23,
+            y: 1.11,
+            showarrow: false,
+            text: `${displayName} (${cohort})`,
+            font: { size: mobile ? 10 : 12, color: '#102a43' },
+          },
+          {
+            xref: 'paper',
+            yref: 'paper',
+            x: 0.77,
+            y: 1.11,
+            showarrow: false,
+            text: 'SR model X (pooled reference)',
+            font: { size: mobile ? 10 : 12, color: '#102a43' },
+          },
+          {
+            xref: 'paper',
+            yref: 'paper',
+            x: 0.5,
+            y: 1.18,
+            showarrow: false,
+            text: `5-year bins used by SR comparison | Outliers: ${trimLabelFromPct(trimPct)} | min n/bin: ${minN}`,
+            font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+          },
+        ],
+        xaxis: {
+          domain: [0, 0.46],
+          title: 'Biomarker value',
+        },
         yaxis: {
+          domain: [0, 1],
           title: 'Age bin',
           tickmode: 'array',
-          tickvals: yPos,
-          ticktext: withDensity.map(r => r.label),
+          tickvals: tickVals,
+          ticktext: tickText,
+        },
+        xaxis2: {
+          domain: [0.54, 1],
+          title: 'SR model X value',
+        },
+        yaxis2: {
+          domain: [0, 1],
+          tickmode: 'array',
+          tickvals: tickVals,
+          ticktext: tickText,
+          showticklabels: false,
         },
         legend: { orientation: 'v', title: { text: 'Quartiles' } },
       }, mobile), { responsive: true, displaylogo: false });
@@ -5266,15 +5506,19 @@
     }
 
     async function init() {
-      const [metadata, metrics, index] = await Promise.all([
+      const [metadata, metrics, index, srWaterfallReference] = await Promise.all([
         fetchJson(`${DATA_BASE}/metadata.json`),
         fetchJson(`${DATA_BASE}/metrics.json`),
         fetchJson(`${DATA_BASE}/series_index.json`),
+        HAS_SR_COMPARISON
+          ? fetchOptionalJson(`${DATA_BASE}/sr_waterfall_reference.json`)
+          : Promise.resolve(null),
       ]);
 
       state.metadata = metadata;
       state.metrics = metrics;
       state.seriesIndex = index;
+      state.srWaterfallReference = srWaterfallReference;
       state.metricsById = new Map(metrics.map(m => [m.biomarker_id, m]));
       state.metadataById = new Map(metadata.map(m => [m.biomarker_id, m]));
 
@@ -5295,6 +5539,12 @@
       if (!HAS_SR_COMPARISON) {
         if (tabSrComparisonBtn) tabSrComparisonBtn.style.display = 'none';
         if (panelSrComparison) panelSrComparison.style.display = 'none';
+      }
+      if (waterfallCompareSrEl) {
+        waterfallCompareSrEl.checked = false;
+      }
+      if (waterfallCompareWrapEl && !state.srWaterfallReference) {
+        waterfallCompareWrapEl.style.display = 'none';
       }
       const tabPairs = [
         [tabDashboardBtn, panelDashboard],
@@ -5652,6 +5902,9 @@
         if (state.currentId) renderPlot(state.currentId);
         renderWaterfallPlot(state.waterfallId);
       });
+      waterfallCompareSrEl?.addEventListener('change', () => {
+        renderWaterfallPlot(state.waterfallId);
+      });
       filterClauseSaveBtn.addEventListener('click', () => {
         upsertFilterClause(false);
       });
@@ -5789,6 +6042,7 @@
         const srQqEl = document.getElementById('sr-qq-plot');
         const srR2El = document.getElementById('sr-r2-plot');
         const srCoefEl = document.getElementById('sr-coef-plot');
+        setWaterfallPlotHeight(waterfallUsesSrReference());
         if (plotEl) Plotly.Plots.resize(plotEl);
         if (compareEl) Plotly.Plots.resize(compareEl);
         if (scatterEl) Plotly.Plots.resize(scatterEl);

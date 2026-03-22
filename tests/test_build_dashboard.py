@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -8,7 +10,7 @@ import pandas as pd
 
 sys.path.insert(0, str((Path(__file__).resolve().parents[1] / "src")))
 
-from build_dashboard import build_outputs, process_clalit_data, render_dashboard_html
+from build_dashboard import build_outputs, process_clalit_data, render_dashboard_html, write_dashboard_bundle
 
 
 class TestBuildDashboard(unittest.TestCase):
@@ -127,6 +129,7 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertIn('id="sr-search" list="sr-biomarker-options" placeholder="Type biomarker name..." autocomplete="off"', html)
         self.assertIn('id="sr-biomarker"', html)
         self.assertIn('id="sr-category-filter"', html)
+        self.assertIn('id="waterfall-compare-sr" type="checkbox"', html)
         self.assertIn("const HAS_SR_COMPARISON = true;", html)
         self.assertIn('id="full-view-skew-stat"', html)
         self.assertIn('id="filter-tests-full-skew-stat"', html)
@@ -213,6 +216,34 @@ class TestBuildDashboard(unittest.TestCase):
         payload = next(iter(series_payloads.values()))
         self.assertIn("sr_comparison", payload)
         self.assertEqual(payload["sr_comparison"]["bins"][0]["age_bin"], "40-44")
+
+    def test_write_dashboard_bundle_writes_shared_sr_reference_payload(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            out_html = root / "dashboard" / "index.html"
+            out_json = root / "dashboard" / "dashboard_data.json"
+
+            write_dashboard_bundle(
+                out_html=out_html,
+                out_json=out_json,
+                data_dir_name="data",
+                metadata=pd.DataFrame(),
+                metrics=[],
+                series_index={},
+                series_payloads={},
+                raw_sample_n=50,
+                shared_payloads={
+                    "sr_waterfall_reference.json": {
+                        "age_bins": ["20-24"],
+                        "bins": [{"age_bin": "20-24", "values_sample": [0.1, 0.2], "sr_n": 100}],
+                    }
+                },
+            )
+
+            shared_path = out_html.parent / "data" / "sr_waterfall_reference.json"
+            payload = json.loads(shared_path.read_text())
+            self.assertEqual(payload["bins"][0]["age_bin"], "20-24")
+            self.assertEqual(payload["bins"][0]["sr_n"], 100)
 
     def test_build_outputs_drops_85_plus_age_bin(self):
         rows = []

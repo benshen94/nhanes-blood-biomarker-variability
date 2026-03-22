@@ -12,7 +12,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data, with candidate selection controlled by `--candidate-column`.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds the blood-dashboard Q-Q comparison payload under `projects/sr_comparison/blood/`.
-- `src/build_dashboard.py` builds both static interactive HTML dashboards: blood (`dashboard/index.html`) and urinary (`dashboard/urinary.html`).
+- `src/build_dashboard.py` builds both static interactive HTML dashboards: blood (`dashboard/index.html`) and urinary (`dashboard/urinary.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
@@ -153,6 +153,9 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `dashboard/data/series/*.json`
   - `dashboard/data_urine/series/*.json`
 - Series are fetched ad hoc only when a biomarker is selected/searched.
+- The blood dashboard also loads one shared SR reference payload:
+  - `dashboard/data/sr_waterfall_reference.json`
+  - it contains compact quantile-sampled SR-model `X` distributions for the 5-year age bins used by the SR comparison analysis
 
 ## Plot modes
 - In `Dashboard` analysis view, use:
@@ -210,6 +213,32 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - horizontal bar chart with hover details (`rho`, `p`, `n_bins`, negative-trend flag, biomarker id)
   - in `Both` cohort mode, female and male bars are shown side-by-side on the same biomarker list
   - blood dashboard includes a `Clalit vs NHANES Agreement` scatter panel; urinary dashboard keeps the panel but shows a placeholder (no urinary Clalit overlay configured)
+
+## Waterfall tab
+- Use `Waterfall` (top tab) to inspect age-stratified full-value distributions for one biomarker.
+- Controls:
+  - biomarker search + selector
+  - cohort selector (`Pooled`, `Female`, `Male`)
+  - symmetric trim slider shared with the rest of the dashboard
+  - minimum `n` per age bin
+  - blood only: `Show SR model X side by side`
+- Default mode keeps the legacy 10-year waterfall bins (`20-29` through `80-89`, plus `90+` when present).
+- When `Show SR model X side by side` is enabled:
+  - the waterfall switches to the SR comparison 5-year bins (`20-24` through `80-84`)
+  - the left panel shows the selected biomarker
+  - the right panel shows the cached SR-model `X` reference
+  - the SR panel is pooled-only and is meant for visual diagnosis of the SR Q-Q score, not as a separate sex-specific reference
+
+## SR comparison outputs
+- `src/build_sr_comparison.py` writes:
+  - `projects/sr_comparison/blood/biomarker_qq_summary.csv`
+  - `projects/sr_comparison/blood/biomarker_qq_detail.csv`
+  - `projects/sr_comparison/blood/dashboard_payload.json`
+  - `projects/sr_comparison/blood/run_manifest.json`
+- `dashboard_payload.json` now includes:
+  - per-biomarker SR Q-Q summaries and detail rows
+  - `sr_reference_bins` for the quartile-level SR summary
+  - `sr_waterfall_reference`, a compact quantile-sampled SR distribution cache used by the waterfall side-by-side viewer
 
 ## Filter Tests tab
 - Use `Filter Tests` (top tab) to build logical clause filters over trend metrics and return matching tests.

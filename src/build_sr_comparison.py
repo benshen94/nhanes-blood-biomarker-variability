@@ -35,6 +35,7 @@ TRIM_LO = 0.03
 TRIM_HI = 0.97
 MIN_BIN_N = 30
 QQ_PROBABILITIES = np.linspace(0.01, 0.99, 99)
+WATERFALL_SAMPLE_PROBABILITIES = np.linspace(0.001, 0.999, 801)
 SR_N_SIM = 100_000
 SR_TMAX = 120
 SR_SAVE_TIMES = 1
@@ -63,9 +64,16 @@ def rounded_list(values: np.ndarray | list[float], digits: int = 6) -> list[floa
     return [round(float(v), digits) for v in arr.tolist()]
 
 
-def trim_distribution(values: np.ndarray | pd.Series, lo: float = TRIM_LO, hi: float = TRIM_HI) -> np.ndarray:
+def clean_sorted_values(values: np.ndarray | pd.Series) -> np.ndarray:
     arr = np.asarray(values, dtype=float)
     arr = arr[np.isfinite(arr)]
+    if arr.size == 0:
+        return np.array([], dtype=float)
+    return np.sort(arr.astype(float))
+
+
+def trim_distribution(values: np.ndarray | pd.Series, lo: float = TRIM_LO, hi: float = TRIM_HI) -> np.ndarray:
+    arr = clean_sorted_values(values)
     if arr.size == 0:
         return np.array([], dtype=float)
 
@@ -82,6 +90,16 @@ def quartiles(values: np.ndarray) -> tuple[float | None, float | None, float | N
         return None, None, None
     q1, median, q3 = np.quantile(values, [0.25, 0.50, 0.75])
     return safe_float(q1), safe_float(median), safe_float(q3)
+
+
+def build_quantile_sample(
+    values: np.ndarray,
+    probabilities: np.ndarray = WATERFALL_SAMPLE_PROBABILITIES,
+) -> list[float]:
+    if values.size == 0:
+        return []
+    sample = np.quantile(values, probabilities)
+    return rounded_list(sample)
 
 
 def compute_qq_fit(
@@ -218,6 +236,23 @@ def load_or_build_sr_cache(
     return tspan, paths, death_times, "rerun"
 
 
+def extract_sr_alive_distributions(
+    tspan: np.ndarray,
+    paths: np.ndarray,
+    death_times: np.ndarray,
+) -> dict[str, np.ndarray]:
+    distributions: dict[str, np.ndarray] = {}
+
+    for age_bin in AGE_BIN_LABELS:
+        age_mid = AGE_BIN_MIDS[age_bin]
+        t_idx = int(np.argmin(np.abs(tspan - age_mid)))
+        alive_mask = death_times > age_mid
+        alive_values = clean_sorted_values(paths[alive_mask, t_idx])
+        distributions[age_bin] = alive_values
+
+    return distributions
+
+
 def build_sr_reference_rows(
     tspan: np.ndarray,
     paths: np.ndarray,
@@ -225,13 +260,11 @@ def build_sr_reference_rows(
 ) -> tuple[list[dict[str, Any]], dict[str, np.ndarray]]:
     rows: list[dict[str, Any]] = []
     distributions: dict[str, np.ndarray] = {}
+    alive_distributions = extract_sr_alive_distributions(tspan, paths, death_times)
 
     for age_bin in AGE_BIN_LABELS:
         age_mid = AGE_BIN_MIDS[age_bin]
-        t_idx = int(np.argmin(np.abs(tspan - age_mid)))
-        alive_mask = death_times > age_mid
-        alive_values = np.asarray(paths[alive_mask, t_idx], dtype=float)
-        trimmed = trim_distribution(alive_values)
+        trimmed = trim_distribution(alive_distributions[age_bin])
         q1, median, q3 = quartiles(trimmed)
         distributions[age_bin] = trimmed
         rows.append(
@@ -248,10 +281,42 @@ def build_sr_reference_rows(
     return rows, distributions
 
 
+def build_sr_waterfall_reference(
+    tspan: np.ndarray,
+    paths: np.ndarray,
+    death_times: np.ndarray,
+) -> dict[str, Any]:
+    alive_distributions = extract_sr_alive_distributions(tspan, paths, death_times)
+    bins: list[dict[str, Any]] = []
+
+    for age_bin in AGE_BIN_LABELS:
+        age_mid = AGE_BIN_MIDS[age_bin]
+        alive_values = alive_distributions[age_bin]
+        q1, median, q3 = quartiles(alive_values)
+        bins.append(
+            {
+                "age_bin": age_bin,
+                "age_mid": age_mid,
+                "sr_n": int(alive_values.size),
+                "sr_q1": q1,
+                "sr_median": median,
+                "sr_q3": q3,
+                "values_sample": build_quantile_sample(alive_values),
+            }
+        )
+
+    return {
+        "age_bins": AGE_BIN_LABELS,
+        "sample_probabilities": rounded_list(WATERFALL_SAMPLE_PROBABILITIES),
+        "bins": bins,
+    }
+
+
 def build_dashboard_payload(
     long_df: pd.DataFrame,
     sr_reference_rows: list[dict[str, Any]],
     sr_distributions: dict[str, np.ndarray],
+    sr_waterfall_reference: dict[str, Any],
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
     use = long_df[["biomarker_id", "biomarker_name", "age_years", "value"]].copy()
     use = use.dropna(subset=["biomarker_id", "value", "age_years"])
@@ -372,6 +437,7 @@ def build_dashboard_payload(
         "summary_by_biomarker": summary_by_biomarker,
         "detail_by_biomarker": detail_by_biomarker,
         "sr_reference_bins": sr_reference_rows,
+        "sr_waterfall_reference": sr_waterfall_reference,
     }
     return payload, pd.DataFrame(summary_rows), pd.DataFrame(detail_rows)
 
@@ -402,7 +468,13 @@ def main() -> None:
         force_rerun=args.force_rerun,
     )
     sr_reference_rows, sr_distributions = build_sr_reference_rows(tspan, paths, death_times)
-    payload, summary_df, detail_df = build_dashboard_payload(long_df, sr_reference_rows, sr_distributions)
+    sr_waterfall_reference = build_sr_waterfall_reference(tspan, paths, death_times)
+    payload, summary_df, detail_df = build_dashboard_payload(
+        long_df,
+        sr_reference_rows,
+        sr_distributions,
+        sr_waterfall_reference,
+    )
 
     summary_path = out_root / "biomarker_qq_summary.csv"
     detail_path = out_root / "biomarker_qq_detail.csv"
@@ -426,6 +498,7 @@ def main() -> None:
             "tmax": SR_TMAX,
             "save_times": SR_SAVE_TIMES,
         },
+        "waterfall_reference_sample_n": int(len(WATERFALL_SAMPLE_PROBABILITIES)),
         "age_bins": AGE_BIN_LABELS,
         "trim_rule": {"lo": TRIM_LO, "hi": TRIM_HI},
         "min_bin_n": MIN_BIN_N,

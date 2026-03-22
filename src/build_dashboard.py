@@ -3712,6 +3712,17 @@ def load_sr_comparison_bundle(root: str | Path | None) -> dict | None:
     return json.loads(payload_path.read_text(encoding="utf-8"))
 
 
+def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, dict]:
+    if not sr_comparison_bundle:
+        return {}
+
+    sr_waterfall_reference = sr_comparison_bundle.get("sr_waterfall_reference")
+    if not sr_waterfall_reference:
+        return {}
+
+    return {"sr_waterfall_reference.json": sr_waterfall_reference}
+
+
 def write_dashboard_bundle(
     out_html: Path,
     out_json: Path,
@@ -3721,9 +3732,11 @@ def write_dashboard_bundle(
     series_index: dict[str, str],
     series_payloads: dict[str, dict],
     raw_sample_n: int,
+    shared_payloads: dict[str, dict] | None = None,
 ) -> None:
     data_dir = out_html.parent / data_dir_name
     series_dir = data_dir / "series"
+    shared_payloads = shared_payloads or {}
 
     ensure_dir(out_html.parent)
     ensure_dir(data_dir)
@@ -3740,6 +3753,18 @@ def write_dashboard_bundle(
     (data_dir / "series_index.json").write_text(
         json.dumps(series_index, ensure_ascii=True, allow_nan=False), encoding="utf-8"
     )
+
+    shared_file_names = ["sr_waterfall_reference.json"]
+    for file_name in shared_file_names:
+        shared_path = data_dir / file_name
+        if file_name in shared_payloads:
+            shared_path.write_text(
+                json.dumps(shared_payloads[file_name], ensure_ascii=True, allow_nan=False),
+                encoding="utf-8",
+            )
+            continue
+        if shared_path.exists():
+            shared_path.unlink()
 
     for rel, payload in series_payloads.items():
         p = data_dir / rel
@@ -3868,6 +3893,7 @@ def main() -> None:
         series_index=blood_series_index,
         series_payloads=blood_series_payloads,
         raw_sample_n=args.raw_sample_n,
+        shared_payloads=dashboard_shared_payloads(sr_comparison_bundle),
     )
     write_dashboard_bundle(
         out_html=urine_out_html,
@@ -3878,6 +3904,7 @@ def main() -> None:
         series_index=urine_series_index,
         series_payloads=urine_series_payloads,
         raw_sample_n=args.raw_sample_n,
+        shared_payloads=None,
     )
 
     blood_self_href = os.path.relpath(blood_out_html, start=blood_out_html.parent).replace(os.sep, "/")

@@ -14,6 +14,7 @@ from build_sr_comparison import (
     AGE_BIN_MIDS,
     assign_age_bins,
     build_sr_reference_rows,
+    build_sr_waterfall_reference,
     compute_qq_fit,
     summarize_biomarker_bins,
     trim_distribution,
@@ -76,6 +77,19 @@ class TestBuildSrComparison(unittest.TestCase):
         self.assertEqual([row["age_bin"] for row in rows], AGE_BIN_LABELS)
         self.assertEqual(set(distributions.keys()), set(AGE_BIN_LABELS))
         self.assertTrue(all(distributions[label].size > 0 for label in AGE_BIN_LABELS))
+
+    def test_build_sr_waterfall_reference_emits_quantile_samples(self):
+        tspan = np.array([AGE_BIN_MIDS[label] for label in AGE_BIN_LABELS], dtype=float)
+        base = np.linspace(0.5, 50.0, 60, dtype=float)
+        paths = np.column_stack([base + idx for idx, _ in enumerate(AGE_BIN_LABELS)])
+        death_times = np.full(len(base), np.inf, dtype=float)
+
+        payload = build_sr_waterfall_reference(tspan, paths, death_times)
+
+        self.assertEqual(payload["age_bins"], AGE_BIN_LABELS)
+        self.assertEqual(len(payload["bins"]), len(AGE_BIN_LABELS))
+        self.assertEqual(len(payload["sample_probabilities"]), len(payload["bins"][0]["values_sample"]))
+        self.assertGreater(payload["bins"][0]["sr_n"], 0)
 
 
 if __name__ == "__main__":
