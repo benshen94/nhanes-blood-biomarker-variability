@@ -3661,10 +3661,16 @@ def render_dashboard_html(
           </label>
         </div>
         <div id="sr-summary-strip" class="sr-stat-strip"></div>
-        <div id="sr-qq-plot"></div>
+        <div class="sr-qq-shell">
+          <div id="sr-qq-plot"></div>
+        </div>
         <div class="sr-mini-grid">
-          <div id="sr-r2-plot"></div>
-          <div id="sr-coef-plot"></div>
+          <div class="sr-mini-shell">
+            <div id="sr-r2-plot"></div>
+          </div>
+          <div class="sr-mini-shell">
+            <div id="sr-coef-plot"></div>
+          </div>
         </div>
         <div class="sr-section-head">
           <h3>Biomarker Ranking</h3>

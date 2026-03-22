@@ -548,9 +548,19 @@
     }
     .sr-mini-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(360px, 420px));
       gap: 14px;
       margin: 14px 0 20px 0;
+      justify-content: center;
+    }
+    .sr-qq-shell {
+      width: min(920px, 100%);
+      margin: 0 auto;
+    }
+    .sr-mini-shell {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
     }
     .sr-section-head {
       margin: 18px 0 10px 0;
@@ -563,9 +573,9 @@
       margin: 0;
       color: var(--ink-soft);
     }
-    #sr-qq-plot { height: 460px; }
+    #sr-qq-plot { height: 700px; }
     #sr-r2-plot,
-    #sr-coef-plot { height: 300px; }
+    #sr-coef-plot { height: 380px; }
     .filter-lab {
       display: grid;
       gap: 16px;
@@ -1083,9 +1093,11 @@
       #plot { height: 380px; }
       #compare-plot { height: 500px; }
       #compare-clalit-plot { height: 440px; }
-      #sr-qq-plot { height: 380px; }
+      .sr-qq-shell,
+      .sr-mini-shell { width: 100%; max-width: none; }
+      #sr-qq-plot { height: 500px; }
       #sr-r2-plot,
-      #sr-coef-plot { height: 260px; }
+      #sr-coef-plot { height: 320px; }
       .compare-controls label { width: 100%; }
       .compare-controls select,
       .compare-controls input { width: 100%; }
@@ -1120,6 +1132,9 @@
       #plot { height: 340px; }
       #compare-plot { height: 440px; }
       #compare-clalit-plot { height: 440px; }
+      #sr-qq-plot { height: 420px; }
+      #sr-r2-plot,
+      #sr-coef-plot { height: 280px; }
       #scatter-plot { height: 440px; }
       #hist-plot { height: 420px; }
       #waterfall-plot { height: 500px; }
@@ -1480,10 +1495,16 @@
           </label>
         </div>
         <div id="sr-summary-strip" class="sr-stat-strip"></div>
-        <div id="sr-qq-plot"></div>
+        <div class="sr-qq-shell">
+          <div id="sr-qq-plot"></div>
+        </div>
         <div class="sr-mini-grid">
-          <div id="sr-r2-plot"></div>
-          <div id="sr-coef-plot"></div>
+          <div class="sr-mini-shell">
+            <div id="sr-r2-plot"></div>
+          </div>
+          <div class="sr-mini-shell">
+            <div id="sr-coef-plot"></div>
+          </div>
         </div>
         <div class="sr-section-head">
           <h3>Biomarker Ranking</h3>
@@ -1738,8 +1759,8 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1774200217';
-    const HAS_CLALIT = false;
+    const DATA_VERSION = '1774200415';
+    const HAS_CLALIT = true;
     const HAS_SR_COMPARISON = true;
     const SPECIMEN_TITLE = 'Blood';
     const SPECIMEN_LABEL = 'blood';
