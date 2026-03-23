@@ -3618,7 +3618,7 @@ def render_dashboard_html(
         <div class="panel-header">
           <div>
             <h2 class="panel-title">SR Comparison</h2>
-            <p class="panel-copy">Compare pooled blood biomarkers against the SR-model `X` distribution with trimmed age-bin Q-Q fits.</p>
+            <p class="panel-copy">Compare pooled blood biomarkers against the alive-only SR-model `X` distribution in matching 5-year age bins.</p>
           </div>
         </div>
         <div class="sr-controls">
@@ -3640,12 +3640,24 @@ def render_dashboard_html(
             <input id="sr-age-bin-slider" type="range" min="0" max="12" step="1" value="6" />
             <div id="sr-age-bin-label" class="trim-caption">50-54</div>
           </label>
+          <label>Biomarker tail trim
+            <select id="sr-trim-mode">
+              <option value="all">0% each tail</option>
+              <option value="trim_3_97" selected>3% each tail</option>
+              <option value="trim_5_95">5% each tail</option>
+              <option value="trim_10_90">10% each tail</option>
+            </select>
+          </label>
           <label>Sort main table by
             <select id="sr-sort-field">
               <option value="current_bin_r2">Selected-bin R²</option>
               <option value="mean_r2" selected>Mean R²</option>
               <option value="min_r2">Minimum R²</option>
               <option value="median_r2">Median R²</option>
+              <option value="current_bin_wasserstein_z">Selected-bin z-Wasserstein</option>
+              <option value="mean_wasserstein_z">Mean z-Wasserstein</option>
+              <option value="min_wasserstein_z">Minimum z-Wasserstein</option>
+              <option value="median_wasserstein_z">Median z-Wasserstein</option>
               <option value="valid_bin_count">Valid bins</option>
               <option value="mean_slope_m">Mean m</option>
               <option value="slope_m_sd">SD m</option>
@@ -3679,7 +3691,7 @@ def render_dashboard_html(
         <div class="table-wrap"><table id="sr-rank-table"></table></div>
         <div class="sr-section-head">
           <h3>Per-Bin Fit Details</h3>
-          <p>Inspect how `R²`, slope `m`, and intercept `c` change across age bins for the selected biomarker.</p>
+          <p>Inspect how `R²`, z-scored Wasserstein distance, slope `m`, and intercept `c` change across age bins for the selected biomarker.</p>
         </div>
         <div class="table-wrap"><table id="sr-bin-table"></table></div>
       </div>

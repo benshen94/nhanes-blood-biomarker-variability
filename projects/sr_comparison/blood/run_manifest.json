@@ -1,11 +1,11 @@
 {
-  "built_at_unix": 1774209145,
-  "duration_seconds": 43.42,
+  "built_at_unix": 1774254040,
+  "duration_seconds": 214.54,
   "long_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/data/processed/biomarker_long.parquet",
   "out_root": "projects/sr_comparison/blood",
   "sr_script_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py",
   "sr_package_root": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python",
-  "sr_source": "rerun",
+  "sr_source": "local_cache",
   "sr_model": {
     "n_sim": 100000,
     "tmax": 120,
@@ -27,10 +27,38 @@
     "75-79",
     "80-84"
   ],
-  "trim_rule": {
-    "lo": 0.03,
-    "hi": 0.97
-  },
+  "default_trim_mode": "trim_3_97",
+  "trim_modes": [
+    {
+      "key": "all",
+      "label": "0% each tail",
+      "tail_pct": 0,
+      "lo": 0.0,
+      "hi": 1.0
+    },
+    {
+      "key": "trim_3_97",
+      "label": "3% each tail",
+      "tail_pct": 3,
+      "lo": 0.03,
+      "hi": 0.97
+    },
+    {
+      "key": "trim_5_95",
+      "label": "5% each tail",
+      "tail_pct": 5,
+      "lo": 0.05,
+      "hi": 0.95
+    },
+    {
+      "key": "trim_10_90",
+      "label": "10% each tail",
+      "tail_pct": 10,
+      "lo": 0.1,
+      "hi": 0.9
+    }
+  ],
+  "sr_reference_tail_policy": "alive_only_no_tail_trimming",
   "min_bin_n": 30,
   "biomarker_count": 689
 }

@@ -227,6 +227,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - the waterfall switches to the SR comparison 5-year bins (`20-24` through `80-84`)
   - the left panel shows the selected biomarker
   - the right panel shows the cached SR-model `X` reference
+  - the biomarker panel still respects the trim slider, but the SR `X` panel always stays alive-only with no tail clipping
   - the SR panel is pooled-only and is meant for visual diagnosis of the SR Q-Q score, not as a separate sex-specific reference
 
 ## SR comparison outputs
@@ -236,7 +237,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `projects/sr_comparison/blood/dashboard_payload.json`
   - `projects/sr_comparison/blood/run_manifest.json`
 - `dashboard_payload.json` now includes:
-  - per-biomarker SR Q-Q summaries and detail rows
+  - per-biomarker SR Q-Q summaries and detail rows for multiple biomarker trim modes (`0%`, `3%`, `5%`, `10%` per tail)
   - `sr_reference_bins` for the quartile-level SR summary
   - `sr_waterfall_reference`, a compact quantile-sampled SR distribution cache used by the waterfall side-by-side viewer
 
@@ -367,24 +368,28 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - `SR comparison` is available on the blood dashboard only.
 - Purpose:
   - compare pooled NHANES blood biomarkers against the SR-model `X` distribution by age-bin shape, not by shared units
-  - quantify Q-Q agreement with `R²` while also exposing the fitted slope `m` and intercept `c`
+  - quantify Q-Q agreement with `R²` while also exposing the fitted slope `m`, intercept `c`, and a z-scored Wasserstein distance
 - Build inputs:
   - NHANES blood long table: `data/processed/biomarker_long.parquet`
   - external SR code rooted at the configured USA 2019 waterfall script + SR package path
   - cached local output root: `projects/sr_comparison/blood/`
 - Analysis contract:
   - age bins are `20-24` through `80-84`
-  - SR and NHANES are both trimmed within age bin to the `3rd-97th` percentile band before Q-Q fitting
+  - SR `X` is sampled from the alive-only simulation cohort at each age-bin midpoint and is never tail-trimmed
+  - NHANES biomarker values are evaluated under four symmetric tail-trim modes: `0%`, `3%`, `5%`, and `10%` per tail
   - pooled blood biomarkers only in v1
   - per-bin fit is `biomarker_quantile = m * sr_quantile + c`
+  - z-scored Wasserstein distance is computed per age bin after z-scoring SR and biomarker values separately within that bin
 - UI behavior:
   - one selected-bin Q-Q plot
   - one `R²(age)` plot
   - one coefficient plot for `m(age)` and `c(age)`
-  - main sortable biomarker table with selected-bin `R²`, `mean/min/median R²`, `mean/SD m`, `mean/SD c`, and valid-bin count
-  - secondary per-bin detail table for the selected biomarker
+  - main sortable biomarker table with selected-bin and aggregate `R²` and z-Wasserstein values, plus `mean/SD m`, `mean/SD c`, and valid-bin count
+  - secondary per-bin detail table for the selected biomarker, including `R²`, z-Wasserstein, `m`, `c`, and quartiles
+  - trim selector in the SR tab switches the biomarker tail-trim mode without changing the SR reference
 - Interpretation:
   - high `R²` means the biomarker and SR model share a similar distribution shape in that age bin
+  - lower z-Wasserstein means the z-scored biomarker and SR distributions are closer overall, especially in tail placement
   - `m` and `c` capture age-dependent scaling and offset differences even when shape agreement remains strong
 
 ## Median mode interpretation

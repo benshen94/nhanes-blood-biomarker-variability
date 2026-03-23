@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy.stats import wasserstein_distance
 
 from nhanes_common import ensure_dir
 
@@ -31,8 +32,6 @@ AGE_BIN_EDGES = list(np.arange(20, 90, 5))
 AGE_BIN_LABELS = [f"{start}-{start + 4}" for start in range(20, 85, 5)]
 AGE_BIN_MIDS = {label: start + 2.5 for label, start in zip(AGE_BIN_LABELS, range(20, 85, 5))}
 
-TRIM_LO = 0.03
-TRIM_HI = 0.97
 MIN_BIN_N = 30
 QQ_PROBABILITIES = np.linspace(0.01, 0.99, 99)
 WATERFALL_SAMPLE_PROBABILITIES = np.linspace(0.001, 0.999, 801)
@@ -40,6 +39,14 @@ SR_N_SIM = 100_000
 SR_TMAX = 120
 SR_SAVE_TIMES = 1
 EPS = 1e-12
+SR_TRIM_MODES = [
+    {"key": "all", "label": "0% each tail", "tail_pct": 0, "lo": 0.0, "hi": 1.0},
+    {"key": "trim_3_97", "label": "3% each tail", "tail_pct": 3, "lo": 0.03, "hi": 0.97},
+    {"key": "trim_5_95", "label": "5% each tail", "tail_pct": 5, "lo": 0.05, "hi": 0.95},
+    {"key": "trim_10_90", "label": "10% each tail", "tail_pct": 10, "lo": 0.10, "hi": 0.90},
+]
+DEFAULT_SR_TRIM_MODE = "trim_3_97"
+SR_TRIM_MODE_BY_KEY = {mode["key"]: mode for mode in SR_TRIM_MODES}
 
 
 def assign_age_bins(age: pd.Series) -> tuple[pd.Series, pd.Series]:
@@ -72,9 +79,13 @@ def clean_sorted_values(values: np.ndarray | pd.Series) -> np.ndarray:
     return np.sort(arr.astype(float))
 
 
-def trim_distribution(values: np.ndarray | pd.Series, lo: float = TRIM_LO, hi: float = TRIM_HI) -> np.ndarray:
+def trim_distribution(values: np.ndarray | pd.Series, lo: float = 0.0, hi: float = 1.0) -> np.ndarray:
     arr = clean_sorted_values(values)
     if arr.size == 0:
+        return np.array([], dtype=float)
+    if lo <= 0 and hi >= 1:
+        return arr
+    if lo >= hi:
         return np.array([], dtype=float)
 
     lo_cut = float(np.quantile(arr, lo))
@@ -83,6 +94,18 @@ def trim_distribution(values: np.ndarray | pd.Series, lo: float = TRIM_LO, hi: f
     if kept.size == 0:
         return np.array([], dtype=float)
     return np.sort(kept.astype(float))
+
+
+def zscore_values(values: np.ndarray | pd.Series) -> np.ndarray:
+    arr = clean_sorted_values(values)
+    if arr.size == 0:
+        return np.array([], dtype=float)
+
+    mean = float(np.mean(arr))
+    sd = float(np.std(arr, ddof=0))
+    if sd <= EPS:
+        return np.zeros(arr.shape[0], dtype=float)
+    return (arr - mean) / sd
 
 
 def quartiles(values: np.ndarray) -> tuple[float | None, float | None, float | None]:
@@ -102,22 +125,54 @@ def build_quantile_sample(
     return rounded_list(sample)
 
 
+def sr_trim_mode(trim_mode_key: str) -> dict[str, Any]:
+    return SR_TRIM_MODE_BY_KEY.get(trim_mode_key, SR_TRIM_MODE_BY_KEY[DEFAULT_SR_TRIM_MODE])
+
+
+def rounded_trim_modes() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for trim_mode in SR_TRIM_MODES:
+        rows.append(
+            {
+                "key": str(trim_mode["key"]),
+                "label": str(trim_mode["label"]),
+                "tail_pct": int(trim_mode["tail_pct"]),
+                "lo": float(trim_mode["lo"]),
+                "hi": float(trim_mode["hi"]),
+            }
+        )
+    return rows
+
+
 def compute_qq_fit(
     sr_values: np.ndarray,
     biomarker_values: np.ndarray,
+    trim_mode_key: str = DEFAULT_SR_TRIM_MODE,
     probabilities: np.ndarray = QQ_PROBABILITIES,
 ) -> dict[str, Any]:
-    sr_trimmed = trim_distribution(sr_values)
-    biomarker_trimmed = trim_distribution(biomarker_values)
+    trim_mode = sr_trim_mode(trim_mode_key)
+    sr_clean = clean_sorted_values(sr_values)
+    biomarker_trimmed = trim_distribution(
+        biomarker_values,
+        lo=float(trim_mode["lo"]),
+        hi=float(trim_mode["hi"]),
+    )
 
-    sr_q1, sr_median, sr_q3 = quartiles(sr_trimmed)
+    sr_q1, sr_median, sr_q3 = quartiles(sr_clean)
     nhanes_q1, nhanes_median, nhanes_q3 = quartiles(biomarker_trimmed)
 
     result: dict[str, Any] = {
+        "trim_mode": str(trim_mode["key"]),
+        "trim_label": str(trim_mode["label"]),
+        "trim_rule": {
+            "lo": float(trim_mode["lo"]),
+            "hi": float(trim_mode["hi"]),
+        },
         "r2": None,
         "slope_m": None,
         "intercept_c": None,
-        "sr_n": int(sr_trimmed.size),
+        "wasserstein_z": None,
+        "sr_n": int(sr_clean.size),
         "nhanes_n": int(biomarker_trimmed.size),
         "sr_q1": sr_q1,
         "sr_median": sr_median,
@@ -128,10 +183,15 @@ def compute_qq_fit(
         "qq_sr_values": [],
         "qq_biomarker_values": [],
     }
-    if sr_trimmed.size < MIN_BIN_N or biomarker_trimmed.size < MIN_BIN_N:
+    if sr_clean.size < MIN_BIN_N or biomarker_trimmed.size < MIN_BIN_N:
         return result
 
-    sr_quantiles = np.quantile(sr_trimmed, probabilities)
+    sr_z = zscore_values(sr_clean)
+    biomarker_z = zscore_values(biomarker_trimmed)
+    if sr_z.size and biomarker_z.size:
+        result["wasserstein_z"] = safe_float(wasserstein_distance(sr_z, biomarker_z))
+
+    sr_quantiles = np.quantile(sr_clean, probabilities)
     biomarker_quantiles = np.quantile(biomarker_trimmed, probabilities)
     mask = np.isfinite(sr_quantiles) & np.isfinite(biomarker_quantiles)
     if mask.sum() < 2:
@@ -160,6 +220,7 @@ def summarize_biomarker_bins(rows: list[dict[str, Any]]) -> dict[str, Any]:
     r2_values = [row["r2"] for row in rows if row.get("r2") is not None]
     slope_values = [row["slope_m"] for row in rows if row.get("slope_m") is not None]
     intercept_values = [row["intercept_c"] for row in rows if row.get("intercept_c") is not None]
+    wasserstein_values = [row["wasserstein_z"] for row in rows if row.get("wasserstein_z") is not None]
 
     def mean_or_none(values: list[float]) -> float | None:
         if not values:
@@ -180,11 +241,23 @@ def summarize_biomarker_bins(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "slope_m_sd": std_or_none(slope_values),
         "mean_intercept_c": mean_or_none(intercept_values),
         "intercept_c_sd": std_or_none(intercept_values),
+        "mean_wasserstein_z": mean_or_none(wasserstein_values),
+        "min_wasserstein_z": safe_float(np.min(wasserstein_values)) if wasserstein_values else None,
+        "median_wasserstein_z": safe_float(np.median(wasserstein_values)) if wasserstein_values else None,
+        "valid_wasserstein_bin_count": int(len(wasserstein_values)),
         "r2_by_age_bin": [
             {
                 "age_bin": row["age_bin"],
                 "age_mid": row["age_mid"],
                 "r2": row.get("r2"),
+            }
+            for row in rows
+        ],
+        "wasserstein_z_by_age_bin": [
+            {
+                "age_bin": row["age_bin"],
+                "age_mid": row["age_mid"],
+                "wasserstein_z": row.get("wasserstein_z"),
             }
             for row in rows
         ],
@@ -264,14 +337,14 @@ def build_sr_reference_rows(
 
     for age_bin in AGE_BIN_LABELS:
         age_mid = AGE_BIN_MIDS[age_bin]
-        trimmed = trim_distribution(alive_distributions[age_bin])
-        q1, median, q3 = quartiles(trimmed)
-        distributions[age_bin] = trimmed
+        alive_values = alive_distributions[age_bin]
+        q1, median, q3 = quartiles(alive_values)
+        distributions[age_bin] = alive_values
         rows.append(
             {
                 "age_bin": age_bin,
                 "age_mid": age_mid,
-                "sr_n": int(trimmed.size),
+                "sr_n": int(alive_values.size),
                 "sr_q1": q1,
                 "sr_median": median,
                 "sr_q3": q3,
@@ -334,13 +407,12 @@ def build_dashboard_payload(
     grouped_rows: dict[tuple[str, str], dict[str, Any]] = {}
     grouped = use.groupby(["biomarker_id", "biomarker_name", "age_bin", "age_mid"], observed=True)
     for (biomarker_id, biomarker_name, age_bin, age_mid), group in grouped:
-        fit = compute_qq_fit(sr_distributions[str(age_bin)], group["value"].to_numpy(dtype=float))
         grouped_rows[(str(biomarker_id), str(age_bin))] = {
             "biomarker_id": str(biomarker_id),
             "biomarker_name": str(biomarker_name),
             "age_bin": str(age_bin),
             "age_mid": float(age_mid),
-            **fit,
+            "values": clean_sorted_values(group["value"].to_numpy(dtype=float)),
         }
 
     sr_reference_by_bin = {row["age_bin"]: row for row in sr_reference_rows}
@@ -352,85 +424,133 @@ def build_dashboard_payload(
     for row in biomarker_names.itertuples(index=False):
         biomarker_id = str(row.biomarker_id)
         biomarker_name = str(row.biomarker_name)
-        per_bin_rows: list[dict[str, Any]] = []
+        trim_summaries: dict[str, dict[str, Any]] = {}
+        trim_details: dict[str, dict[str, Any]] = {}
 
-        for age_bin in AGE_BIN_LABELS:
-            age_mid = float(AGE_BIN_MIDS[age_bin])
-            base = grouped_rows.get((biomarker_id, age_bin))
-            sr_row = sr_reference_by_bin[age_bin]
-            if base is None:
-                detail = {
-                    "biomarker_id": biomarker_id,
-                    "biomarker_name": biomarker_name,
-                    "age_bin": age_bin,
-                    "age_mid": age_mid,
-                    "r2": None,
-                    "slope_m": None,
-                    "intercept_c": None,
-                    "nhanes_n": 0,
-                    "sr_n": sr_row["sr_n"],
-                    "nhanes_q1": None,
-                    "nhanes_median": None,
-                    "nhanes_q3": None,
-                    "sr_q1": sr_row["sr_q1"],
-                    "sr_median": sr_row["sr_median"],
-                    "sr_q3": sr_row["sr_q3"],
-                    "qq_sr_values": [],
-                    "qq_biomarker_values": [],
-                }
-            else:
-                detail = {
-                    **base,
-                    "sr_n": sr_row["sr_n"],
-                    "sr_q1": sr_row["sr_q1"],
-                    "sr_median": sr_row["sr_median"],
-                    "sr_q3": sr_row["sr_q3"],
-                }
-            per_bin_rows.append(detail)
-            detail_rows.append(
+        for trim_mode in SR_TRIM_MODES:
+            trim_key = str(trim_mode["key"])
+            per_bin_rows: list[dict[str, Any]] = []
+
+            for age_bin in AGE_BIN_LABELS:
+                age_mid = float(AGE_BIN_MIDS[age_bin])
+                base = grouped_rows.get((biomarker_id, age_bin))
+                sr_row = sr_reference_by_bin[age_bin]
+
+                if base is None:
+                    detail = {
+                        "biomarker_id": biomarker_id,
+                        "biomarker_name": biomarker_name,
+                        "age_bin": age_bin,
+                        "age_mid": age_mid,
+                        "trim_mode": trim_key,
+                        "trim_label": str(trim_mode["label"]),
+                        "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+                        "r2": None,
+                        "slope_m": None,
+                        "intercept_c": None,
+                        "wasserstein_z": None,
+                        "nhanes_n": 0,
+                        "sr_n": sr_row["sr_n"],
+                        "nhanes_q1": None,
+                        "nhanes_median": None,
+                        "nhanes_q3": None,
+                        "sr_q1": sr_row["sr_q1"],
+                        "sr_median": sr_row["sr_median"],
+                        "sr_q3": sr_row["sr_q3"],
+                        "qq_sr_values": [],
+                        "qq_biomarker_values": [],
+                    }
+                else:
+                    fit = compute_qq_fit(
+                        sr_distributions[age_bin],
+                        base["values"],
+                        trim_mode_key=trim_key,
+                    )
+                    detail = {
+                        "biomarker_id": biomarker_id,
+                        "biomarker_name": biomarker_name,
+                        "age_bin": age_bin,
+                        "age_mid": age_mid,
+                        **fit,
+                        "sr_n": sr_row["sr_n"],
+                        "sr_q1": sr_row["sr_q1"],
+                        "sr_median": sr_row["sr_median"],
+                        "sr_q3": sr_row["sr_q3"],
+                    }
+
+                per_bin_rows.append(detail)
+                detail_rows.append(
+                    {
+                        "biomarker_id": biomarker_id,
+                        "biomarker_name": biomarker_name,
+                        "trim_mode": trim_key,
+                        "trim_label": str(trim_mode["label"]),
+                        "age_bin": age_bin,
+                        "age_mid": age_mid,
+                        "r2": detail["r2"],
+                        "slope_m": detail["slope_m"],
+                        "intercept_c": detail["intercept_c"],
+                        "wasserstein_z": detail["wasserstein_z"],
+                        "nhanes_n": detail["nhanes_n"],
+                        "sr_n": detail["sr_n"],
+                        "nhanes_q1": detail["nhanes_q1"],
+                        "nhanes_median": detail["nhanes_median"],
+                        "nhanes_q3": detail["nhanes_q3"],
+                        "sr_q1": detail["sr_q1"],
+                        "sr_median": detail["sr_median"],
+                        "sr_q3": detail["sr_q3"],
+                    }
+                )
+
+            summary = summarize_biomarker_bins(per_bin_rows)
+            summary["trim_mode"] = trim_key
+            summary["trim_label"] = str(trim_mode["label"])
+            summary["trim_rule"] = {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])}
+            trim_summaries[trim_key] = summary
+            trim_details[trim_key] = {
+                "trim_mode": trim_key,
+                "trim_label": str(trim_mode["label"]),
+                "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+                "bins": per_bin_rows,
+            }
+            summary_rows.append(
                 {
                     "biomarker_id": biomarker_id,
                     "biomarker_name": biomarker_name,
-                    "age_bin": age_bin,
-                    "age_mid": age_mid,
-                    "r2": detail["r2"],
-                    "slope_m": detail["slope_m"],
-                    "intercept_c": detail["intercept_c"],
-                    "nhanes_n": detail["nhanes_n"],
-                    "sr_n": detail["sr_n"],
-                    "nhanes_q1": detail["nhanes_q1"],
-                    "nhanes_median": detail["nhanes_median"],
-                    "nhanes_q3": detail["nhanes_q3"],
-                    "sr_q1": detail["sr_q1"],
-                    "sr_median": detail["sr_median"],
-                    "sr_q3": detail["sr_q3"],
+                    **summary,
                 }
             )
 
-        summary = summarize_biomarker_bins(per_bin_rows)
-        summary_by_biomarker[biomarker_id] = summary
+        default_summary = trim_summaries[DEFAULT_SR_TRIM_MODE]
+        default_detail = trim_details[DEFAULT_SR_TRIM_MODE]
+
+        summary_by_biomarker[biomarker_id] = {
+            **default_summary,
+            "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+            "trim_modes": rounded_trim_modes(),
+            "trim_summaries": trim_summaries,
+        }
         detail_by_biomarker[biomarker_id] = {
             "biomarker_id": biomarker_id,
             "biomarker_name": biomarker_name,
             "age_bins": AGE_BIN_LABELS,
-            "trim_rule": {"lo": TRIM_LO, "hi": TRIM_HI},
+            "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+            "trim_modes": rounded_trim_modes(),
+            "trim_rule": default_detail["trim_rule"],
+            "trim_label": default_detail["trim_label"],
             "quantile_grid": rounded_list(QQ_PROBABILITIES),
             "reference_bins": sr_reference_rows,
-            "bins": per_bin_rows,
+            "bins": default_detail["bins"],
+            "trim_details": trim_details,
         }
-        summary_rows.append(
-            {
-                "biomarker_id": biomarker_id,
-                "biomarker_name": biomarker_name,
-                **summary,
-            }
-        )
 
     payload = {
         "meta": {
             "age_bins": AGE_BIN_LABELS,
             "age_mids": AGE_BIN_MIDS,
-            "trim_rule": {"lo": TRIM_LO, "hi": TRIM_HI},
+            "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+            "trim_modes": rounded_trim_modes(),
+            "sr_reference_tail_policy": "alive_only_no_tail_trimming",
             "min_bin_n": MIN_BIN_N,
             "qq_probabilities": rounded_list(QQ_PROBABILITIES),
         },
@@ -500,7 +620,9 @@ def main() -> None:
         },
         "waterfall_reference_sample_n": int(len(WATERFALL_SAMPLE_PROBABILITIES)),
         "age_bins": AGE_BIN_LABELS,
-        "trim_rule": {"lo": TRIM_LO, "hi": TRIM_HI},
+        "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+        "trim_modes": rounded_trim_modes(),
+        "sr_reference_tail_policy": "alive_only_no_tail_trimming",
         "min_bin_n": MIN_BIN_N,
         "biomarker_count": int(summary_df["biomarker_id"].nunique()),
     }

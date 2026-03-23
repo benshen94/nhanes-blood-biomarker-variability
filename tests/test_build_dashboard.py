@@ -129,6 +129,7 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertIn('id="sr-search" list="sr-biomarker-options" placeholder="Type biomarker name..." autocomplete="off"', html)
         self.assertIn('id="sr-biomarker"', html)
         self.assertIn('id="sr-category-filter"', html)
+        self.assertIn('id="sr-trim-mode"', html)
         self.assertIn('id="waterfall-compare-sr" type="checkbox"', html)
         self.assertIn("const HAS_SR_COMPARISON = true;", html)
         self.assertIn('id="full-view-skew-stat"', html)
@@ -168,16 +169,39 @@ class TestBuildDashboard(unittest.TestCase):
                     "mean_r2": 0.91,
                     "min_r2": 0.84,
                     "median_r2": 0.90,
+                    "mean_wasserstein_z": 0.14,
+                    "min_wasserstein_z": 0.10,
+                    "median_wasserstein_z": 0.13,
                     "valid_bin_count": 7,
                     "mean_slope_m": 1.1,
                     "slope_m_sd": 0.2,
                     "mean_intercept_c": 0.4,
                     "intercept_c_sd": 0.1,
                     "r2_by_age_bin": [{"age_bin": "40-44", "age_mid": 42.5, "r2": 0.88}],
+                    "wasserstein_z_by_age_bin": [{"age_bin": "40-44", "age_mid": 42.5, "wasserstein_z": 0.12}],
+                    "default_trim_mode": "trim_3_97",
+                    "trim_summaries": {
+                        "trim_3_97": {
+                            "mean_r2": 0.91,
+                            "min_r2": 0.84,
+                            "median_r2": 0.90,
+                            "mean_wasserstein_z": 0.14,
+                            "min_wasserstein_z": 0.10,
+                            "median_wasserstein_z": 0.13,
+                            "valid_bin_count": 7,
+                            "mean_slope_m": 1.1,
+                            "slope_m_sd": 0.2,
+                            "mean_intercept_c": 0.4,
+                            "intercept_c_sd": 0.1,
+                            "r2_by_age_bin": [{"age_bin": "40-44", "age_mid": 42.5, "r2": 0.88}],
+                            "wasserstein_z_by_age_bin": [{"age_bin": "40-44", "age_mid": 42.5, "wasserstein_z": 0.12}],
+                        }
+                    },
                 }
             },
             "detail_by_biomarker": {
                 "sr-marker": {
+                    "default_trim_mode": "trim_3_97",
                     "bins": [
                         {
                             "age_bin": "40-44",
@@ -185,6 +209,7 @@ class TestBuildDashboard(unittest.TestCase):
                             "r2": 0.88,
                             "slope_m": 1.2,
                             "intercept_c": 0.3,
+                            "wasserstein_z": 0.12,
                             "nhanes_n": 55,
                             "sr_n": 1000,
                             "nhanes_q1": 0.8,
@@ -196,7 +221,34 @@ class TestBuildDashboard(unittest.TestCase):
                             "qq_sr_values": [0.2, 0.5, 0.9],
                             "qq_biomarker_values": [0.8, 1.0, 1.2],
                         }
-                    ]
+                    ],
+                    "trim_details": {
+                        "trim_3_97": {
+                            "trim_mode": "trim_3_97",
+                            "trim_label": "3% each tail",
+                            "trim_rule": {"lo": 0.03, "hi": 0.97},
+                            "bins": [
+                                {
+                                    "age_bin": "40-44",
+                                    "age_mid": 42.5,
+                                    "r2": 0.88,
+                                    "slope_m": 1.2,
+                                    "intercept_c": 0.3,
+                                    "wasserstein_z": 0.12,
+                                    "nhanes_n": 55,
+                                    "sr_n": 1000,
+                                    "nhanes_q1": 0.8,
+                                    "nhanes_median": 1.0,
+                                    "nhanes_q3": 1.2,
+                                    "sr_q1": 0.2,
+                                    "sr_median": 0.5,
+                                    "sr_q3": 0.9,
+                                    "qq_sr_values": [0.2, 0.5, 0.9],
+                                    "qq_biomarker_values": [0.8, 1.0, 1.2],
+                                }
+                            ],
+                        }
+                    },
                 }
             },
         }
@@ -213,9 +265,11 @@ class TestBuildDashboard(unittest.TestCase):
         )
 
         self.assertEqual(metrics[0]["sr_comparison_summary"]["mean_r2"], 0.91)
+        self.assertEqual(metrics[0]["sr_comparison_summary"]["trim_summaries"]["trim_3_97"]["mean_wasserstein_z"], 0.14)
         payload = next(iter(series_payloads.values()))
         self.assertIn("sr_comparison", payload)
         self.assertEqual(payload["sr_comparison"]["bins"][0]["age_bin"], "40-44")
+        self.assertEqual(payload["sr_comparison"]["trim_details"]["trim_3_97"]["bins"][0]["wasserstein_z"], 0.12)
 
     def test_write_dashboard_bundle_writes_shared_sr_reference_payload(self):
         with tempfile.TemporaryDirectory() as tmpdir:
