@@ -149,11 +149,12 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 
 ## Performance model (on-demand data loading)
 - `dashboard/index.html` (blood) and `dashboard/urinary.html` (urinary) each load only metadata + metrics initially.
+- The dashboard now renders only the active top tab on startup instead of pre-rendering every tab.
 - Per-biomarker point series are stored in:
   - `dashboard/data/series/*.json`
   - `dashboard/data_urine/series/*.json`
 - Series are fetched ad hoc only when a biomarker is selected/searched.
-- The blood dashboard also loads one shared SR reference payload:
+- The blood dashboard also lazy-loads one shared SR reference payload only when the side-by-side SR waterfall is requested:
   - `dashboard/data/sr_waterfall_reference.json`
   - it contains compact quantile-sampled SR-model `X` distributions for the 5-year age bins used by the SR comparison analysis
 
@@ -384,6 +385,8 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - one selected-bin Q-Q plot
   - one `R²(age)` plot
   - one coefficient plot for `m(age)` and `c(age)`
+  - searchable multi-select SR category picker with `Select all visible`, `Core clinical only`, and `Clear selection`
+  - `Specialized - Nutritional/Vitamin` is excluded from the SR comparison UI entirely
   - main sortable biomarker table with selected-bin and aggregate `R²` and z-Wasserstein values, plus `mean/SD m`, `mean/SD c`, and valid-bin count
   - secondary per-bin detail table for the selected biomarker, including `R²`, z-Wasserstein, `m`, `c`, and quartiles
   - trim selector in the SR tab switches the biomarker tail-trim mode without changing the SR reference

@@ -990,6 +990,10 @@
       height: 220px;
       margin-top: 4px;
     }
+    #sr-category-multi {
+      height: 220px;
+      margin-top: 4px;
+    }
     .filter-table-toggle {
       width: 18px;
       height: 18px;
@@ -1149,7 +1153,7 @@
         <h1 id="hero-title">nhanes-biomarker-dashboard</h1>
         <div id="hero-sub" class="sub">Explore cross-sectional aging trajectories across __SPECIMEN_LOWER__ biomarkers.</div>
       </div>
-      <div id="status-chip" class="status-chip">Loading metadata…</div>
+      <div id="status-chip" class="status-chip">Loading dashboard…</div>
     </div>
 
     <div class="nav-stack" aria-label="Dashboard navigation">
@@ -1827,7 +1831,12 @@
     const srSearchEl = document.getElementById('sr-search');
     const srOptionsEl = document.getElementById('sr-biomarker-options');
     const srBiomarkerEl = document.getElementById('sr-biomarker');
-    const srCategoryFilterEl = document.getElementById('sr-category-filter');
+    const srCategorySearchEl = document.getElementById('sr-category-search');
+    const srCategoryMultiEl = document.getElementById('sr-category-multi');
+    const srCategoryAllBtn = document.getElementById('sr-category-all');
+    const srCategoryCoreBtn = document.getElementById('sr-category-core');
+    const srCategoryClearBtn = document.getElementById('sr-category-clear');
+    const srCategorySelectionCountEl = document.getElementById('sr-category-selection-count');
     const srIncludeEnvEl = document.getElementById('sr-include-env');
     const srSelectedBiomarkerEl = document.getElementById('sr-selected-biomarker');
     const srAgeBinSliderEl = document.getElementById('sr-age-bin-slider');
@@ -1855,6 +1864,7 @@
       'Other Clinical': 13,
       'Environmental/Toxicant': 14,
     };
+    const SR_EXCLUDED_CATEGORIES = new Set(['Specialized - Nutritional/Vitamin']);
 
     const COHORT_COLORS = {
       pooled: '#0f766e',
@@ -1870,9 +1880,12 @@
       metadataById: new Map(),
       cache: new Map(),
       srWaterfallReference: null,
+      srWaterfallReferenceLoaded: false,
+      srWaterfallReferencePromise: null,
       mode: 'cv',
       lastSingleMode: 'cv',
       currentId: null,
+      currentTopTab: 'dashboard',
       scatterLabels: false,
       waterfallId: null,
       filterClauseNextId: 1,
@@ -1892,7 +1905,7 @@
       srTrimMode: 'trim_3_97',
       srSortField: 'mean_r2',
       srSortDirection: 'desc',
-      srCategoryFilter: 'all_core',
+      srCategorySelectionSet: new Set(),
     };
 
     const WATERFALL_AGE_BINS = [
@@ -1976,6 +1989,92 @@
       const pct = trimModeToPct(trimMode);
       if (pct <= 0) return '0% each tail';
       return `${pct}% each tail`;
+    }
+
+    function isSrAllowedCategory(category) {
+      const label = category || 'Other Clinical';
+      return !SR_EXCLUDED_CATEGORIES.has(label);
+    }
+
+    function selectedSrCategories() {
+      if (!srCategoryMultiEl) return new Set();
+      return new Set(Array.from(srCategoryMultiEl.selectedOptions).map(option => option.value));
+    }
+
+    function updateSrCategorySelectionCount() {
+      if (!srCategoryMultiEl || !srCategorySelectionCountEl) return;
+      const visible = Array.from(srCategoryMultiEl.options).filter(option => !option.hidden);
+      const selectedVisible = visible.filter(option => option.selected).length;
+      const selectedTotal = Array.from(srCategoryMultiEl.selectedOptions).length;
+      srCategorySelectionCountEl.textContent = `${selectedTotal} categories selected (${selectedVisible}/${visible.length} visible)`;
+    }
+
+    function renderSrCategoryOptions(selectCore=false) {
+      if (!srCategoryMultiEl) return;
+
+      const previous = new Set(state.srCategorySelectionSet || []);
+      const rows = getAllMetricsEnriched()
+        .filter(record => isSrAllowedCategory(record.category))
+        .filter(record => srIncludeEnvEl?.checked || !Boolean(record.is_environmental));
+      const categories = sortedCategories(rows, true).filter(isSrAllowedCategory);
+      const coreSet = new Set(
+        rows
+          .filter(record => Boolean(record.is_core_clinical))
+          .map(record => record.category || 'Other Clinical')
+      );
+
+      srCategoryMultiEl.innerHTML = '';
+      const shouldDefaultAll = previous.size === 0 && !selectCore;
+      for (const category of categories) {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        option.selected = selectCore ? coreSet.has(category) : (shouldDefaultAll ? true : previous.has(category));
+        srCategoryMultiEl.appendChild(option);
+      }
+
+      if (Array.from(srCategoryMultiEl.options).every(option => !option.selected)) {
+        for (const option of Array.from(srCategoryMultiEl.options)) {
+          option.selected = true;
+        }
+      }
+
+      applySrCategorySearch();
+      state.srCategorySelectionSet = selectedSrCategories();
+      updateSrCategorySelectionCount();
+    }
+
+    function applySrCategorySearch() {
+      if (!srCategoryMultiEl || !srCategorySearchEl) return;
+      const query = (srCategorySearchEl.value || '').toLowerCase().trim();
+      for (const option of Array.from(srCategoryMultiEl.options)) {
+        if (!query) {
+          option.hidden = false;
+          continue;
+        }
+        option.hidden = !option.textContent.toLowerCase().includes(query);
+      }
+      updateSrCategorySelectionCount();
+    }
+
+    async function ensureSrWaterfallReference() {
+      if (!HAS_SR_COMPARISON) return null;
+      if (state.srWaterfallReferenceLoaded) return state.srWaterfallReference;
+      if (state.srWaterfallReferencePromise) return await state.srWaterfallReferencePromise;
+
+      state.srWaterfallReferencePromise = fetchOptionalJson(`${DATA_BASE}/sr_waterfall_reference.json`)
+        .then((payload) => {
+          state.srWaterfallReference = payload;
+          state.srWaterfallReferenceLoaded = true;
+          if (waterfallCompareWrapEl && !payload) {
+            waterfallCompareWrapEl.style.display = 'none';
+          }
+          return payload;
+        })
+        .finally(() => {
+          state.srWaterfallReferencePromise = null;
+        });
+      return await state.srWaterfallReferencePromise;
     }
 
     function modeToStat(mode) {
@@ -2151,6 +2250,7 @@
 
     function setTopTab(tabName) {
       const resolved = canonicalTopTab(tabName);
+      state.currentTopTab = resolved;
       const isDash = resolved === 'dashboard';
       const isCompare = resolved === 'compare';
       const isFilterTests = resolved === 'filter-tests';
@@ -2226,6 +2326,12 @@
       }
     }
 
+    async function maybeRenderSRComparison(biomarkerId = null) {
+      if (!HAS_SR_COMPARISON) return;
+      if (state.currentTopTab !== 'sr-comparison') return;
+      await renderSRComparison(biomarkerId);
+    }
+
     async function loadSeries(biomarkerId) {
       if (state.cache.has(biomarkerId)) return state.cache.get(biomarkerId);
       const rel = state.seriesIndex[biomarkerId];
@@ -2282,12 +2388,14 @@
     }
 
     function getSrComparisonRecords() {
-      const categoryValue = srCategoryFilterEl?.value || state.srCategoryFilter || 'all_core';
       const includeEnv = Boolean(srIncludeEnvEl?.checked);
+      const selectedCategories = selectedSrCategories();
       const trimMode = srActiveTrimMode();
       return getAllMetricsEnriched()
         .filter(record => srSummaryForRecord(record, trimMode))
-        .filter(record => metadataPasses(record, categoryValue, includeEnv));
+        .filter(record => isSrAllowedCategory(record.category))
+        .filter(record => includeEnv || !Boolean(record.is_environmental))
+        .filter(record => selectedCategories.has(record.category || 'Other Clinical'));
     }
 
     function getAllMetricsEnriched() {
@@ -3735,7 +3843,8 @@
         return;
       }
 
-      const srRows = buildWaterfallRowsFromSrReference(state.srWaterfallReference, ageBins, trimPct, minN);
+      const srReference = await ensureSrWaterfallReference();
+      const srRows = buildWaterfallRowsFromSrReference(srReference, ageBins, trimPct, minN);
       if (!srRows.length) {
         Plotly.newPlot('waterfall-plot', [], applyPlotTheme({
           title: 'SR reference payload is unavailable for side-by-side waterfall mode',
@@ -3984,8 +4093,8 @@
           text: `Trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | R²=${formatNum(row.r2, 4)} | z-W=${formatNum(row.wasserstein_z, 4)} | m=${formatNum(row.slope_m, 4)} | c=${formatNum(row.intercept_c, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | SR alive n=${row.sr_n ?? 'NA'}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
-        xaxis: { title: 'SR model X quantiles' },
-        yaxis: { title: `${displayName} quantiles` },
+        xaxis: { title: 'SR model X values at matched quantiles' },
+        yaxis: { title: `${displayName} values at matched quantiles` },
       }, mobile), { responsive: true, displaylogo: false });
     }
 
@@ -4115,7 +4224,7 @@
         return sortDirection === 'asc' ? (a - b) : (b - a);
       });
 
-      let html = '<thead><tr><th>Biomarker</th><th>Category</th><th>Current bin R²</th><th>Mean R²</th><th>Min R²</th><th>Median R²</th><th>Current z-W</th><th>Mean z-W</th><th>Min z-W</th><th>Median z-W</th><th>Mean m</th><th>SD m</th><th>Mean c</th><th>SD c</th><th>Valid bins</th></tr></thead><tbody>';
+      let html = '<thead><tr><th>Biomarker</th><th>Category</th><th>Mean R²</th><th>Mean z-W</th><th>Current bin R²</th><th>Current z-W</th><th>Min R²</th><th>Median R²</th><th>Min z-W</th><th>Median z-W</th><th>Mean m</th><th>SD m</th><th>Mean c</th><th>SD c</th><th>Valid bins</th></tr></thead><tbody>';
       for (const record of rows) {
         const summary = record.srSummary;
         const currentR2 = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
@@ -4124,12 +4233,12 @@
         html += `<tr data-id="${record.biomarker_id}"${selectedAttr}>`
           + `<td>${record.display_name}</td>`
           + `<td>${record.category || 'Other Clinical'}</td>`
-          + `<td>${formatNum(currentR2?.r2, 4)}</td>`
           + `<td>${formatNum(summary.mean_r2, 4)}</td>`
+          + `<td>${formatNum(summary.mean_wasserstein_z, 4)}</td>`
+          + `<td>${formatNum(currentR2?.r2, 4)}</td>`
+          + `<td>${formatNum(currentW?.wasserstein_z, 4)}</td>`
           + `<td>${formatNum(summary.min_r2, 4)}</td>`
           + `<td>${formatNum(summary.median_r2, 4)}</td>`
-          + `<td>${formatNum(currentW?.wasserstein_z, 4)}</td>`
-          + `<td>${formatNum(summary.mean_wasserstein_z, 4)}</td>`
           + `<td>${formatNum(summary.min_wasserstein_z, 4)}</td>`
           + `<td>${formatNum(summary.median_wasserstein_z, 4)}</td>`
           + `<td>${formatNum(summary.mean_slope_m, 4)}</td>`
@@ -5523,7 +5632,7 @@
         state.waterfallId = hit.biomarker_id;
         renderMetrics(hit.biomarker_id);
         await renderPlot(hit.biomarker_id);
-        if (HAS_SR_COMPARISON) await renderSRComparison(hit.biomarker_id);
+        await maybeRenderSRComparison(hit.biomarker_id);
       }
     }
 
@@ -5559,23 +5668,19 @@
       }
       renderMetrics(id);
       await renderPlot(id);
-      if (HAS_SR_COMPARISON) await renderSRComparison(id);
+      await maybeRenderSRComparison(id);
     }
 
     async function init() {
-      const [metadata, metrics, index, srWaterfallReference] = await Promise.all([
+      const [metadata, metrics, index] = await Promise.all([
         fetchJson(`${DATA_BASE}/metadata.json`),
         fetchJson(`${DATA_BASE}/metrics.json`),
         fetchJson(`${DATA_BASE}/series_index.json`),
-        HAS_SR_COMPARISON
-          ? fetchOptionalJson(`${DATA_BASE}/sr_waterfall_reference.json`)
-          : Promise.resolve(null),
       ]);
 
       state.metadata = metadata;
       state.metrics = metrics;
       state.seriesIndex = index;
-      state.srWaterfallReference = srWaterfallReference;
       state.metricsById = new Map(metrics.map(m => [m.biomarker_id, m]));
       state.metadataById = new Map(metadata.map(m => [m.biomarker_id, m]));
 
@@ -5600,9 +5705,6 @@
       if (waterfallCompareSrEl) {
         waterfallCompareSrEl.checked = false;
       }
-      if (waterfallCompareWrapEl && !state.srWaterfallReference) {
-        waterfallCompareWrapEl.style.display = 'none';
-      }
       const tabPairs = [
         [tabDashboardBtn, panelDashboard],
         [tabCompareBtn, panelCompare],
@@ -5625,8 +5727,8 @@
       setAllTrimSliders(10);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
-      if (srCategoryFilterEl) {
-        renderCategorySelect(srCategoryFilterEl, false, state.srCategoryFilter || 'all_core');
+      if (srCategoryMultiEl) {
+        renderSrCategoryOptions(false);
       }
       if (srTrimModeEl) {
         srTrimModeEl.value = state.srTrimMode || 'trim_3_97';
@@ -5650,12 +5752,8 @@
       renderFilterStage();
 
       await refreshDashboardFromFilters();
-      renderComparePlot();
-      await renderFilterTests();
-      renderScatterPlot();
-      renderHistogramPlot();
-      await renderWaterfallPlot(state.waterfallId);
-      if (HAS_SR_COMPARISON) await renderSRComparison(state.currentId);
+      const initialTab = topTabFromHash() || 'dashboard';
+      await activateTopTab(initialTab, { syncHash: true, force: true });
 
       statusChip.textContent = `Ready: ${state.metadata.length} ${SPECIMEN_LABEL} biomarkers indexed`;
 
@@ -5730,7 +5828,7 @@
         }
         renderMetrics(id);
         await renderPlot(id);
-        if (HAS_SR_COMPARISON) await renderSRComparison(id);
+        await maybeRenderSRComparison(id);
       });
       searchEl.addEventListener('change', applySearch);
       searchEl.addEventListener('keyup', (e) => { if (e.key === 'Enter') applySearch(); });
@@ -5744,13 +5842,36 @@
         await renderPlot(id);
         await renderSRComparison(id);
       });
-      srCategoryFilterEl?.addEventListener('change', async () => {
-        state.srCategoryFilter = srCategoryFilterEl.value;
+      srCategorySearchEl?.addEventListener('input', () => {
+        applySrCategorySearch();
+      });
+      srCategoryMultiEl?.addEventListener('change', async () => {
+        state.srCategorySelectionSet = selectedSrCategories();
+        updateSrCategorySelectionCount();
+        await renderSRComparison(srBiomarkerEl?.value || state.currentId);
+      });
+      srCategoryAllBtn?.addEventListener('click', async () => {
+        for (const option of Array.from(srCategoryMultiEl?.options || [])) {
+          if (!option.hidden) option.selected = true;
+        }
+        state.srCategorySelectionSet = selectedSrCategories();
+        updateSrCategorySelectionCount();
+        await renderSRComparison(srBiomarkerEl?.value || state.currentId);
+      });
+      srCategoryCoreBtn?.addEventListener('click', async () => {
+        renderSrCategoryOptions(true);
+        await renderSRComparison(srBiomarkerEl?.value || state.currentId);
+      });
+      srCategoryClearBtn?.addEventListener('click', async () => {
+        for (const option of Array.from(srCategoryMultiEl?.options || [])) {
+          option.selected = false;
+        }
+        state.srCategorySelectionSet = new Set();
+        updateSrCategorySelectionCount();
         await renderSRComparison(srBiomarkerEl?.value || state.currentId);
       });
       srIncludeEnvEl?.addEventListener('change', async () => {
-        renderCategorySelect(srCategoryFilterEl, srIncludeEnvEl.checked, srCategoryFilterEl.value);
-        state.srCategoryFilter = srCategoryFilterEl.value;
+        renderSrCategoryOptions(false);
         await renderSRComparison(srBiomarkerEl?.value || state.currentId);
       });
       categoryFilterEl.addEventListener('change', refreshDashboardFromFilters);

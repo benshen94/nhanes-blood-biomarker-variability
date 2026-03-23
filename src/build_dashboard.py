@@ -3629,9 +3629,6 @@ def render_dashboard_html(
           <label>Biomarker
             <select id="sr-biomarker"></select>
           </label>
-          <label>Category
-            <select id="sr-category-filter"></select>
-          </label>
           <label class="check-label"><input id="sr-include-env" type="checkbox" /> Include environmental/toxicant</label>
           <label>Current selection
             <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its SR Q-Q fit.</div>
@@ -3650,12 +3647,12 @@ def render_dashboard_html(
           </label>
           <label>Sort main table by
             <select id="sr-sort-field">
-              <option value="current_bin_r2">Selected-bin R²</option>
               <option value="mean_r2" selected>Mean R²</option>
+              <option value="mean_wasserstein_z">Mean z-Wasserstein</option>
+              <option value="current_bin_r2">Selected-bin R²</option>
+              <option value="current_bin_wasserstein_z">Selected-bin z-Wasserstein</option>
               <option value="min_r2">Minimum R²</option>
               <option value="median_r2">Median R²</option>
-              <option value="current_bin_wasserstein_z">Selected-bin z-Wasserstein</option>
-              <option value="mean_wasserstein_z">Mean z-Wasserstein</option>
               <option value="min_wasserstein_z">Minimum z-Wasserstein</option>
               <option value="median_wasserstein_z">Median z-Wasserstein</option>
               <option value="valid_bin_count">Valid bins</option>
@@ -3671,6 +3668,17 @@ def render_dashboard_html(
               <option value="asc">Ascending</option>
             </select>
           </label>
+        </div>
+        <div class="filter-test-picker sr-category-picker">
+          <label for="sr-category-search">Choose categories to include</label>
+          <input id="sr-category-search" type="search" placeholder="Search categories..." autocomplete="off" spellcheck="false" />
+          <div class="filter-test-actions">
+            <button id="sr-category-all" type="button">Select all visible</button>
+            <button id="sr-category-core" type="button">Core clinical only</button>
+            <button id="sr-category-clear" type="button">Clear selection</button>
+            <span id="sr-category-selection-count" class="filter-test-hint"></span>
+          </div>
+          <select id="sr-category-multi" multiple></select>
         </div>
         <div id="sr-summary-strip" class="sr-stat-strip"></div>
         <div class="sr-qq-shell">
