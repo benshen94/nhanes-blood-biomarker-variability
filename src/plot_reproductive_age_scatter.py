@@ -283,6 +283,49 @@ def save_scatter_plot(
     }
 
 
+def save_density_plot(
+    series: pd.Series,
+    *,
+    x_label: str,
+    title: str,
+    out_path: Path,
+) -> dict[str, float | int | str]:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    values = values.loc[np.isfinite(values)]
+
+    if len(values) < 3:
+        raise ValueError(f"Need at least 3 values to plot {out_path.name}; found {len(values)}")
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    values.plot.kde(ax=ax, linewidth=2, color="#1f77b4")
+    ax.set_title(title)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel("Density")
+    ax.grid(alpha=0.25)
+
+    annotation = f"n = {len(values)}\nmean = {values.mean():.2f}\nmedian = {values.median():.2f}"
+    ax.text(
+        0.03,
+        0.97,
+        annotation,
+        transform=ax.transAxes,
+        va="top",
+        ha="left",
+        bbox={"boxstyle": "round,pad=0.4", "facecolor": "white", "alpha": 0.9, "edgecolor": "#cccccc"},
+    )
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+    return {
+        "plot_name": out_path.stem,
+        "n": int(len(values)),
+        "mean": float(values.mean()),
+        "median": float(values.median()),
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw-dir", default="data/raw")
@@ -355,11 +398,43 @@ def main() -> None:
         )
         summary_rows.append(summary)
 
+    density_specs = [
+        {
+            "plot_name": "menarche_age_kde",
+            "series": merged["age_menarche"],
+            "x_label": "Age at menarche",
+            "title": "Age at menarche distribution",
+        },
+        {
+            "plot_name": "menopause_age_kde",
+            "series": merged["age_menopause"],
+            "x_label": "Age at menopause",
+            "title": "Age at menopause distribution",
+        },
+    ]
+
+    density_rows = []
+    for spec in density_specs:
+        plot_path = out_dir / f"{spec['plot_name']}.png"
+        summary = save_density_plot(
+            spec["series"],
+            x_label=spec["x_label"],
+            title=spec["title"],
+            out_path=plot_path,
+        )
+        density_rows.append(summary)
+
     summary_df = pd.DataFrame(summary_rows)
     summary_path = out_dir / "reproductive_scatter_summary.csv"
     summary_df.to_csv(summary_path, index=False)
 
+    density_df = pd.DataFrame(density_rows)
+    density_path = out_dir / "reproductive_density_summary.csv"
+    density_df.to_csv(density_path, index=False)
+
     print(summary_df.to_string(index=False))
+    print()
+    print(density_df.to_string(index=False))
     print(f"\nSaved plots to {out_dir}")
 
 
