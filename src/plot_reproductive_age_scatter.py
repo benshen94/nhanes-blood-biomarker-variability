@@ -47,6 +47,9 @@ CYCLES = [
 MENARCHE_INVALID_CODES = {0, 7, 9, 77, 99, 777, 999}
 MENOPAUSE_INVALID_CODES = {7, 9, 77, 99, 777, 999}
 INTERVIEW_AGE_INVALID_CODES = {7, 9, 77, 99}
+ROBUST_NATURAL_MENOPAUSE_MIN_CYCLE = 2007
+ROBUST_NATURAL_MENOPAUSE_MIN_AGE = 40
+ROBUST_NATURAL_MENOPAUSE_MAX_AGE = 65
 
 
 def clean_age(series: pd.Series, *, invalid_codes: set[int], min_age: float, max_age: float) -> pd.Series:
@@ -73,11 +76,23 @@ def load_xpt(path: Path) -> pd.DataFrame:
     return pd.read_sas(path, format="xport", encoding="utf-8")
 
 
-def build_reproductive_frame(raw_dir: Path) -> pd.DataFrame:
+def build_reproductive_frame(
+    raw_dir: Path,
+    *,
+    min_menopause_cycle_year: int = ROBUST_NATURAL_MENOPAUSE_MIN_CYCLE,
+    min_natural_menopause_age: float = ROBUST_NATURAL_MENOPAUSE_MIN_AGE,
+    max_natural_menopause_age: float = ROBUST_NATURAL_MENOPAUSE_MAX_AGE,
+) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
 
     for config in CYCLES:
-        frame = build_cycle_frame(raw_dir, config)
+        frame = build_cycle_frame(
+            raw_dir,
+            config,
+            min_menopause_cycle_year=min_menopause_cycle_year,
+            min_natural_menopause_age=min_natural_menopause_age,
+            max_natural_menopause_age=max_natural_menopause_age,
+        )
         frames.append(frame)
 
     if not frames:
@@ -88,7 +103,14 @@ def build_reproductive_frame(raw_dir: Path) -> pd.DataFrame:
     return combined
 
 
-def build_cycle_frame(raw_dir: Path, config: CycleConfig) -> pd.DataFrame:
+def build_cycle_frame(
+    raw_dir: Path,
+    config: CycleConfig,
+    *,
+    min_menopause_cycle_year: int = ROBUST_NATURAL_MENOPAUSE_MIN_CYCLE,
+    min_natural_menopause_age: float = ROBUST_NATURAL_MENOPAUSE_MIN_AGE,
+    max_natural_menopause_age: float = ROBUST_NATURAL_MENOPAUSE_MAX_AGE,
+) -> pd.DataFrame:
     cycle_dir = raw_dir / str(config.cycle_start_year)
     demo = load_xpt(cycle_dir / config.demo_file)
     rhq = load_xpt(cycle_dir / config.rhq_file)
@@ -124,12 +146,15 @@ def build_cycle_frame(raw_dir: Path, config: CycleConfig) -> pd.DataFrame:
         }
     )
 
-    rhq_subset["has_no_period_last_12_months"] = build_no_period_flag(rhq)
-    rhq_subset["menopause_reason_ok"] = build_menopause_reason_flag(rhq, config.cycle_start_year)
-    rhq_subset["age_menopause"] = rhq_subset["age_last_period"].where(
-        rhq_subset["has_no_period_last_12_months"] & rhq_subset["menopause_reason_ok"]
+    rhq_subset["age_menopause"] = build_natural_menopause_age(
+        rhq=rhq,
+        cycle_start_year=config.cycle_start_year,
+        age_last_period=rhq_subset["age_last_period"],
+        min_menopause_cycle_year=min_menopause_cycle_year,
+        min_natural_menopause_age=min_natural_menopause_age,
+        max_natural_menopause_age=max_natural_menopause_age,
     )
-    rhq_subset = rhq_subset.drop(columns=["age_last_period", "has_no_period_last_12_months", "menopause_reason_ok"])
+    rhq_subset = rhq_subset.drop(columns=["age_last_period"])
 
     merged = demo_subset.merge(rhq_subset, on="seqn", how="inner")
     merged["cycle_start_year"] = config.cycle_start_year
@@ -147,16 +172,37 @@ def build_no_period_flag(rhq: pd.DataFrame) -> pd.Series:
 
 
 def build_menopause_reason_flag(rhq: pd.DataFrame, cycle_start_year: int) -> pd.Series:
-    if cycle_start_year == 2001:
-        return clean_flag(get_series(rhq, "RHQ040")).eq(5)
+    if cycle_start_year < 2007:
+        return pd.Series(False, index=rhq.index)
 
     if cycle_start_year <= 2011:
-        reason = clean_flag(get_series(rhq, "RHQ040")).eq(7) | clean_flag(get_series(rhq, "RHD042")).eq(7)
+        reason = clean_flag(get_series(rhq, "RHD042")).eq(7)
         no_hysterectomy = clean_flag(get_series(rhq, "RHD280")).eq(2)
         return reason & no_hysterectomy
 
     reason = clean_flag(get_series(rhq, "RHD043")).eq(7)
     return reason
+
+
+def build_natural_menopause_age(
+    *,
+    rhq: pd.DataFrame,
+    cycle_start_year: int,
+    age_last_period: pd.Series,
+    min_menopause_cycle_year: int,
+    min_natural_menopause_age: float,
+    max_natural_menopause_age: float,
+) -> pd.Series:
+    if cycle_start_year < min_menopause_cycle_year:
+        return pd.Series(np.nan, index=rhq.index, dtype="float64")
+
+    has_no_period_last_12_months = build_no_period_flag(rhq)
+    menopause_reason_ok = build_menopause_reason_flag(rhq, cycle_start_year)
+
+    age_menopause = age_last_period.where(has_no_period_last_12_months & menopause_reason_ok)
+    age_menopause = age_menopause.where(age_menopause >= min_natural_menopause_age)
+    age_menopause = age_menopause.where(age_menopause <= max_natural_menopause_age)
+    return age_menopause
 
 
 def add_mortality_columns(reproductive: pd.DataFrame, mortality_dir: Path) -> pd.DataFrame:
@@ -242,6 +288,9 @@ def main() -> None:
     ap.add_argument("--raw-dir", default="data/raw")
     ap.add_argument("--mortality-dir", default="data/raw/mortality")
     ap.add_argument("--out-dir", default="output/plots")
+    ap.add_argument("--min-menopause-cycle-year", type=int, default=ROBUST_NATURAL_MENOPAUSE_MIN_CYCLE)
+    ap.add_argument("--min-natural-menopause-age", type=float, default=ROBUST_NATURAL_MENOPAUSE_MIN_AGE)
+    ap.add_argument("--max-natural-menopause-age", type=float, default=ROBUST_NATURAL_MENOPAUSE_MAX_AGE)
     args = ap.parse_args()
 
     raw_dir = Path(args.raw_dir)
@@ -249,7 +298,12 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     ensure_dir(out_dir)
 
-    reproductive = build_reproductive_frame(raw_dir)
+    reproductive = build_reproductive_frame(
+        raw_dir,
+        min_menopause_cycle_year=args.min_menopause_cycle_year,
+        min_natural_menopause_age=args.min_natural_menopause_age,
+        max_natural_menopause_age=args.max_natural_menopause_age,
+    )
     merged = add_mortality_columns(reproductive, mortality_dir)
 
     plot_specs = [
