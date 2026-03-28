@@ -18,6 +18,23 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
 
+## Reproductive health questionnaire data
+- Public NHANES reproductive-health questionnaire files are now stored locally at:
+  - `data/raw/2001/RHQ_B.xpt`
+  - `data/raw/2003/RHQ_C.xpt`
+  - `data/raw/2005/RHQ_D.xpt`
+  - `data/raw/2007/RHQ_E.xpt`
+  - `data/raw/2009/RHQ_F.xpt`
+  - `data/raw/2011/RHQ_G.xpt`
+  - `data/raw/2013/RHQ_H.xpt`
+  - `data/raw/2015/RHQ_I.xpt`
+  - `data/raw/2017/RHQ_J.xpt`
+- The main menarche variable is `RHQ010`, labeled `Age when first menstrual period occurred`.
+- In practice, `RHQ010` is the NHANES age-at-menarche field. There is not a separate public variable for `menarche` versus `first period`; they are the same concept here.
+- `RHQ020` is the age-range fallback when exact age at first menstrual period is not reported.
+- Download and presence summaries are tracked in `data/processed/download_manifest_reproductive_health.csv` and `data/processed/reproductive_health_menarche_inventory.csv`.
+- NHANES also documents fuller restricted-use `RHQ_*_R` files for some cycles. Those are RDC-only and are not publicly downloadable.
+
 ## Run Order
 ```bash
 python3 src/discover_nhanes.py --component Laboratory --verify-urls
