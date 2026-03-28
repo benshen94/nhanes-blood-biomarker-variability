@@ -15,6 +15,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_dashboard.py` builds both static interactive HTML dashboards: blood (`dashboard/index.html`) and urinary (`dashboard/urinary.html`).
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
+- `src/plot_reproductive_age_scatter.py` builds three reproductive-age scatter plots under `output/plots/`: menarche vs menopause, menarche vs age at death, and menopause vs age at death, each with cleaned pairwise CSV exports and Pearson correlation statistics.
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
 
