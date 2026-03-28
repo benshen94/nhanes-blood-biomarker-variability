@@ -147,11 +147,11 @@ def build_no_period_flag(rhq: pd.DataFrame) -> pd.Series:
 
 
 def build_menopause_reason_flag(rhq: pd.DataFrame, cycle_start_year: int) -> pd.Series:
-    if cycle_start_year <= 2005:
+    if cycle_start_year == 2001:
         return clean_flag(get_series(rhq, "RHQ040")).eq(5)
 
     if cycle_start_year <= 2011:
-        reason = clean_flag(get_series(rhq, "RHD042")).eq(7)
+        reason = clean_flag(get_series(rhq, "RHQ040")).eq(7) | clean_flag(get_series(rhq, "RHD042")).eq(7)
         no_hysterectomy = clean_flag(get_series(rhq, "RHD280")).eq(2)
         return reason & no_hysterectomy
 
