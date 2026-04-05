@@ -86,7 +86,6 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
                         ],
                     },
                 },
-                "clalit_data": {"pooled": [{"age_bin": "20-24", "median": 0.9}]},
             }
         }
 
@@ -132,7 +131,6 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         self.assertEqual(row["display_name"], "CRP")
         self.assertEqual(row["featured_collection"], "inflammation")
         self.assertEqual(row["detail_series_path"], "data/series/c-reactive_protein.json")
-        self.assertTrue(row["has_clalit_overlay"])
         self.assertEqual(row["public_metrics"]["sample_count"], 1200)
         self.assertAlmostEqual(row["public_metrics"]["median_change_pct_20_24_to_80_84"], 200.0, places=6)
         self.assertAlmostEqual(row["public_metrics"]["iqr_change_pct_20_24_to_80_84"], 350.0, places=6)
@@ -162,7 +160,8 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         self.assertIn('id="explore-search"', html)
         self.assertIn('id="disease-condition-list"', html)
         self.assertIn('id="disease-plot"', html)
-        self.assertIn('id="show-clalit" type="checkbox"', html)
+        self.assertIn("Public research explorer only.", html)
+        self.assertNotIn('id="show-clalit" type="checkbox"', html)
         self.assertIn('id="rankings-metric"', html)
         self.assertIn('id="compare-mode"', html)
         self.assertIn('id="bioage-form"', html)

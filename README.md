@@ -197,9 +197,11 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `dashboard/aging_biomarkers_public/disease_index.json`
 - Disease explorer detail payloads:
   - `dashboard/aging_biomarkers_public/diseases/*.json`
+- UI notes:
+  - `docs/public_dashboard_minimalism/README.md`
 - Data contract:
   - built from the matched blood rows in `projects/aging_biomarkers/catalog/aging_biomarkers.csv`
-  - each manifest row includes the public display name, collection assignment, aging metadata, source-series path, Clalit availability, and precomputed public metrics
+  - each manifest row includes the public display name, collection assignment, aging metadata, source-series path, and precomputed public metrics
   - public metrics are precomputed for `pooled`, `female`, and `male`, each in `raw` and `10-90 trimmed` contexts
   - the public dashboard reuses the existing blood detail series files in `dashboard/data/series/*.json` for lazy-loaded chart detail
   - the main public explorer still relies on the healthy-only blood long table in `data/processed/biomarker_long.parquet`
@@ -228,10 +230,10 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - State model:
   - URL hash restores tab, biomarker, disease condition, disease biomarker, cohort, trim mode, view, spread metric, compare mode, and compare-set selection
 - Scope:
-  - blood only in v1
   - focused on the curated aging biomarker subset and familiar clinical markers rather than the full blood dashboard inventory
   - main exploration uses the healthy cohort exclusions documented below; disease comparisons live in their own tab so they do not contaminate the healthy-aging views
   - the public-facing page now includes a visible disclaimer that it is for education and research exploration, not diagnosis or medical advice
+  - the public-facing page intentionally keeps secondary explanation, methods notes, and caveats behind click-to-open bubbles so the default view stays readable
 
 ## Plot modes
 - In `Dashboard` analysis view, use:

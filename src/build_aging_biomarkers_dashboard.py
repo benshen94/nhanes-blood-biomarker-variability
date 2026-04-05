@@ -849,7 +849,6 @@ def build_public_manifest(
         detail_series_path = f"data/{rel_path}"
         unit = _clean_text(meta.get("unit"))
         test_name = _clean_text(getattr(row, "test_name", source_name))
-        has_clalit_overlay = bool(payload.get("clalit_data"))
         landing_score = (
             (1000 if test_name in PRIORITY_MARKERS else 0)
             + abs(public_metrics.get("median_change_pct_20_24_to_80_84") or 0.0)
@@ -870,7 +869,6 @@ def build_public_manifest(
                 "featured_collection": collection_key,
                 "featured_collection_title": COLLECTION_COPY[collection_key]["title"],
                 "detail_series_path": detail_series_path,
-                "has_clalit_overlay": has_clalit_overlay,
                 "is_priority_marker": bool(test_name in PRIORITY_MARKERS),
                 "landing_score": float(landing_score),
                 "source_name": source_name,

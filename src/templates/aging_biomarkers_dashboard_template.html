@@ -155,9 +155,9 @@
     }
 
     .hero-sub {
-      max-width: 58ch;
+      max-width: 48ch;
       margin: 0;
-      font-size: 1.02rem;
+      font-size: 1rem;
       color: var(--ink-soft);
     }
 
@@ -183,9 +183,9 @@
 
     .hero-stage {
       display: grid;
-      gap: 18px;
+      gap: 12px;
       align-content: start;
-      justify-items: stretch;
+      justify-items: end;
       padding-top: 10px;
     }
 
@@ -263,39 +263,9 @@
     }
 
     .public-disclaimer {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 14px;
-      align-items: start;
+      display: flex;
+      justify-content: flex-end;
       margin: 0 0 18px;
-      padding: 16px 18px;
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(182, 88, 58, 0.18);
-      background:
-        linear-gradient(135deg, rgba(182, 88, 58, 0.08), rgba(245, 239, 227, 0.92)),
-        rgba(255, 252, 247, 0.96);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .public-disclaimer strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.92rem;
-      letter-spacing: 0.01em;
-    }
-
-    .public-disclaimer p {
-      margin: 0;
-      color: var(--ink-soft);
-      font-size: 0.96rem;
-      max-width: 76ch;
-    }
-
-    .public-disclaimer .pill {
-      align-self: center;
-      background: rgba(182, 88, 58, 0.12);
-      color: var(--rust);
-      border-color: rgba(182, 88, 58, 0.18);
     }
 
     .tabbar,
@@ -845,9 +815,10 @@
       background: rgba(252, 248, 241, 0.7);
     }
 
-    .details-grid {
+    .details-grid,
+    .disclosure-grid {
       display: grid;
-      grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 16px;
     }
 
@@ -883,14 +854,97 @@
       line-height: 1.45;
     }
 
-    details {
-      border-top: 1px solid rgba(23, 36, 50, 0.08);
-      padding-top: 12px;
+    .fold-card {
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: 22px;
+      background: rgba(252, 248, 241, 0.92);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
     }
 
-    details summary {
+    .fold-card summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
       cursor: pointer;
+      list-style: none;
       font-weight: 700;
+      color: var(--ink);
+    }
+
+    .fold-card summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .fold-card summary::after {
+      content: "+";
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.1);
+      background: rgba(255, 252, 247, 0.86);
+      color: var(--ink-soft);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .fold-card[open] summary::after {
+      content: "−";
+    }
+
+    .fold-card-body {
+      padding: 0 18px 18px;
+      color: var(--ink-soft);
+    }
+
+    .fold-card-body > p,
+    .fold-card-body > ul,
+    .fold-card-body > div {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .bubble-copy {
+      font-size: 0.96rem;
+      line-height: 1.55;
+      max-width: 62ch;
+    }
+
+    .big-bullets {
+      display: grid;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .big-bullet {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 20px 22px;
+      border-radius: 24px;
+      background: rgba(252, 248, 241, 0.92);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .big-bullet-mark {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      line-height: 1;
+      color: var(--teal);
+      letter-spacing: -0.05em;
+    }
+
+    .big-bullet p {
+      margin: 0;
+      font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+      line-height: 1.35;
       color: var(--ink);
     }
 
@@ -1520,40 +1574,10 @@
         <div class="eyebrow">Longevity Explorer</div>
         <h1>Aging blood markers, made explorable.</h1>
         <p class="hero-sub">
-          A public-facing guide to how familiar biomarkers shift across adulthood in healthy NHANES participants.
-          Explore typical levels, spread, tails, and sex divergence without the clutter of the full research dashboard.
+          Familiar biomarkers across adulthood, with medians, spread, tails, disease comparisons, and an open blood-age calculator.
         </p>
-        <div class="hero-meta">
-          <div class="pill">Blood only</div>
-          <div class="pill">Healthy adults 20-84</div>
-          <div class="pill">Default view uses 10-90 trimming</div>
-        </div>
       </div>
       <div class="hero-stage">
-        <div class="hero-note">
-          This dashboard is for pattern exploration, not diagnosis. It highlights how distributions move, widen, or tilt with age.
-        </div>
-        <div class="hero-age-track">
-          <div class="hero-age-label">The story arc</div>
-          <div class="hero-age-row">
-            <div class="hero-age-cell">
-              <strong>20s</strong>
-              <span>young-adult baseline</span>
-            </div>
-            <div class="hero-age-cell">
-              <strong>40s</strong>
-              <span>midlife shift</span>
-            </div>
-            <div class="hero-age-cell">
-              <strong>60s</strong>
-              <span>reserve starts narrowing</span>
-            </div>
-            <div class="hero-age-cell">
-              <strong>80s</strong>
-              <span>distribution shape matters</span>
-            </div>
-          </div>
-        </div>
         <div id="hero-status" class="hero-status">Loading curated blood markers...</div>
       </div>
     </header>
@@ -1575,14 +1599,15 @@
     </div>
 
     <section class="public-disclaimer reveal" aria-label="Public dashboard disclaimer">
-      <div>
-        <strong>Public research explorer only.</strong>
-        <p>
-          This site is for education and pattern exploration. It is not medical advice, not a diagnostic tool, and not a substitute for a clinician.
-          The charts are cross-sectional NHANES summaries, and the Blood Age tab is a published research equation rather than a clinically validated personal diagnosis.
-        </p>
-      </div>
-      <div class="pill">Not for diagnosis</div>
+      <details class="fold-card">
+        <summary>Public research explorer only.</summary>
+        <div class="fold-card-body">
+          <p class="bubble-copy">
+            For education and pattern exploration only. This is not medical advice, not a diagnostic tool, and not a substitute for a clinician.
+            The charts are cross-sectional NHANES summaries, and the Blood Age tab is a published research equation rather than a clinically validated personal diagnosis.
+          </p>
+        </div>
+      </details>
     </section>
 
     <main>
@@ -1634,7 +1659,7 @@
           <div>
             <div class="section-kicker">Deep dive</div>
             <h2 id="explore-title">Explore a biomarker</h2>
-            <p id="explore-subtitle">Load one marker at a time, switch views, and optionally overlay Clalit when it exists.</p>
+            <p id="explore-subtitle">One marker at a time, with quieter controls and clearer age-pattern views.</p>
           </div>
         </div>
 
@@ -1678,11 +1703,6 @@
                 <button class="mini-btn" data-spread-btn data-value="std" type="button">SD</button>
                 <button class="mini-btn" data-spread-btn data-value="cv" type="button">CV</button>
               </div>
-              <label class="control-label" for="show-clalit">
-                <input id="show-clalit" type="checkbox" />
-                Show Clalit overlay when available
-              </label>
-              <div id="clalit-note" class="rail-copy"></div>
             </div>
           </aside>
 
@@ -1691,15 +1711,19 @@
             <div class="chart-shell">
               <div id="explore-plot"></div>
             </div>
-            <div class="details-grid">
-              <div class="stage-block">
-                <div class="section-kicker">Interpretation</div>
-                <div id="explore-annotation" class="stage-note"></div>
-              </div>
-              <div class="details-card">
-                <div class="section-kicker">Technical details</div>
-                <div id="explore-tech" class="facts"></div>
-              </div>
+            <div class="disclosure-grid">
+              <details class="fold-card">
+                <summary>How to read this chart</summary>
+                <div class="fold-card-body">
+                  <div id="explore-annotation" class="stage-note"></div>
+                </div>
+              </details>
+              <details class="fold-card">
+                <summary>Technical details</summary>
+                <div class="fold-card-body">
+                  <div id="explore-tech" class="facts"></div>
+                </div>
+              </details>
             </div>
           </div>
         </div>
@@ -1758,15 +1782,19 @@
             <div class="chart-shell">
               <div id="disease-plot"></div>
             </div>
-            <div class="details-grid">
-              <div class="stage-block">
-                <div class="section-kicker">Interpretation</div>
-                <div id="disease-annotation" class="stage-note"></div>
-              </div>
-              <div class="details-card">
-                <div class="section-kicker">Condition details</div>
-                <div id="disease-tech" class="facts"></div>
-              </div>
+            <div class="disclosure-grid">
+              <details class="fold-card">
+                <summary>How to read this comparison</summary>
+                <div class="fold-card-body">
+                  <div id="disease-annotation" class="stage-note"></div>
+                </div>
+              </details>
+              <details class="fold-card">
+                <summary>Condition details</summary>
+                <div class="fold-card-body">
+                  <div id="disease-tech" class="facts"></div>
+                </div>
+              </details>
             </div>
           </div>
         </div>
@@ -1876,29 +1904,21 @@
             <div class="section-kicker">Personal calculator</div>
             <h2>Try the open blood-age model.</h2>
             <p>
-              This tab implements the published PhenoAge blood-chemistry equation using age plus nine routine lab markers.
-              It runs locally in your browser and never uploads your values from this page.
+              The published PhenoAge equation, running locally in your browser.
             </p>
           </div>
         </div>
 
         <div class="bioage-grid">
           <aside class="bioage-form-shell">
-            <article class="rail-block">
-              <div class="section-kicker">What it is</div>
-              <h3>PhenoAge, built from NHANES blood chemistry</h3>
-              <p class="rail-copy">
-                PhenoAge is an open blood-based model from Morgan Levine and colleagues. It maps your age and nine routine biomarkers to the age in a reference U.S. population that had a similar mortality-associated blood profile.
-              </p>
-              <p class="rail-copy">
-                The blood model was developed in adults from NHANES III and later evaluated in NHANES IV. It is best understood as a research-oriented summary of blood chemistry and hematology, not a diagnosis.
-              </p>
-              <div class="bioage-pill-row">
-                <span class="mini-pill">9 biomarkers</span>
-                <span class="mini-pill">Browser only</span>
-                <span class="mini-pill">NHANES-derived</span>
+            <details class="fold-card">
+              <summary>What this model is</summary>
+              <div class="fold-card-body">
+                <p class="bubble-copy">
+                  PhenoAge is an open blood-based model from Morgan Levine and colleagues. It combines age plus nine routine biomarkers and reports the age in a U.S. reference population with a similar mortality-associated blood profile.
+                </p>
               </div>
-            </article>
+            </details>
 
             <article class="rail-block">
               <div class="section-kicker">Enter your labs</div>
@@ -2068,40 +2088,42 @@
               </div>
             </article>
 
-            <div class="bioage-support-grid">
-              <article class="details-card">
-                <div class="section-kicker">Caveats</div>
-                <h3>Useful context, not personal destiny.</h3>
-                <ul class="bioage-list">
-                  <li>PhenoAge was calibrated on U.S. adults in NHANES, so it is a population-reference model rather than a direct measure of how fast your body is aging internally.</li>
-                  <li>Short-term inflammation, infection, recent hard training, medications, dehydration, and lab-method differences can move the result.</li>
-                  <li>This tab is for adults and should not be used as a diagnosis, a screening decision, or a substitute for medical advice.</li>
-                  <li>If your CRP report uses a lower-limit symbol such as &lt;0.1, this calculator still needs a positive numeric value because the published equation uses log(CRP).</li>
-                </ul>
-              </article>
+            <div class="disclosure-grid">
+              <details class="fold-card">
+                <summary>Caveats</summary>
+                <div class="fold-card-body">
+                  <ul class="bioage-list">
+                    <li>Calibrated on U.S. adults in NHANES, so it is a population-reference model rather than a direct internal aging measurement.</li>
+                    <li>Inflammation, infection, medications, dehydration, and lab methods can move the estimate.</li>
+                    <li>It should not be used as a diagnosis, screening decision, or substitute for medical advice.</li>
+                    <li>CRP still needs a positive numeric value because the equation uses log(CRP).</li>
+                  </ul>
+                </div>
+              </details>
 
-              <article class="details-card">
-                <div class="section-kicker">Sources and credit</div>
-                <h3>The papers behind this tab</h3>
-                <div class="citation-list">
-                  <div class="citation-item">
-                    <strong>Levine ME et al. (2018), AGING.</strong>
-                    <p>
-                      This paper and its supplementary methods describe the open phenotypic age blood model, including the NHANES III training set, the 9 biomarkers, and the published coefficients used here.
-                      <a href="https://www.aging-us.com/article/101414/text" target="_blank" rel="noreferrer">Paper</a>
-                      |
-                      <a href="https://www.aging-us.com/article/101414/supplementary/SD1/0/aging-v10i4-101414-supplementary-material-SD1.pdf" target="_blank" rel="noreferrer">Supplement</a>
-                    </p>
-                  </div>
-                  <div class="citation-item">
-                    <strong>Liu Z, Kuo P-L, Horvath S, Crimmins E, Ferrucci L, Levine M (2018), PLOS Medicine.</strong>
-                    <p>
-                      This later NHANES IV paper evaluated how the blood-age measure related to mortality and disease burden across diverse adult subgroups.
-                      <a href="https://doi.org/10.1371/journal.pmed.1002718" target="_blank" rel="noreferrer">DOI</a>
-                    </p>
+              <details class="fold-card">
+                <summary>Sources and credit</summary>
+                <div class="fold-card-body">
+                  <div class="citation-list">
+                    <div class="citation-item">
+                      <strong>Levine ME et al. (2018), AGING.</strong>
+                      <p>
+                        The paper and supplement describe the open phenotypic age blood model, its NHANES III calibration set, and the published coefficients used here.
+                        <a href="https://www.aging-us.com/article/101414/text" target="_blank" rel="noreferrer">Paper</a>
+                        |
+                        <a href="https://www.aging-us.com/article/101414/supplementary/SD1/0/aging-v10i4-101414-supplementary-material-SD1.pdf" target="_blank" rel="noreferrer">Supplement</a>
+                      </p>
+                    </div>
+                    <div class="citation-item">
+                      <strong>Liu Z et al. (2018), PLOS Medicine.</strong>
+                      <p>
+                        This later paper evaluated the measure against mortality and disease burden in later NHANES cohorts.
+                        <a href="https://doi.org/10.1371/journal.pmed.1002718" target="_blank" rel="noreferrer">DOI</a>
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </article>
+              </details>
             </div>
           </div>
         </div>
@@ -2111,39 +2133,49 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">Methods in plain language</div>
-            <h2>What this dashboard is and what it is not.</h2>
+            <h2>What this explorer is and is not.</h2>
           </div>
         </div>
 
         <div class="about-layout">
           <article class="about-copy">
             <p>
-              This public dashboard focuses on healthy-adult cross-sectional patterns in NHANES blood biomarkers. It is meant for exploration and intuition building, not for clinical decision-making.
+              NHANES is a repeated cross-sectional U.S. survey run by the CDC's National Center for Health Statistics.
+              It uses public laboratory, demographics, and health-questionnaire files from the 1999-2000 through 2017-March 2020 pre-pandemic releases.
             </p>
-            <p>
-              The default public view uses the 10th to 90th percentile band within each age bin before computing summary statistics. That makes the overall patterns easier to read and less sensitive to extreme outliers.
-            </p>
-            <ul>
-              <li>Age bins run from 20-24 through 80-84. Ages 85 and older are excluded from the age-bin trend summaries.</li>
-              <li>The healthy cohort excludes pregnancy, diagnosed diabetes, diagnosed cardiovascular disease, cancer history, kidney failure indicators, and liver disease history.</li>
-              <li>The charts are cross-sectional. They compare different people at different ages, not the same people followed over time.</li>
-              <li>Sex divergence shows whether female and male median curves move apart after each is normalized to its own 20-24 baseline.</li>
-            </ul>
+            <div class="big-bullets">
+              <article class="big-bullet">
+                <div class="big-bullet-mark">01</div>
+                <p>Age bins run from 20-24 through 80-84. Ages 85 and older are excluded from the age-bin trend summaries.</p>
+              </article>
+              <article class="big-bullet">
+                <div class="big-bullet-mark">02</div>
+                <p>The healthy cohort excludes pregnancy, diagnosed diabetes, diagnosed cardiovascular disease, cancer history, kidney failure indicators, and liver disease history.</p>
+              </article>
+              <article class="big-bullet">
+                <div class="big-bullet-mark">03</div>
+                <p>The charts are cross-sectional. They compare different people at different ages, not the same people followed over time.</p>
+              </article>
+              <article class="big-bullet">
+                <div class="big-bullet-mark">04</div>
+                <p>Sex divergence shows whether female and male median curves move apart after each is normalized to its own 20-24 baseline.</p>
+              </article>
+            </div>
           </article>
 
           <div class="about-side">
-            <article class="details-card">
-              <div class="section-kicker">Why some views matter</div>
-              <h3>Mean shifts do not tell the whole story.</h3>
-              <p class="muted-copy">
-                A biomarker can keep a similar median while becoming much wider, or it can develop a longer upper tail while the center barely moves. That is why this dashboard foregrounds medians, spread, and tail shape separately.
-              </p>
-            </article>
+            <details class="fold-card">
+              <summary>Which NHANES data are included?</summary>
+              <div class="fold-card-body">
+                <p class="bubble-copy">
+                  The site uses public NHANES laboratory, demographics, and questionnaire files from the 1999-2000, 2001-2002, 2003-2004, 2005-2006, 2007-2008, 2009-2010, 2011-2012, 2013-2014, 2015-2016, and 2017-March 2020 pre-pandemic releases.
+                </p>
+              </div>
+            </details>
 
-            <article class="details-card">
-              <div class="section-kicker">Technical notes</div>
-              <details open>
-                <summary>Open the technical section</summary>
+            <details class="fold-card">
+              <summary>Technical notes</summary>
+              <div class="fold-card-body">
                 <div class="facts">
                   <div class="fact-row">
                     <span>Default public metric set</span>
@@ -2154,16 +2186,12 @@
                     <div>Every selected line is expressed as percent change from the marker's own 20-24 baseline.</div>
                   </div>
                   <div class="fact-row">
-                    <span>Clalit overlay</span>
-                    <div>Shown only when an aligned Clalit series exists for the selected blood marker and the current view can support it.</div>
-                  </div>
-                  <div class="fact-row">
                     <span>Use responsibly</span>
                     <div>This is a population-level pattern explorer. It is not a clinical reference interval calculator and it does not estimate personal risk.</div>
                   </div>
                 </div>
-              </details>
-            </article>
+              </div>
+            </details>
           </div>
         </div>
       </section>
@@ -2191,7 +2219,6 @@
       fog: "#c6c1b5",
       paper: "#f5efe3",
       band: "rgba(15, 103, 97, 0.14)",
-      clalit: "#a47521",
     };
 
     const BIOAGE_FACTORS = {
@@ -2234,7 +2261,6 @@
       trim: "trim_10_90",
       view: "typical",
       spreadMetric: "iqr",
-      showClalit: false,
       rankingsMetric: "median_rise",
       rankingsSpreadMode: "iqr",
       rankingsCollection: "all",
@@ -2307,43 +2333,102 @@
       return new Intl.NumberFormat("en-US").format(Math.round(value));
     }
 
-    function buildPlotLayout(overrides = {}) {
+    function mergePlotConfig(base, overrides) {
+      const merged = { ...base };
+      Object.entries(overrides || {}).forEach(([key, value]) => {
+        const baseValue = merged[key];
+        const canMerge = (
+          value
+          && typeof value === "object"
+          && !Array.isArray(value)
+          && baseValue
+          && typeof baseValue === "object"
+          && !Array.isArray(baseValue)
+        );
+
+        if (canMerge) {
+          merged[key] = mergePlotConfig(baseValue, value);
+          return;
+        }
+
+        merged[key] = value;
+      });
+      return merged;
+    }
+
+    function axisTitle(text) {
       return {
+        text,
+        font: {
+          family: "\"Instrument Sans\", sans-serif",
+          size: 18,
+          color: COLORS.ink,
+        },
+        standoff: 14,
+      };
+    }
+
+    function chartTitle(text) {
+      return {
+        text,
+        x: 0,
+        xanchor: "left",
+        y: 0.98,
+        font: {
+          family: "\"Fraunces\", serif",
+          size: 18,
+          color: COLORS.ink,
+        },
+      };
+    }
+
+    function buildPlotLayout(overrides = {}) {
+      const baseLayout = {
         paper_bgcolor: "rgba(0,0,0,0)",
         plot_bgcolor: "rgba(0,0,0,0)",
-        margin: { l: 54, r: 18, t: 44, b: 50 },
+        margin: { l: 76, r: 28, t: 118, b: 92 },
         font: {
           family: "\"Instrument Sans\", sans-serif",
           color: COLORS.inkSoft,
-          size: 13,
+          size: 14,
         },
         xaxis: {
           gridcolor: "rgba(23, 36, 50, 0.08)",
           linecolor: "rgba(23, 36, 50, 0.16)",
           zeroline: false,
-          tickfont: { color: COLORS.inkSoft },
+          tickfont: { color: COLORS.inkSoft, size: 14 },
+          automargin: true,
+          title: axisTitle("Age (years)"),
         },
         yaxis: {
           gridcolor: "rgba(23, 36, 50, 0.08)",
           linecolor: "rgba(23, 36, 50, 0.16)",
           zeroline: false,
-          tickfont: { color: COLORS.inkSoft },
+          tickfont: { color: COLORS.inkSoft, size: 14 },
+          automargin: true,
+          title: axisTitle("Value"),
         },
         legend: {
           orientation: "h",
-          yanchor: "bottom",
-          y: 1.02,
+          yanchor: "top",
+          y: -0.22,
           xanchor: "left",
           x: 0,
           bgcolor: "rgba(0,0,0,0)",
+          font: {
+            family: "\"Instrument Sans\", sans-serif",
+            size: 13,
+            color: COLORS.inkSoft,
+          },
         },
         hoverlabel: {
           bgcolor: "#fff8ed",
           bordercolor: "rgba(23, 36, 50, 0.12)",
           font: { family: "\"Instrument Sans\", sans-serif", color: COLORS.ink, size: 12 },
         },
-        ...overrides,
       };
+
+      return mergePlotConfig(baseLayout, overrides);
     }
 
     function collectionEntries(collectionKey) {
@@ -2589,7 +2674,6 @@
       document.querySelectorAll("[data-spread-btn]").forEach((button) => {
         button.classList.toggle("active", button.dataset.value === state.spreadMetric);
       });
-      refs.showClalit.checked = state.showClalit;
     }
 
     function populateFilterSelect(selectEl, values, formatter = (value) => value) {
@@ -2815,7 +2899,6 @@
         ["NHANES source label", entry.source_display_name || "n/a"],
         ["Variable name", entry.source_variable_name || "n/a"],
         ["Trim mode", currentTrimLabel()],
-        ["Clalit overlay", entry.has_clalit_overlay ? "Available for supported views" : "Not available"],
       ];
 
       refs.exploreTech.innerHTML = facts
@@ -2888,13 +2971,6 @@
 
       traces.push(lineTraceFromPoints(points, "median", `${state.cohort} median`, COLORS.teal));
 
-      if (state.showClalit) {
-        const clalitPoints = payload?.clalit_data?.[state.cohort] || [];
-        if (clalitPoints.length) {
-          traces.push(lineTraceFromPoints(clalitPoints, "median", `Clalit ${state.cohort}`, COLORS.clalit, "dash"));
-        }
-      }
-
       return traces;
     }
 
@@ -2906,16 +2982,7 @@
 
       const field = state.spreadMetric;
       const label = state.spreadMetric === "std" ? "SD" : state.spreadMetric === "cv" ? "CV" : "IQR";
-      const traces = [lineTraceFromPoints(points, field, `${state.cohort} ${label}`, COLORS.teal)];
-
-      if (state.showClalit) {
-        const clalitPoints = payload?.clalit_data?.[state.cohort] || [];
-        if (clalitPoints.length) {
-          traces.push(lineTraceFromPoints(clalitPoints, field, `Clalit ${state.cohort}`, COLORS.clalit, "dash"));
-        }
-      }
-
-      return traces;
+      return [lineTraceFromPoints(points, field, `${state.cohort} ${label}`, COLORS.teal)];
     }
 
     function buildTailTraces(payload) {
@@ -3031,39 +3098,35 @@
           traces = buildTypicalTraces(payload);
           annotation = "The thick line tracks the age-bin median. The shaded band marks the interquartile range.";
           layout = buildPlotLayout({
-            title: { text: entry.chart_display_name, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
-            yaxis: { title: { text: entry.unit || "Value" } },
+            title: chartTitle(entry.display_name),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle(entry.unit || "Biomarker value") },
           });
-          refs.clalitNote.textContent = entry.has_clalit_overlay
-            ? "Clalit overlays are available for median and spread views."
-            : "No Clalit overlay is available for this biomarker.";
         } else if (state.view === "spread") {
           traces = buildSpreadTraces(payload);
           const label = state.spreadMetric === "std" ? "standard deviation" : state.spreadMetric === "cv" ? "coefficient of variation" : "interquartile range";
           annotation = `This view asks whether the ${label} widens or narrows with age.`;
           layout = buildPlotLayout({
-            title: { text: entry.chart_display_name, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
-            yaxis: { title: { text: state.spreadMetric.toUpperCase() } },
+            title: chartTitle(entry.display_name),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle(state.spreadMetric === "std" ? "Standard deviation" : state.spreadMetric === "cv" ? "Coefficient of variation" : "Interquartile range") },
           });
-          refs.clalitNote.textContent = entry.has_clalit_overlay
-            ? "Clalit overlays are available here."
-            : "No Clalit overlay is available for this biomarker.";
         } else if (state.view === "tail") {
           traces = buildTailTraces(payload);
           annotation = "P10, median, and P90 show whether the tails stretch faster than the center. The point cloud is a capped raw sample.";
           layout = buildPlotLayout({
-            title: { text: entry.chart_display_name, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
-            yaxis: { title: { text: entry.unit || "Value" } },
+            title: chartTitle(entry.display_name),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle(entry.unit || "Biomarker value") },
           });
-          refs.clalitNote.textContent = "Tail view uses NHANES only because Clalit overlays do not carry P10 and P90.";
         } else {
           traces = buildSexSplitTraces(payload);
           annotation = "Female and male medians are each normalized to their own 20-24 baseline to highlight divergence in trajectory shape, not just baseline separation.";
           layout = buildPlotLayout({
-            title: { text: `${entry.display_name}: female vs male`, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
-            yaxis: { title: { text: "% change vs own 20-24 median" } },
+            title: chartTitle(`${entry.display_name}: female vs male`),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle("% change from each sex-specific 20-24 baseline") },
           });
-          refs.clalitNote.textContent = "Sex split compares NHANES female vs male trajectories.";
         }
 
         if (!traces.length) {
@@ -3334,13 +3397,12 @@
           refs.diseasePlot,
           traces,
           buildPlotLayout({
-            title: {
-              text: `${record.display_name}: healthy vs ${conditionMeta.title.toLowerCase()}`,
-              x: 0,
-              font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink },
+            title: chartTitle(`${record.display_name}: healthy vs ${conditionMeta.title.toLowerCase()}`),
+            xaxis: {
+              title: axisTitle("Age (years)"),
             },
             yaxis: {
-              title: { text: record.unit || "Value" },
+              title: axisTitle(record.unit || "Biomarker value"),
             },
           }),
           { responsive: true, displaylogo: false }
@@ -3444,19 +3506,16 @@
           },
         ],
         buildPlotLayout({
-          title: {
-            text: `${label} | ${state.cohort} | ${currentTrimLabel()}`,
-            x: 0,
-            font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink },
-          },
+          title: chartTitle(`${label} | ${state.cohort} | ${currentTrimLabel()}`),
           xaxis: {
-            title: { text: state.rankingsMetric === "sex_divergence" ? "mean absolute gap" : "% change" },
+            title: axisTitle(state.rankingsMetric === "sex_divergence" ? "Mean absolute normalized gap" : "% change vs age 20-24"),
             gridcolor: "rgba(23, 36, 50, 0.08)",
           },
           yaxis: {
             automargin: true,
+            title: axisTitle("Biomarker"),
           },
-          margin: { l: 160, r: 18, t: 54, b: 50 },
+          margin: { l: 220, r: 28, t: 118, b: 92 },
         }),
         { responsive: true, displaylogo: false }
       );
@@ -3581,13 +3640,12 @@
           refs.comparePlot,
           traces,
           buildPlotLayout({
-            title: {
-              text: `Relative change vs age 20-24 | ${state.cohort} | ${currentTrimLabel()}`,
-              x: 0,
-              font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink },
+            title: chartTitle(`Relative change vs age 20-24 | ${state.cohort} | ${currentTrimLabel()}`),
+            xaxis: {
+              title: axisTitle("Age (years)"),
             },
             yaxis: {
-              title: { text: "% change from each marker's 20-24 baseline" },
+              title: axisTitle("% change from each marker's 20-24 baseline"),
             },
           }),
           { responsive: true, displaylogo: false }
@@ -4128,11 +4186,6 @@
         });
       });
 
-      refs.showClalit.addEventListener("change", () => {
-        state.showClalit = refs.showClalit.checked;
-        renderExplorePanel();
-      });
-
       refs.rankingsMetric.addEventListener("change", () => {
         state.rankingsMetric = refs.rankingsMetric.value;
         renderRankings();
@@ -4295,8 +4348,6 @@
       refs.diseasePlot = $("disease-plot");
       refs.diseaseAnnotation = $("disease-annotation");
       refs.diseaseTech = $("disease-tech");
-      refs.showClalit = $("show-clalit");
-      refs.clalitNote = $("clalit-note");
       refs.exploreSummaryStrip = $("explore-summary-strip");
       refs.explorePlot = $("explore-plot");
       refs.exploreAnnotation = $("explore-annotation");
