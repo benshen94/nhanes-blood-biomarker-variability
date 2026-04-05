@@ -1683,6 +1683,7 @@
               <h3>Read the same marker in different ways</h3>
               <label class="control-label">Cohort</label>
               <div class="segmented">
+                <button class="tone-btn" data-cohort-btn data-value="both" type="button">Both</button>
                 <button class="tone-btn" data-cohort-btn data-value="pooled" type="button">Pooled</button>
                 <button class="tone-btn" data-cohort-btn data-value="female" type="button">Female</button>
                 <button class="tone-btn" data-cohort-btn data-value="male" type="button">Male</button>
@@ -1704,6 +1705,12 @@
                 <button class="mini-btn" data-spread-btn data-value="std" type="button">SD</button>
                 <button class="mini-btn" data-spread-btn data-value="cv" type="button">CV</button>
               </div>
+              <details class="fold-card">
+                <summary>Sex colors</summary>
+                <div class="fold-card-body">
+                  <p class="bubble-copy">Female is shown in red. Male is shown in blue. In Both mode, the two trajectories are drawn separately.</p>
+                </div>
+              </details>
             </div>
           </aside>
 
@@ -1765,6 +1772,7 @@
               <h3>Use the same cohort and trim logic</h3>
               <label class="control-label">Cohort</label>
               <div class="segmented">
+                <button class="tone-btn" data-cohort-btn data-value="both" type="button">Both</button>
                 <button class="tone-btn" data-cohort-btn data-value="pooled" type="button">Pooled</button>
                 <button class="tone-btn" data-cohort-btn data-value="female" type="button">Female</button>
                 <button class="tone-btn" data-cohort-btn data-value="male" type="button">Male</button>
@@ -2265,7 +2273,7 @@
       exploreCollection: "all",
       diseaseCondition: "",
       diseaseBiomarkerId: "",
-      cohort: "pooled",
+      cohort: "both",
       trim: "trim_10_90",
       view: "typical",
       spreadMetric: "std",
@@ -2312,6 +2320,18 @@
 
     function currentTrimLabel() {
       return state.trim === "raw" ? "Raw" : "10-90 trimmed";
+    }
+
+    function cohortColor(sex) {
+      return sex === "female" ? COLORS.rust : COLORS.blue;
+    }
+
+    function cohortFill(sex) {
+      return sex === "female" ? "rgba(182, 88, 58, 0.12)" : "rgba(83, 116, 146, 0.12)";
+    }
+
+    function cohortLabel(sex) {
+      return sex === "female" ? "Female" : "Male";
     }
 
     function humanizeMeasurementClass(value) {
@@ -2601,7 +2621,7 @@
       if (diseaseBiomarker && state.manifestById.has(diseaseBiomarker)) {
         state.diseaseBiomarkerId = diseaseBiomarker;
       }
-      if (cohort && ["pooled", "female", "male"].includes(cohort)) {
+      if (cohort && ["both", "pooled", "female", "male"].includes(cohort)) {
         state.cohort = cohort;
       }
       if (trim && ["raw", "trim_10_90"].includes(trim)) {
@@ -2828,12 +2848,23 @@
       if (state.cohort === "pooled") {
         return payload?.points_by_filter?.[mode] || [];
       }
+      if (state.cohort === "both") {
+        return [];
+      }
       return payload?.sex_points_by_filter?.[mode]?.[state.cohort] || [];
+    }
+
+    function getSexSeriesPoints(payload, sex) {
+      const mode = trimModeKey();
+      return payload?.sex_points_by_filter?.[mode]?.[sex] || [];
     }
 
     function getRawSample(payload) {
       if (state.cohort === "pooled") {
         return payload?.raw_sample || [];
+      }
+      if (state.cohort === "both") {
+        return [];
       }
       return payload?.raw_sample_by_sex?.[state.cohort] || [];
     }
@@ -2841,6 +2872,10 @@
     function getSampleCount(payload) {
       if (state.cohort === "pooled") {
         return payload?.raw_total_n || 0;
+      }
+      if (state.cohort === "both") {
+        const counts = payload?.raw_total_n_by_sex || {};
+        return (counts.female || 0) + (counts.male || 0);
       }
       return payload?.raw_total_n_by_sex?.[state.cohort] || 0;
     }
@@ -2862,6 +2897,55 @@
     }
 
     function renderSummaryStrip(entry, payload) {
+      if (state.cohort === "both") {
+        const byContext = entry?.public_metrics_by_context || {};
+        const femaleMetrics = byContext?.female?.[trimModeKey()] || {};
+        const maleMetrics = byContext?.male?.[trimModeKey()] || {};
+        const spreadKey = state.spreadMetric === "cv"
+          ? "cv_change_pct_20_24_to_80_84"
+          : "sd_change_pct_20_24_to_80_84";
+        const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
+
+        refs.exploreSummaryStrip.innerHTML = [
+          {
+            label: "Female median",
+            value: formatSignedPercent(femaleMetrics.median_change_pct_20_24_to_80_84, 0),
+            note: "20s -> 80s",
+          },
+          {
+            label: "Male median",
+            value: formatSignedPercent(maleMetrics.median_change_pct_20_24_to_80_84, 0),
+            note: "20s -> 80s",
+          },
+          {
+            label: `Female ${spreadLabel}`,
+            value: formatSignedPercent(femaleMetrics[spreadKey], 0),
+            note: currentTrimLabel(),
+          },
+          {
+            label: `Male ${spreadLabel}`,
+            value: formatSignedPercent(maleMetrics[spreadKey], 0),
+            note: currentTrimLabel(),
+          },
+          {
+            label: "Sex divergence",
+            value: Number.isFinite(entry.public_metrics?.sex_divergence_score)
+              ? formatUnsigned(entry.public_metrics.sex_divergence_score, 1)
+              : "n/a",
+            note: "female vs male curve gap",
+          },
+        ]
+          .map((item) => `
+            <div class="summary-card">
+              <div class="label">${item.label}</div>
+              <strong>${item.value}</strong>
+              <span>${item.note}</span>
+            </div>
+          `)
+          .join("");
+        return;
+      }
+
       const points = getSeriesPoints(payload);
       const metrics = computePointMetrics(points, getSampleCount(payload), entry.public_metrics?.sex_divergence_score || null);
       const spreadKey = state.spreadMetric === "cv"
@@ -2957,6 +3041,43 @@
     }
 
     function buildTypicalTraces(payload) {
+      if (state.cohort === "both") {
+        const traces = [];
+        ["female", "male"].forEach((sex) => {
+          const points = getSexSeriesPoints(payload, sex);
+          if (!points.length) {
+            return;
+          }
+
+          const bandPoints = points.filter((point) => Number.isFinite(point.q25) && Number.isFinite(point.q75));
+          if (bandPoints.length) {
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: bandPoints.map((point) => point.age_mid),
+              y: bandPoints.map((point) => point.q75),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              showlegend: false,
+            });
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: bandPoints.map((point) => point.age_mid),
+              y: bandPoints.map((point) => point.q25),
+              fill: "tonexty",
+              fillcolor: cohortFill(sex),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              name: `${cohortLabel(sex)} IQR`,
+            });
+          }
+
+          traces.push(lineTraceFromPoints(points, "median", `${cohortLabel(sex)} median`, cohortColor(sex)));
+        });
+        return traces;
+      }
+
       const points = getSeriesPoints(payload);
       if (!points.length) {
         return [];
@@ -2993,6 +3114,19 @@
     }
 
     function buildSpreadTraces(payload) {
+      if (state.cohort === "both") {
+        const traces = [];
+        const field = state.spreadMetric;
+        ["female", "male"].forEach((sex) => {
+          const points = getSexSeriesPoints(payload, sex);
+          if (!points.length) {
+            return;
+          }
+          traces.push(lineTraceFromPoints(points, field, `${cohortLabel(sex)} ${field.toUpperCase()}`, cohortColor(sex)));
+        });
+        return traces;
+      }
+
       const points = getSeriesPoints(payload);
       if (!points.length) {
         return [];
@@ -3004,6 +3138,43 @@
     }
 
     function buildTailTraces(payload) {
+      if (state.cohort === "both") {
+        const traces = [];
+        ["female", "male"].forEach((sex) => {
+          const points = getSexSeriesPoints(payload, sex);
+          if (!points.length) {
+            return;
+          }
+
+          const tailPoints = points.filter((point) => Number.isFinite(point.p10) && Number.isFinite(point.p90));
+          if (tailPoints.length) {
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: tailPoints.map((point) => point.age_mid),
+              y: tailPoints.map((point) => point.p90),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              showlegend: false,
+            });
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: tailPoints.map((point) => point.age_mid),
+              y: tailPoints.map((point) => point.p10),
+              fill: "tonexty",
+              fillcolor: cohortFill(sex),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              name: `${cohortLabel(sex)} P10-P90`,
+            });
+          }
+
+          traces.push(lineTraceFromPoints(points, "median", `${cohortLabel(sex)} median`, cohortColor(sex)));
+        });
+        return traces;
+      }
+
       const points = getSeriesPoints(payload);
       if (!points.length) {
         return [];
@@ -3114,7 +3285,9 @@
 
         if (state.view === "typical") {
           traces = buildTypicalTraces(payload);
-          annotation = "The thick line tracks the age-bin median. The shaded band marks the interquartile range.";
+          annotation = state.cohort === "both"
+            ? "Female is shown in red and male in blue. Each line tracks the age-bin median, and each translucent band marks that sex-specific interquartile range."
+            : "The thick line tracks the age-bin median. The shaded band marks the interquartile range.";
           layout = buildPlotLayout({
             title: chartTitle(entry.display_name),
             xaxis: { title: axisTitle("Age (years)") },
@@ -3123,7 +3296,9 @@
         } else if (state.view === "spread") {
           traces = buildSpreadTraces(payload);
           const label = state.spreadMetric === "cv" ? "coefficient of variation" : "standard deviation";
-          annotation = `This view asks whether the ${label} widens or narrows with age.`;
+          annotation = state.cohort === "both"
+            ? `Female is shown in red and male in blue. This view asks whether the ${label} widens or narrows differently by sex.`
+            : `This view asks whether the ${label} widens or narrows with age.`;
           layout = buildPlotLayout({
             title: chartTitle(entry.display_name),
             xaxis: { title: axisTitle("Age (years)") },
@@ -3131,7 +3306,9 @@
           });
         } else if (state.view === "tail") {
           traces = buildTailTraces(payload);
-          annotation = "P10, median, and P90 show whether the tails stretch faster than the center. The point cloud is a capped raw sample.";
+          annotation = state.cohort === "both"
+            ? "Female is shown in red and male in blue. Each shaded band spans P10 to P90, with the median line overlaid for each sex."
+            : "P10, median, and P90 show whether the tails stretch faster than the center. The point cloud is a capped raw sample.";
           layout = buildPlotLayout({
             title: chartTitle(entry.display_name),
             xaxis: { title: axisTitle("Age (years)") },
@@ -3232,13 +3409,26 @@
       if (state.cohort === "pooled") {
         return group?.points_by_filter?.[mode] || [];
       }
+      if (state.cohort === "both") {
+        return [];
+      }
       return group?.sex_points_by_filter?.[mode]?.[state.cohort] || [];
+    }
+
+    function getDiseaseGroupPointsForSex(record, groupKey, sex) {
+      const mode = trimModeKey();
+      const group = record?.groups?.[groupKey] || {};
+      return group?.sex_points_by_filter?.[mode]?.[sex] || [];
     }
 
     function getDiseaseGroupCount(record, groupKey) {
       const group = record?.groups?.[groupKey] || {};
       if (state.cohort === "pooled") {
         return group?.raw_total_n || 0;
+      }
+      if (state.cohort === "both") {
+        const counts = group?.raw_total_n_by_sex || {};
+        return (counts.female || 0) + (counts.male || 0);
       }
       return group?.raw_total_n_by_sex?.[state.cohort] || 0;
     }
@@ -3297,6 +3487,45 @@
     }
 
     function renderDiseaseSummaryStrip(conditionMeta, record) {
+      if (state.cohort === "both") {
+        refs.diseaseSummaryStrip.innerHTML = [
+          {
+            label: "Healthy female n",
+            value: formatCount(record?.groups?.healthy?.raw_total_n_by_sex?.female || 0),
+            note: "female healthy observations",
+          },
+          {
+            label: "Healthy male n",
+            value: formatCount(record?.groups?.healthy?.raw_total_n_by_sex?.male || 0),
+            note: "male healthy observations",
+          },
+          {
+            label: `${conditionMeta.title} female n`,
+            value: formatCount(record?.groups?.condition?.raw_total_n_by_sex?.female || 0),
+            note: "female condition observations",
+          },
+          {
+            label: `${conditionMeta.title} male n`,
+            value: formatCount(record?.groups?.condition?.raw_total_n_by_sex?.male || 0),
+            note: "male condition observations",
+          },
+          {
+            label: "View mode",
+            value: "Both",
+            note: "female red, male blue",
+          },
+        ]
+          .map((item) => `
+            <div class="summary-card">
+              <div class="label">${item.label}</div>
+              <strong>${item.value}</strong>
+              <span>${item.note}</span>
+            </div>
+          `)
+          .join("");
+        return;
+      }
+
       refs.diseaseSummaryStrip.innerHTML = [
         {
           label: "Healthy sample count",
@@ -3356,6 +3585,25 @@
         .join("");
     }
 
+    function buildDiseaseBothSexTraces(record, conditionMeta) {
+      const traces = [];
+
+      ["female", "male"].forEach((sex) => {
+        const healthyPoints = getDiseaseGroupPointsForSex(record, "healthy", sex);
+        const conditionPoints = getDiseaseGroupPointsForSex(record, "condition", sex);
+        if (!healthyPoints.length || !conditionPoints.length) {
+          return;
+        }
+
+        const color = cohortColor(sex);
+        const label = cohortLabel(sex);
+        traces.push(lineTraceFromPoints(healthyPoints, "median", `Healthy ${label}`, color, "dot"));
+        traces.push(lineTraceFromPoints(conditionPoints, "median", `${conditionMeta.title} ${label}`, color));
+      });
+
+      return traces;
+    }
+
     function setDiseaseAnnotation(message) {
       refs.diseaseAnnotation.textContent = message;
     }
@@ -3398,7 +3646,7 @@
         const conditionPoints = getDiseaseGroupPoints(record, "condition");
         refs.diseaseConditionNote.textContent = `${conditionMeta.kicker} | ${conditionMeta.source}`;
 
-        if (!healthyPoints.length || !conditionPoints.length) {
+        if (state.cohort !== "both" && (!healthyPoints.length || !conditionPoints.length)) {
           renderChartEmpty(refs.diseasePlot, "This biomarker does not have enough data for the current cohort and disease condition.");
           refs.diseaseSummaryStrip.innerHTML = "";
           renderDiseaseTech(conditionMeta, record);
@@ -3406,10 +3654,20 @@
           return;
         }
 
-        const traces = [
-          ...buildDiseaseBandTraces(healthyPoints, "Healthy baseline", COLORS.teal, "rgba(15, 103, 97, 0.12)"),
-          ...buildDiseaseBandTraces(conditionPoints, conditionMeta.title, COLORS.rust, "rgba(182, 88, 58, 0.14)"),
-        ];
+        const traces = state.cohort === "both"
+          ? buildDiseaseBothSexTraces(record, conditionMeta)
+          : [
+              ...buildDiseaseBandTraces(healthyPoints, "Healthy baseline", COLORS.teal, "rgba(15, 103, 97, 0.12)"),
+              ...buildDiseaseBandTraces(conditionPoints, conditionMeta.title, COLORS.rust, "rgba(182, 88, 58, 0.14)"),
+            ];
+
+        if (!traces.length) {
+          renderChartEmpty(refs.diseasePlot, "This biomarker does not have enough female and male data for the current condition.");
+          refs.diseaseSummaryStrip.innerHTML = "";
+          renderDiseaseTech(conditionMeta, record);
+          setDiseaseAnnotation("Try pooled view if one sex has sparse data in the selected condition.");
+          return;
+        }
 
         Plotly.newPlot(
           refs.diseasePlot,
@@ -3428,7 +3686,11 @@
         state.lastChartId = "disease-plot";
         renderDiseaseSummaryStrip(conditionMeta, record);
         renderDiseaseTech(conditionMeta, record);
-        setDiseaseAnnotation(`${conditionMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort in the same age bins.`);
+        setDiseaseAnnotation(
+          state.cohort === "both"
+            ? `${conditionMeta.summary} Female curves are red and male curves are blue. Dotted lines are the healthy baseline; solid lines are the selected disease cohort.`
+            : `${conditionMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort in the same age bins.`
+        );
       } catch (error) {
         renderChartEmpty(refs.diseasePlot, "The disease explorer could not be loaded.");
         refs.diseaseSummaryStrip.innerHTML = "";
@@ -3581,7 +3843,9 @@
     }
 
     function buildCompareSeries(entry, payload, color) {
-      const points = getSeriesPoints(payload);
+      const points = state.cohort === "both"
+        ? (payload?.points_by_filter?.[trimModeKey()] || [])
+        : getSeriesPoints(payload);
       const baselinePoint = points.find((point) => point.age_bin === "20-24");
       const baselineValue = baselinePoint ? compareAccessor(baselinePoint) : null;
       if (!Number.isFinite(baselineValue) || Math.abs(baselineValue) < 1e-12) {
@@ -3671,7 +3935,9 @@
         state.lastChartId = "compare-plot";
         refs.compareNote.textContent = skipped.length
           ? `Skipped for this mode: ${skipped.join(", ")}.`
-          : "All selected biomarkers were normalized to their own 20-24 baseline.";
+          : state.cohort === "both"
+            ? "Compare uses the pooled trajectory when Both is selected."
+            : "All selected biomarkers were normalized to their own 20-24 baseline.";
       } catch (error) {
         renderChartEmpty(refs.comparePlot, "The compare view could not be rendered.");
         refs.compareNote.textContent = error.message;
