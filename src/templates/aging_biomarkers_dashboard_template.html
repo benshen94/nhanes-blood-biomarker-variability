@@ -1,0 +1,2921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aging Biomarkers Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --paper: #f5efe3;
+      --paper-strong: #fcf8f1;
+      --paper-deep: #e7dcc8;
+      --ink: #172432;
+      --ink-soft: #4d5a67;
+      --ink-faint: #73808d;
+      --line: rgba(23, 36, 50, 0.12);
+      --line-strong: rgba(23, 36, 50, 0.22);
+      --teal: #0f6761;
+      --teal-soft: rgba(15, 103, 97, 0.12);
+      --rust: #b6583a;
+      --rust-soft: rgba(182, 88, 58, 0.14);
+      --blue: #537492;
+      --blue-soft: rgba(83, 116, 146, 0.12);
+      --rose: #935167;
+      --amber: #a47521;
+      --violet: #6c5f86;
+      --shadow-soft: 0 18px 48px rgba(23, 36, 50, 0.08);
+      --shadow-deep: 0 30px 80px rgba(23, 36, 50, 0.14);
+      --font-display: "Fraunces", Georgia, serif;
+      --font-sans: "Instrument Sans", "Avenir Next", "Segoe UI", sans-serif;
+      --radius-sm: 16px;
+      --radius-md: 26px;
+      --radius-lg: 40px;
+      --control-h: 46px;
+      --page-max: 1480px;
+      --transition-fast: 160ms cubic-bezier(0.25, 1, 0.5, 1);
+      --transition-base: 240ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(15, 103, 97, 0.16), transparent 28%),
+        radial-gradient(circle at 88% 14%, rgba(182, 88, 58, 0.14), transparent 24%),
+        linear-gradient(180deg, #f9f5ed 0%, var(--paper) 45%, #f2e8d9 100%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      background: none;
+      padding: 0;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    :focus-visible {
+      outline: 3px solid rgba(15, 103, 97, 0.45);
+      outline-offset: 2px;
+    }
+
+    .page-shell {
+      width: min(calc(100% - 32px), var(--page-max));
+      margin: 0 auto;
+      padding: 26px 0 48px;
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
+      gap: 28px;
+      padding: 34px 34px 30px;
+      overflow: hidden;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(135deg, rgba(252, 248, 241, 0.98) 0%, rgba(244, 237, 226, 0.97) 46%, rgba(233, 239, 234, 0.96) 100%);
+      box-shadow: var(--shadow-deep);
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .hero::before {
+      inset: auto auto -12% -7%;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(15, 103, 97, 0.18), transparent 66%);
+    }
+
+    .hero::after {
+      inset: -16% -8% auto auto;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(182, 88, 58, 0.16), transparent 64%);
+    }
+
+    .hero-copy,
+    .hero-stage {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 6vw, 5.8rem);
+      line-height: 0.96;
+      letter-spacing: -0.05em;
+      max-width: 9.2ch;
+    }
+
+    .hero-sub {
+      max-width: 58ch;
+      margin: 0;
+      font-size: 1.02rem;
+      color: var(--ink-soft);
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.9);
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .hero-stage {
+      display: grid;
+      gap: 18px;
+      align-content: start;
+      justify-items: stretch;
+      padding-top: 10px;
+    }
+
+    .hero-note {
+      justify-self: end;
+      max-width: 280px;
+      padding: 14px 16px;
+      border: 1px solid rgba(23, 36, 50, 0.1);
+      border-radius: var(--radius-sm);
+      background: rgba(252, 248, 241, 0.82);
+      color: var(--ink-soft);
+      font-size: 14px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero-age-track {
+      display: grid;
+      gap: 12px;
+      padding: 18px 20px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(180deg, rgba(23, 36, 50, 0.04) 0%, rgba(23, 36, 50, 0.02) 100%);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+    }
+
+    .hero-age-label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--ink-faint);
+    }
+
+    .hero-age-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .hero-age-cell {
+      display: grid;
+      gap: 6px;
+      padding: 12px 10px;
+      border-radius: 18px;
+      background: rgba(252, 248, 241, 0.8);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      text-align: center;
+    }
+
+    .hero-age-cell strong {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      letter-spacing: -0.03em;
+      font-weight: 600;
+    }
+
+    .hero-age-cell span {
+      font-size: 12px;
+      color: var(--ink-faint);
+    }
+
+    .hero-status {
+      justify-self: end;
+      color: var(--ink-faint);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 18px;
+    }
+
+    .tabbar,
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .tab-btn,
+    .ghost-btn,
+    .tone-btn,
+    .chip-btn,
+    .mini-btn,
+    .list-btn {
+      transition:
+        transform var(--transition-fast),
+        border-color var(--transition-fast),
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        opacity var(--transition-fast);
+    }
+
+    .tab-btn {
+      min-height: 46px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.86);
+      color: var(--ink-soft);
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(23, 36, 50, 0.04);
+    }
+
+    .tab-btn:hover,
+    .ghost-btn:hover,
+    .tone-btn:hover,
+    .chip-btn:hover,
+    .mini-btn:hover,
+    .list-btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+    }
+
+    .tab-btn.active {
+      background: var(--ink);
+      color: var(--paper-strong);
+      border-color: var(--ink);
+      box-shadow: 0 16px 32px rgba(23, 36, 50, 0.16);
+    }
+
+    .ghost-btn,
+    .tone-btn,
+    .chip-btn,
+    .mini-btn,
+    .list-btn {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.9);
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .ghost-btn {
+      min-height: 42px;
+      padding: 0 15px;
+    }
+
+    .ghost-btn.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: var(--paper-strong);
+    }
+
+    .ghost-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .tone-btn,
+    .chip-btn,
+    .mini-btn {
+      min-height: 40px;
+      padding: 0 14px;
+    }
+
+    .tone-btn.active,
+    .chip-btn.active,
+    .mini-btn.active,
+    .list-btn.active {
+      background: var(--ink);
+      color: var(--paper-strong);
+      border-color: var(--ink);
+    }
+
+    .list-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 18px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .panel {
+      display: none;
+      animation: fade-in var(--transition-base);
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .slab {
+      padding: 24px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: var(--radius-md);
+      background: rgba(252, 248, 241, 0.88);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .section-kicker {
+      margin: 0 0 4px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .section-head p {
+      margin: 8px 0 0;
+      max-width: 60ch;
+      color: var(--ink-soft);
+    }
+
+    .editorial-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.72fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .lead-story {
+      display: grid;
+      gap: 18px;
+      min-height: 100%;
+      background:
+        linear-gradient(160deg, rgba(252, 248, 241, 0.95) 0%, rgba(246, 238, 226, 0.95) 54%, rgba(230, 239, 235, 0.92) 100%);
+    }
+
+    .lead-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .collection-card {
+      display: grid;
+      gap: 10px;
+      min-height: 184px;
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.82);
+    }
+
+    .collection-card[data-accent="teal"] {
+      background: linear-gradient(180deg, rgba(15, 103, 97, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="rust"] {
+      background: linear-gradient(180deg, rgba(182, 88, 58, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="amber"] {
+      background: linear-gradient(180deg, rgba(164, 117, 33, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="rose"] {
+      background: linear-gradient(180deg, rgba(147, 81, 103, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="violet"] {
+      background: linear-gradient(180deg, rgba(108, 95, 134, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="blue"] {
+      background: linear-gradient(180deg, rgba(83, 116, 146, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card .eyebrow {
+      color: var(--ink-soft);
+    }
+
+    .collection-card h3,
+    .reading-guide h3,
+    .ranking-modules h3,
+    .note-card h3,
+    .explore-rail h3,
+    .compare-rail h3,
+    .details-card h3 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.55rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .collection-card p,
+    .reading-guide p,
+    .ranking-modules p,
+    .note-card p,
+    .stage-note,
+    .muted-copy {
+      margin: 0;
+      color: var(--ink-soft);
+    }
+
+    .chip-cloud,
+    .marker-cloud,
+    .selected-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip-btn {
+      padding: 0 12px;
+    }
+
+    .selected-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.92);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+
+    .selected-pill button {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(23, 36, 50, 0.04);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .side-stack {
+      display: grid;
+      gap: 20px;
+    }
+
+    .ranking-module-list,
+    .marker-list,
+    .ranking-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ranking-module {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.86);
+    }
+
+    .ranking-module header,
+    .ranking-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .ranking-label {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .ranking-row button {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-weight: 700;
+      text-align: left;
+      color: var(--ink);
+    }
+
+    .ranking-value {
+      flex: 0 0 auto;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+
+    .note-card {
+      display: grid;
+      gap: 12px;
+      padding: 22px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: var(--radius-md);
+      background: linear-gradient(180deg, rgba(252, 248, 241, 0.96) 0%, rgba(244, 237, 226, 0.92) 100%);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .reading-steps {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .reading-steps li {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .reading-steps strong {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: var(--paper-strong);
+      font-size: 13px;
+    }
+
+    .explore-grid,
+    .rankings-grid,
+    .compare-grid {
+      display: grid;
+      grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .explore-rail,
+    .compare-rail,
+    .rankings-rail,
+    .explore-stage,
+    .compare-stage,
+    .rankings-stage {
+      display: grid;
+      gap: 16px;
+    }
+
+    .rail-block,
+    .stage-block,
+    .details-card {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.88);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .rail-copy {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .control-label,
+    .select-label {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    input[type="search"],
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      min-height: var(--control-h);
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(252, 248, 241, 0.92);
+      color: var(--ink);
+      box-shadow: inset 0 1px 2px rgba(23, 36, 50, 0.03);
+    }
+
+    select[multiple] {
+      min-height: 180px;
+    }
+
+    input::placeholder {
+      color: #8a918e;
+    }
+
+    .segmented {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .marker-list {
+      max-height: 430px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .marker-item {
+      display: grid;
+      gap: 4px;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(252, 248, 241, 0.88);
+      text-align: left;
+    }
+
+    .marker-item.active {
+      border-color: var(--ink);
+      background: rgba(23, 36, 50, 0.06);
+      box-shadow: 0 14px 28px rgba(23, 36, 50, 0.08);
+    }
+
+    .marker-item strong {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .marker-item span {
+      color: var(--ink-faint);
+      font-size: 12px;
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .summary-card {
+      display: grid;
+      gap: 6px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(252, 248, 241, 0.9);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+    }
+
+    .summary-card .label {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .summary-card strong {
+      font-family: var(--font-display);
+      font-size: 1.7rem;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      font-weight: 600;
+    }
+
+    .summary-card span {
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+
+    .chart-shell {
+      min-height: 560px;
+      padding: 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.92);
+      box-shadow: var(--shadow-soft);
+    }
+
+    #explore-plot,
+    #rankings-plot,
+    #compare-plot {
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+    }
+
+    .chart-note,
+    .empty-state,
+    .loading-state {
+      display: grid;
+      place-items: center;
+      min-height: 280px;
+      border-radius: 24px;
+      border: 1px dashed var(--line-strong);
+      color: var(--ink-soft);
+      text-align: center;
+      padding: 20px;
+      background: rgba(252, 248, 241, 0.7);
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .facts {
+      display: grid;
+      gap: 10px;
+    }
+
+    .fact-row {
+      display: grid;
+      gap: 4px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(23, 36, 50, 0.08);
+    }
+
+    .fact-row:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .fact-row span {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .fact-row strong,
+    .fact-row div {
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    details {
+      border-top: 1px solid rgba(23, 36, 50, 0.08);
+      padding-top: 12px;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .rankings-list {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .ranking-card {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(252, 248, 241, 0.9);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+    }
+
+    .ranking-card header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .ranking-card h4 {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+
+    .ranking-card p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--ink-faint);
+    }
+
+    .ranking-card .value {
+      font-family: var(--font-display);
+      font-size: 1.45rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+    }
+
+    .ranking-card .open-link {
+      justify-self: start;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .compare-note {
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+
+    .about-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .about-copy {
+      display: grid;
+      gap: 14px;
+      padding: 26px;
+      border-radius: var(--radius-md);
+      background: rgba(252, 248, 241, 0.9);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .about-copy p,
+    .about-copy li {
+      color: var(--ink-soft);
+    }
+
+    .about-copy ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .about-side {
+      display: grid;
+      gap: 20px;
+    }
+
+    .about-side .details-card {
+      padding: 22px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      transform: translateY(18px);
+      opacity: 0;
+      pointer-events: none;
+      min-width: 220px;
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: rgba(23, 36, 50, 0.94);
+      color: var(--paper-strong);
+      font-size: 14px;
+      box-shadow: var(--shadow-deep);
+      transition: transform var(--transition-base), opacity var(--transition-base);
+      z-index: 40;
+    }
+
+    .toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 520ms cubic-bezier(0.16, 1, 0.3, 1), transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .hero,
+      .editorial-grid,
+      .about-layout,
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-stage {
+        padding-top: 0;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .explore-grid,
+      .rankings-grid,
+      .compare-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-shell {
+        min-height: 500px;
+      }
+
+      #explore-plot,
+      #rankings-plot,
+      #compare-plot {
+        min-height: 460px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page-shell {
+        width: min(calc(100% - 20px), var(--page-max));
+        padding-top: 14px;
+      }
+
+      .hero {
+        padding: 22px 20px;
+      }
+
+      .hero h1 {
+        max-width: 8.2ch;
+      }
+
+      .lead-grid,
+      .summary-strip,
+      .rankings-list,
+      .hero-age-row {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      .tabbar,
+      .toolbar-actions,
+      .segmented {
+        width: 100%;
+      }
+
+      .tab-btn,
+      .ghost-btn,
+      .tone-btn,
+      .mini-btn {
+        flex: 1 1 calc(50% - 8px);
+        justify-content: center;
+      }
+
+      .chart-shell {
+        min-height: 440px;
+        padding: 12px;
+      }
+
+      #explore-plot,
+      #rankings-plot,
+      #compare-plot {
+        min-height: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero reveal">
+      <div class="hero-copy">
+        <div class="eyebrow">Longevity Explorer</div>
+        <h1>Aging blood markers, made explorable.</h1>
+        <p class="hero-sub">
+          A public-facing guide to how familiar biomarkers shift across adulthood in healthy NHANES participants.
+          Explore typical levels, spread, tails, and sex divergence without the clutter of the full research dashboard.
+        </p>
+        <div class="hero-meta">
+          <div class="pill">Blood only</div>
+          <div class="pill">Healthy adults 20-84</div>
+          <div class="pill">Default view uses 10-90 trimming</div>
+        </div>
+      </div>
+      <div class="hero-stage">
+        <div class="hero-note">
+          This dashboard is for pattern exploration, not diagnosis. It highlights how distributions move, widen, or tilt with age.
+        </div>
+        <div class="hero-age-track">
+          <div class="hero-age-label">The story arc</div>
+          <div class="hero-age-row">
+            <div class="hero-age-cell">
+              <strong>20s</strong>
+              <span>young-adult baseline</span>
+            </div>
+            <div class="hero-age-cell">
+              <strong>40s</strong>
+              <span>midlife shift</span>
+            </div>
+            <div class="hero-age-cell">
+              <strong>60s</strong>
+              <span>reserve starts narrowing</span>
+            </div>
+            <div class="hero-age-cell">
+              <strong>80s</strong>
+              <span>distribution shape matters</span>
+            </div>
+          </div>
+        </div>
+        <div id="hero-status" class="hero-status">Loading curated blood markers...</div>
+      </div>
+    </header>
+
+    <div class="toolbar reveal">
+      <div class="tabbar" role="tablist" aria-label="Dashboard sections">
+        <button id="tab-start" class="tab-btn active" data-tab="start" type="button">Start Here</button>
+        <button id="tab-explore" class="tab-btn" data-tab="explore" type="button">Explore a Biomarker</button>
+        <button id="tab-rankings" class="tab-btn" data-tab="rankings" type="button">What Changes Most?</button>
+        <button id="tab-compare" class="tab-btn" data-tab="compare" type="button">Compare Biomarkers</button>
+        <button id="tab-about" class="tab-btn" data-tab="about" type="button">About the Data</button>
+      </div>
+      <div class="toolbar-actions">
+        <button id="copy-link-btn" class="ghost-btn" type="button">Copy view link</button>
+        <button id="save-chart-btn" class="ghost-btn primary" type="button">Save chart PNG</button>
+      </div>
+    </div>
+
+    <main>
+      <section id="panel-start" class="panel active reveal">
+        <div class="editorial-grid">
+          <article class="lead-story slab">
+            <div>
+              <div class="section-kicker">Start with the big picture</div>
+              <h2>Six ways people want to read aging biology.</h2>
+              <p class="muted-copy">
+                These collections are tuned for social-facing exploration: familiar markers, strong age signal, and distribution changes that are easy to explain.
+              </p>
+            </div>
+            <div id="collection-grid" class="lead-grid"></div>
+          </article>
+
+          <div class="side-stack">
+            <article class="note-card reading-guide">
+              <div class="section-kicker">How to read this</div>
+              <h3>Three useful lenses</h3>
+              <ol class="reading-steps">
+                <li>
+                  <strong>1</strong>
+                  <div>Typical level shows where the middle of the distribution sits in each age bin.</div>
+                </li>
+                <li>
+                  <strong>2</strong>
+                  <div>Spread shows whether people become more or less variable with age.</div>
+                </li>
+                <li>
+                  <strong>3</strong>
+                  <div>Tail shape shows whether the upper or lower tail stretches faster than the center.</div>
+                </li>
+              </ol>
+            </article>
+
+            <article class="note-card ranking-modules">
+              <div class="section-kicker">Quick entry points</div>
+              <h3>Public-friendly rankings</h3>
+              <p>Tap any marker to jump into the detailed explorer.</p>
+              <div id="ranking-modules" class="ranking-module-list"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-explore" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Deep dive</div>
+            <h2 id="explore-title">Explore a biomarker</h2>
+            <p id="explore-subtitle">Load one marker at a time, switch views, and optionally overlay Clalit when it exists.</p>
+          </div>
+        </div>
+
+        <div class="explore-grid">
+          <aside class="explore-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Choose a marker</div>
+              <h3>Curated blood biomarkers</h3>
+              <p class="rail-copy">Search by public name or filter down to one of the featured collections.</p>
+              <label class="control-label" for="explore-search">Search</label>
+              <input id="explore-search" type="search" placeholder="Albumin, HbA1c, CRP..." autocomplete="off" spellcheck="false" />
+              <label class="control-label" for="explore-collection">Collection</label>
+              <select id="explore-collection"></select>
+              <div id="explore-list" class="marker-list" aria-live="polite"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Global controls</div>
+              <h3>Read the same marker in different ways</h3>
+              <label class="control-label">Cohort</label>
+              <div class="segmented">
+                <button class="tone-btn" data-cohort-btn data-value="pooled" type="button">Pooled</button>
+                <button class="tone-btn" data-cohort-btn data-value="female" type="button">Female</button>
+                <button class="tone-btn" data-cohort-btn data-value="male" type="button">Male</button>
+              </div>
+              <label class="control-label">Trim</label>
+              <div class="segmented">
+                <button class="tone-btn" data-trim-btn data-value="raw" type="button">Raw</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_10_90" type="button">10-90 trimmed</button>
+              </div>
+              <label class="control-label">View</label>
+              <div class="segmented">
+                <button class="tone-btn" data-view-btn data-value="typical" type="button">Typical level</button>
+                <button class="tone-btn" data-view-btn data-value="spread" type="button">Spread</button>
+                <button class="tone-btn" data-view-btn data-value="tail" type="button">Tail shape</button>
+                <button class="tone-btn" data-view-btn data-value="sex" type="button">Sex split</button>
+              </div>
+              <label class="control-label">Spread uses</label>
+              <div class="segmented">
+                <button class="mini-btn" data-spread-btn data-value="iqr" type="button">IQR</button>
+                <button class="mini-btn" data-spread-btn data-value="std" type="button">SD</button>
+                <button class="mini-btn" data-spread-btn data-value="cv" type="button">CV</button>
+              </div>
+              <label class="control-label" for="show-clalit">
+                <input id="show-clalit" type="checkbox" />
+                Show Clalit overlay when available
+              </label>
+              <div id="clalit-note" class="rail-copy"></div>
+            </div>
+          </aside>
+
+          <div class="explore-stage">
+            <div id="explore-summary-strip" class="summary-strip" aria-live="polite"></div>
+            <div class="chart-shell">
+              <div id="explore-plot"></div>
+            </div>
+            <div class="details-grid">
+              <div class="stage-block">
+                <div class="section-kicker">Interpretation</div>
+                <div id="explore-annotation" class="stage-note"></div>
+              </div>
+              <div class="details-card">
+                <div class="section-kicker">Technical details</div>
+                <div id="explore-tech" class="facts"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-rankings" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Overview rankings</div>
+            <h2>What changes most?</h2>
+            <p>Use the pooled, female, or male context together with raw or trimmed summaries to see which markers move the most.</p>
+          </div>
+        </div>
+
+        <div class="rankings-grid">
+          <aside class="rankings-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Sort and filter</div>
+              <h3>Rank by one pattern at a time</h3>
+              <label class="control-label" for="rankings-metric">Ranking mode</label>
+              <select id="rankings-metric">
+                <option value="median_rise">Biggest median rise</option>
+                <option value="median_fall">Biggest median fall</option>
+                <option value="spread_rise">Biggest spread increase</option>
+                <option value="upper_tail_rise">Biggest upper-tail increase</option>
+                <option value="sex_divergence">Largest sex divergence</option>
+              </select>
+              <label class="control-label" for="rankings-spread-mode">Spread metric</label>
+              <select id="rankings-spread-mode">
+                <option value="iqr">IQR</option>
+                <option value="std">SD</option>
+                <option value="cv">CV</option>
+              </select>
+              <label class="control-label" for="rankings-collection">Collection</label>
+              <select id="rankings-collection"></select>
+              <label class="control-label" for="rankings-domain">Aging domain</label>
+              <select id="rankings-domain"></select>
+              <label class="control-label" for="rankings-organ">Primary organ system</label>
+              <select id="rankings-organ"></select>
+              <label class="control-label" for="rankings-class">Measurement class</label>
+              <select id="rankings-class"></select>
+              <label class="control-label" for="rankings-top-n">Top N</label>
+              <input id="rankings-top-n" type="number" min="5" max="30" step="1" value="12" />
+              <button id="rankings-reset" class="ghost-btn" type="button">Reset filters</button>
+            </div>
+          </aside>
+
+          <div class="rankings-stage">
+            <div class="chart-shell">
+              <div id="rankings-plot"></div>
+            </div>
+            <div id="rankings-list" class="rankings-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-compare" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Relative trajectories</div>
+            <h2>Compare biomarkers on the same scale</h2>
+            <p>Every line is normalized to its own 20-24 baseline so you can compare unlike units without flattening the story.</p>
+          </div>
+        </div>
+
+        <div class="compare-grid">
+          <aside class="compare-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Build a compare set</div>
+              <h3>Pick up to four markers</h3>
+              <label class="control-label" for="compare-search">Search</label>
+              <input id="compare-search" type="search" list="compare-options" placeholder="Creatinine, RDW, Vitamin D..." autocomplete="off" spellcheck="false" />
+              <datalist id="compare-options"></datalist>
+              <button id="compare-add" class="ghost-btn primary" type="button">Add marker</button>
+              <div id="compare-selected" class="selected-cloud"></div>
+              <div class="section-kicker">Quick picks</div>
+              <div id="compare-quick-picks" class="chip-cloud"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Normalization mode</div>
+              <h3>Choose what you want to compare</h3>
+              <label class="control-label" for="compare-mode">Compare by</label>
+              <select id="compare-mode">
+                <option value="median">Typical level</option>
+                <option value="iqr">Spread (IQR)</option>
+                <option value="std">Spread (SD)</option>
+                <option value="cv">Spread (CV)</option>
+                <option value="upper_tail">Upper tail</option>
+                <option value="lower_tail">Lower tail</option>
+              </select>
+              <p id="compare-note" class="compare-note"></p>
+            </div>
+          </aside>
+
+          <div class="compare-stage">
+            <div class="chart-shell">
+              <div id="compare-plot"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-about" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Methods in plain language</div>
+            <h2>What this dashboard is and what it is not.</h2>
+          </div>
+        </div>
+
+        <div class="about-layout">
+          <article class="about-copy">
+            <p>
+              This public dashboard focuses on healthy-adult cross-sectional patterns in NHANES blood biomarkers. It is meant for exploration and intuition building, not for clinical decision-making.
+            </p>
+            <p>
+              The default public view uses the 10th to 90th percentile band within each age bin before computing summary statistics. That makes the overall patterns easier to read and less sensitive to extreme outliers.
+            </p>
+            <ul>
+              <li>Age bins run from 20-24 through 80-84. Ages 85 and older are excluded from the age-bin trend summaries.</li>
+              <li>The healthy cohort excludes pregnancy, diagnosed diabetes, diagnosed cardiovascular disease, cancer history, kidney failure indicators, and liver disease history.</li>
+              <li>The charts are cross-sectional. They compare different people at different ages, not the same people followed over time.</li>
+              <li>Sex divergence shows whether female and male median curves move apart after each is normalized to its own 20-24 baseline.</li>
+            </ul>
+          </article>
+
+          <div class="about-side">
+            <article class="details-card">
+              <div class="section-kicker">Why some views matter</div>
+              <h3>Mean shifts do not tell the whole story.</h3>
+              <p class="muted-copy">
+                A biomarker can keep a similar median while becoming much wider, or it can develop a longer upper tail while the center barely moves. That is why this dashboard foregrounds medians, spread, and tail shape separately.
+              </p>
+            </article>
+
+            <article class="details-card">
+              <div class="section-kicker">Technical notes</div>
+              <details open>
+                <summary>Open the technical section</summary>
+                <div class="facts">
+                  <div class="fact-row">
+                    <span>Default public metric set</span>
+                    <div>Median change, IQR change, SD change, CV change, upper-tail change, lower-tail change, quantile-skewness change, and sex divergence score.</div>
+                  </div>
+                  <div class="fact-row">
+                    <span>Compare view</span>
+                    <div>Every selected line is expressed as percent change from the marker's own 20-24 baseline.</div>
+                  </div>
+                  <div class="fact-row">
+                    <span>Clalit overlay</span>
+                    <div>Shown only when an aligned Clalit series exists for the selected blood marker and the current view can support it.</div>
+                  </div>
+                  <div class="fact-row">
+                    <span>Use responsibly</span>
+                    <div>This is a population-level pattern explorer. It is not a clinical reference interval calculator and it does not estimate personal risk.</div>
+                  </div>
+                </div>
+              </details>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const DATA_VERSION = "__DATA_VERSION__";
+    const DATA_BASE = "__PUBLIC_DATA_BASE__";
+    const COLLECTION_COPY = __COLLECTION_COPY__;
+    const DEFAULT_COMPARE_MARKERS = __DEFAULT_COMPARE_MARKERS__;
+    const DEFAULT_EXPLORE_MARKER = __DEFAULT_EXPLORE_MARKER__;
+
+    const COLORS = {
+      ink: "#172432",
+      inkSoft: "#4d5a67",
+      teal: "#0f6761",
+      rust: "#b6583a",
+      blue: "#537492",
+      rose: "#935167",
+      amber: "#a47521",
+      violet: "#6c5f86",
+      fog: "#c6c1b5",
+      paper: "#f5efe3",
+      band: "rgba(15, 103, 97, 0.14)",
+      clalit: "#a47521",
+    };
+
+    const state = {
+      manifest: [],
+      manifestById: new Map(),
+      manifestBySlug: new Map(),
+      seriesCache: new Map(),
+      tab: "start",
+      exploreId: "",
+      exploreCollection: "all",
+      cohort: "pooled",
+      trim: "trim_10_90",
+      view: "typical",
+      spreadMetric: "iqr",
+      showClalit: false,
+      rankingsMetric: "median_rise",
+      rankingsSpreadMode: "iqr",
+      rankingsCollection: "all",
+      rankingsDomain: "all",
+      rankingsOrgan: "all",
+      rankingsClass: "all",
+      rankingsTopN: 12,
+      compareMode: "median",
+      compareIds: [],
+      lastChartId: "explore-plot",
+      hashLock: false,
+      lastToastTimer: null,
+    };
+
+    const refs = {};
+    let exploreRequestToken = 0;
+    let compareRequestToken = 0;
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function fetchJson(path) {
+      const join = path.includes("?") ? "&" : "?";
+      return fetch(`${path}${join}v=${DATA_VERSION}`).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load ${path}`);
+        }
+        return response.json();
+      });
+    }
+
+    function normalizeText(value) {
+      return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    }
+
+    function trimModeKey() {
+      return state.trim === "raw" ? "all" : "trim_10_90";
+    }
+
+    function currentTrimLabel() {
+      return state.trim === "raw" ? "Raw" : "10-90 trimmed";
+    }
+
+    function humanizeMeasurementClass(value) {
+      return String(value || "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (match) => match.toUpperCase());
+    }
+
+    function formatSignedPercent(value, digits = 0) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
+    }
+
+    function formatUnsigned(value, digits = 1) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      return value.toFixed(digits);
+    }
+
+    function formatCount(value) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      return new Intl.NumberFormat("en-US").format(Math.round(value));
+    }
+
+    function buildPlotLayout(overrides = {}) {
+      return {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        margin: { l: 54, r: 18, t: 44, b: 50 },
+        font: {
+          family: "\"Instrument Sans\", sans-serif",
+          color: COLORS.inkSoft,
+          size: 13,
+        },
+        xaxis: {
+          gridcolor: "rgba(23, 36, 50, 0.08)",
+          linecolor: "rgba(23, 36, 50, 0.16)",
+          zeroline: false,
+          tickfont: { color: COLORS.inkSoft },
+        },
+        yaxis: {
+          gridcolor: "rgba(23, 36, 50, 0.08)",
+          linecolor: "rgba(23, 36, 50, 0.16)",
+          zeroline: false,
+          tickfont: { color: COLORS.inkSoft },
+        },
+        legend: {
+          orientation: "h",
+          yanchor: "bottom",
+          y: 1.02,
+          xanchor: "left",
+          x: 0,
+          bgcolor: "rgba(0,0,0,0)",
+        },
+        hoverlabel: {
+          bgcolor: "#fff8ed",
+          bordercolor: "rgba(23, 36, 50, 0.12)",
+          font: { family: "\"Instrument Sans\", sans-serif", color: COLORS.ink, size: 12 },
+        },
+        ...overrides,
+      };
+    }
+
+    function collectionEntries(collectionKey) {
+      return state.manifest.filter((entry) => entry.featured_collection === collectionKey);
+    }
+
+    function getEntryById(id) {
+      return state.manifestById.get(id) || null;
+    }
+
+    function defaultMetrics(entry) {
+      return entry?.public_metrics || {};
+    }
+
+    function metricsForCurrentContext(entry) {
+      const byContext = entry?.public_metrics_by_context || {};
+      return byContext?.[state.cohort]?.[trimModeKey()] || entry?.public_metrics || {};
+    }
+
+    function pointLookup(points) {
+      const out = new Map();
+      (points || []).forEach((point) => {
+        if (!point?.age_bin) {
+          return;
+        }
+        out.set(point.age_bin, point);
+      });
+      return out;
+    }
+
+    function percentChange(start, end) {
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        return null;
+      }
+      if (Math.abs(start) < 1e-12) {
+        return null;
+      }
+      return ((end - start) / Math.abs(start)) * 100;
+    }
+
+    function computePointMetrics(points, sampleCount, sexDivergence) {
+      const lookup = pointLookup(points);
+      const start = lookup.get("20-24");
+      const end = lookup.get("80-84");
+      if (!start || !end) {
+        return {
+          sample_count: sampleCount || 0,
+          median_change_pct_20_24_to_80_84: null,
+          iqr_change_pct_20_24_to_80_84: null,
+          sd_change_pct_20_24_to_80_84: null,
+          cv_change_pct_20_24_to_80_84: null,
+          upper_tail_change_pct: null,
+          lower_tail_change_pct: null,
+          tail_asymmetry_change: null,
+          sex_divergence_score: sexDivergence,
+        };
+      }
+
+      const startUpper = Number.isFinite(start.p90) && Number.isFinite(start.median) ? start.p90 - start.median : null;
+      const endUpper = Number.isFinite(end.p90) && Number.isFinite(end.median) ? end.p90 - end.median : null;
+      const startLower = Number.isFinite(start.median) && Number.isFinite(start.p10) ? start.median - start.p10 : null;
+      const endLower = Number.isFinite(end.median) && Number.isFinite(end.p10) ? end.median - end.p10 : null;
+
+      return {
+        sample_count: sampleCount || 0,
+        median_change_pct_20_24_to_80_84: percentChange(start.median, end.median),
+        iqr_change_pct_20_24_to_80_84: percentChange(start.iqr, end.iqr),
+        sd_change_pct_20_24_to_80_84: percentChange(start.std, end.std),
+        cv_change_pct_20_24_to_80_84: percentChange(start.cv, end.cv),
+        upper_tail_change_pct: percentChange(startUpper, endUpper),
+        lower_tail_change_pct: percentChange(startLower, endLower),
+        tail_asymmetry_change: Number.isFinite(start.quantile_skewness) && Number.isFinite(end.quantile_skewness)
+          ? end.quantile_skewness - start.quantile_skewness
+          : null,
+        sex_divergence_score: sexDivergence,
+      };
+    }
+
+    function activeChartId() {
+      if (state.tab === "rankings") {
+        return "rankings-plot";
+      }
+      if (state.tab === "compare") {
+        return "compare-plot";
+      }
+      return "explore-plot";
+    }
+
+    function showToast(message) {
+      if (!refs.toast) {
+        return;
+      }
+      refs.toast.textContent = message;
+      refs.toast.classList.add("visible");
+      window.clearTimeout(state.lastToastTimer);
+      state.lastToastTimer = window.setTimeout(() => {
+        refs.toast.classList.remove("visible");
+      }, 1800);
+    }
+
+    function setStatus(message) {
+      refs.heroStatus.textContent = message;
+    }
+
+    function writeHash() {
+      if (state.hashLock) {
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set("tab", state.tab);
+      params.set("biomarker", state.exploreId);
+      params.set("cohort", state.cohort);
+      params.set("trim", state.trim);
+      params.set("view", state.view);
+      params.set("spread", state.spreadMetric);
+      params.set("compareMode", state.compareMode);
+      params.set("compare", state.compareIds.join(","));
+
+      state.hashLock = true;
+      window.location.hash = params.toString();
+      window.setTimeout(() => {
+        state.hashLock = false;
+      }, 0);
+    }
+
+    function applyHash() {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (!hash) {
+        return;
+      }
+
+      const params = new URLSearchParams(hash);
+      const tab = params.get("tab");
+      const biomarker = params.get("biomarker");
+      const cohort = params.get("cohort");
+      const trim = params.get("trim");
+      const view = params.get("view");
+      const spread = params.get("spread");
+      const compareMode = params.get("compareMode");
+      const compare = params.get("compare");
+
+      if (tab && ["start", "explore", "rankings", "compare", "about"].includes(tab)) {
+        state.tab = tab;
+      }
+      if (biomarker && state.manifestById.has(biomarker)) {
+        state.exploreId = biomarker;
+      }
+      if (cohort && ["pooled", "female", "male"].includes(cohort)) {
+        state.cohort = cohort;
+      }
+      if (trim && ["raw", "trim_10_90"].includes(trim)) {
+        state.trim = trim;
+      }
+      if (view && ["typical", "spread", "tail", "sex"].includes(view)) {
+        state.view = view;
+      }
+      if (spread && ["iqr", "std", "cv"].includes(spread)) {
+        state.spreadMetric = spread;
+      }
+      if (compareMode && ["median", "iqr", "std", "cv", "upper_tail", "lower_tail"].includes(compareMode)) {
+        state.compareMode = compareMode;
+      }
+      if (compare) {
+        state.compareIds = compare
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => state.manifestById.has(item))
+          .slice(0, 4);
+      }
+    }
+
+    function ensureDefaults() {
+      if (!state.exploreId) {
+        const defaultEntry = state.manifest.find((entry) => entry.display_name === DEFAULT_EXPLORE_MARKER);
+        state.exploreId = defaultEntry?.biomarker_id || state.manifest[0]?.biomarker_id || "";
+      }
+
+      if (!state.compareIds.length) {
+        state.compareIds = DEFAULT_COMPARE_MARKERS
+          .map((name) => state.manifest.find((entry) => entry.display_name === name))
+          .filter(Boolean)
+          .map((entry) => entry.biomarker_id)
+          .slice(0, 4);
+      }
+    }
+
+    function setTab(tab) {
+      state.tab = tab;
+      renderTabs();
+      renderPanels();
+      writeHash();
+    }
+
+    function renderTabs() {
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === state.tab);
+      });
+    }
+
+    function renderPanels() {
+      document.querySelectorAll(".panel").forEach((panel) => {
+        panel.classList.toggle("active", panel.id === `panel-${state.tab}`);
+      });
+    }
+
+    function renderGlobalButtons() {
+      document.querySelectorAll("[data-cohort-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.cohort);
+      });
+      document.querySelectorAll("[data-trim-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.trim);
+      });
+      document.querySelectorAll("[data-view-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.view);
+      });
+      document.querySelectorAll("[data-spread-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.spreadMetric);
+      });
+      refs.showClalit.checked = state.showClalit;
+    }
+
+    function populateFilterSelect(selectEl, values, formatter = (value) => value) {
+      const currentValue = selectEl.value || "all";
+      const options = ["all", ...values];
+      selectEl.innerHTML = options
+        .map((value) => {
+          const label = value === "all" ? "All" : formatter(value);
+          return `<option value="${value}">${label}</option>`;
+        })
+        .join("");
+      if (options.includes(currentValue)) {
+        selectEl.value = currentValue;
+      }
+    }
+
+    function renderCollectionGrid() {
+      refs.collectionGrid.innerHTML = Object.entries(COLLECTION_COPY)
+        .map(([key, copy]) => {
+          const topEntries = collectionEntries(key)
+            .sort((left, right) => (right.landing_score || 0) - (left.landing_score || 0))
+            .slice(0, 3);
+          const chips = topEntries
+            .map((entry) => `<button class="chip-btn" data-open-id="${entry.biomarker_id}" type="button">${entry.display_name}</button>`)
+            .join("");
+
+          return `
+            <article class="collection-card" data-accent="${copy.accent}">
+              <div class="eyebrow">${copy.kicker}</div>
+              <h3>${copy.title}</h3>
+              <p>${copy.summary}</p>
+              <div class="chip-cloud">${chips}</div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function rankingModuleEntries() {
+      const items = state.manifest.slice();
+      const defaultMetric = (entry) => entry.public_metrics || {};
+      const pickTop = (key, direction, limit = 4) => {
+        const filtered = items
+          .map((entry) => ({ entry, value: defaultMetric(entry)[key] }))
+          .filter((row) => Number.isFinite(row.value));
+        filtered.sort((left, right) => direction === "desc" ? right.value - left.value : left.value - right.value);
+        return filtered.slice(0, limit);
+      };
+
+      return [
+        {
+          title: "Biggest median rise",
+          rows: pickTop("median_change_pct_20_24_to_80_84", "desc"),
+        },
+        {
+          title: "Biggest median fall",
+          rows: pickTop("median_change_pct_20_24_to_80_84", "asc"),
+        },
+        {
+          title: "Biggest spread increase",
+          rows: pickTop("iqr_change_pct_20_24_to_80_84", "desc"),
+        },
+        {
+          title: "Largest sex divergence",
+          rows: pickTop("sex_divergence_score", "desc"),
+        },
+      ];
+    }
+
+    function renderRankingModules() {
+      refs.rankingModules.innerHTML = rankingModuleEntries()
+        .map((module) => {
+          const rows = module.rows
+            .map(({ entry, value }) => `
+              <div class="ranking-row">
+                <button data-open-id="${entry.biomarker_id}" type="button">${entry.display_name}</button>
+                <div class="ranking-value">${module.title === "Largest sex divergence" ? formatUnsigned(value, 1) : formatSignedPercent(value, 0)}</div>
+              </div>
+            `)
+            .join("");
+          return `
+            <article class="ranking-module">
+              <header>
+                <div class="ranking-label">${module.title}</div>
+              </header>
+              ${rows}
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function exploreEntries() {
+      const search = normalizeText(refs.exploreSearch.value);
+      const collection = refs.exploreCollection.value || "all";
+
+      return state.manifest
+        .filter((entry) => {
+          if (collection !== "all" && entry.featured_collection !== collection) {
+            return false;
+          }
+          if (!search) {
+            return true;
+          }
+          const haystack = `${entry.display_name} ${entry.source_display_name} ${entry.aging_domain} ${entry.primary_organ_system}`;
+          return normalizeText(haystack).includes(search);
+        })
+        .sort((left, right) => {
+          if (left.is_priority_marker !== right.is_priority_marker) {
+            return right.is_priority_marker - left.is_priority_marker;
+          }
+          return left.display_name.localeCompare(right.display_name);
+        });
+    }
+
+    function renderExploreList() {
+      const entries = exploreEntries();
+      refs.exploreList.innerHTML = entries
+        .map((entry) => {
+          return `
+            <button class="marker-item ${entry.biomarker_id === state.exploreId ? "active" : ""}" data-open-id="${entry.biomarker_id}" type="button">
+              <strong>${entry.display_name}</strong>
+              <span>${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}</span>
+            </button>
+          `;
+        })
+        .join("");
+    }
+
+    function getSeriesPoints(payload) {
+      const mode = trimModeKey();
+      if (state.cohort === "pooled") {
+        return payload?.points_by_filter?.[mode] || [];
+      }
+      return payload?.sex_points_by_filter?.[mode]?.[state.cohort] || [];
+    }
+
+    function getRawSample(payload) {
+      if (state.cohort === "pooled") {
+        return payload?.raw_sample || [];
+      }
+      return payload?.raw_sample_by_sex?.[state.cohort] || [];
+    }
+
+    function getSampleCount(payload) {
+      if (state.cohort === "pooled") {
+        return payload?.raw_total_n || 0;
+      }
+      return payload?.raw_total_n_by_sex?.[state.cohort] || 0;
+    }
+
+    function loadSeries(id) {
+      if (state.seriesCache.has(id)) {
+        return Promise.resolve(state.seriesCache.get(id));
+      }
+
+      const entry = getEntryById(id);
+      if (!entry) {
+        return Promise.reject(new Error("Unknown biomarker"));
+      }
+
+      return fetchJson(entry.detail_series_path).then((payload) => {
+        state.seriesCache.set(id, payload);
+        return payload;
+      });
+    }
+
+    function renderSummaryStrip(entry, payload) {
+      const points = getSeriesPoints(payload);
+      const metrics = computePointMetrics(points, getSampleCount(payload), entry.public_metrics?.sex_divergence_score || null);
+      const spreadKey = state.spreadMetric === "std"
+        ? "sd_change_pct_20_24_to_80_84"
+        : state.spreadMetric === "cv"
+          ? "cv_change_pct_20_24_to_80_84"
+          : "iqr_change_pct_20_24_to_80_84";
+      const spreadLabel = state.spreadMetric === "std" ? "SD change" : state.spreadMetric === "cv" ? "CV change" : "IQR change";
+
+      refs.exploreSummaryStrip.innerHTML = [
+        {
+          label: "20s -> 80s median",
+          value: formatSignedPercent(metrics.median_change_pct_20_24_to_80_84, 0),
+          note: currentTrimLabel(),
+        },
+        {
+          label: spreadLabel,
+          value: formatSignedPercent(metrics[spreadKey], 0),
+          note: `${state.cohort} cohort`,
+        },
+        {
+          label: "Upper-tail change",
+          value: formatSignedPercent(metrics.upper_tail_change_pct, 0),
+          note: "P90 - median",
+        },
+        {
+          label: "Sex divergence",
+          value: Number.isFinite(metrics.sex_divergence_score) ? formatUnsigned(metrics.sex_divergence_score, 1) : "n/a",
+          note: "avg gap in normalized female vs male medians",
+        },
+        {
+          label: "Sample count",
+          value: formatCount(metrics.sample_count),
+          note: `${state.cohort} raw observations`,
+        },
+      ]
+        .map((item) => `
+          <div class="summary-card">
+            <div class="label">${item.label}</div>
+            <strong>${item.value}</strong>
+            <span>${item.note}</span>
+          </div>
+        `)
+        .join("");
+    }
+
+    function renderExploreTech(entry, payload) {
+      const facts = [
+        ["Collection", entry.featured_collection_title],
+        ["Aging domain", entry.aging_domain || "General aging"],
+        ["Primary organ system", entry.primary_organ_system || "Not labeled"],
+        ["Measurement class", humanizeMeasurementClass(entry.measurement_class) || "Unspecified"],
+        ["Clock relevance", entry.clock_relevance || "Not tagged in the curated catalog"],
+        ["Public label", entry.chart_display_name],
+        ["NHANES source label", entry.source_display_name || "n/a"],
+        ["Variable name", entry.source_variable_name || "n/a"],
+        ["Trim mode", currentTrimLabel()],
+        ["Clalit overlay", entry.has_clalit_overlay ? "Available for supported views" : "Not available"],
+      ];
+
+      refs.exploreTech.innerHTML = facts
+        .map(([label, value]) => `
+          <div class="fact-row">
+            <span>${label}</span>
+            <div>${value}</div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function setExploreAnnotation(message) {
+      refs.exploreAnnotation.textContent = message;
+    }
+
+    function renderChartEmpty(el, message) {
+      el.innerHTML = `<div class="empty-state">${message}</div>`;
+    }
+
+    function renderChartLoading(el, message) {
+      el.innerHTML = `<div class="loading-state">${message}</div>`;
+    }
+
+    function lineTraceFromPoints(points, field, name, color, dash = "solid") {
+      const filtered = (points || []).filter((point) => Number.isFinite(point[field]));
+      return {
+        type: "scatter",
+        mode: "lines+markers",
+        name,
+        x: filtered.map((point) => point.age_mid),
+        y: filtered.map((point) => point[field]),
+        text: filtered.map((point) => point.age_bin),
+        line: { color, width: 3, dash },
+        marker: { size: 6, color },
+        hovertemplate: `%{text}<br>${name}: %{y:.2f}<extra></extra>`,
+      };
+    }
+
+    function buildTypicalTraces(payload) {
+      const points = getSeriesPoints(payload);
+      if (!points.length) {
+        return [];
+      }
+
+      const bandPoints = points.filter((point) => Number.isFinite(point.q25) && Number.isFinite(point.q75));
+      const traces = [];
+      if (bandPoints.length) {
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q75),
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          showlegend: false,
+        });
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q25),
+          fill: "tonexty",
+          fillcolor: COLORS.band,
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          name: "IQR band",
+        });
+      }
+
+      traces.push(lineTraceFromPoints(points, "median", `${state.cohort} median`, COLORS.teal));
+
+      if (state.showClalit) {
+        const clalitPoints = payload?.clalit_data?.[state.cohort] || [];
+        if (clalitPoints.length) {
+          traces.push(lineTraceFromPoints(clalitPoints, "median", `Clalit ${state.cohort}`, COLORS.clalit, "dash"));
+        }
+      }
+
+      return traces;
+    }
+
+    function buildSpreadTraces(payload) {
+      const points = getSeriesPoints(payload);
+      if (!points.length) {
+        return [];
+      }
+
+      const field = state.spreadMetric;
+      const label = state.spreadMetric === "std" ? "SD" : state.spreadMetric === "cv" ? "CV" : "IQR";
+      const traces = [lineTraceFromPoints(points, field, `${state.cohort} ${label}`, COLORS.teal)];
+
+      if (state.showClalit) {
+        const clalitPoints = payload?.clalit_data?.[state.cohort] || [];
+        if (clalitPoints.length) {
+          traces.push(lineTraceFromPoints(clalitPoints, field, `Clalit ${state.cohort}`, COLORS.clalit, "dash"));
+        }
+      }
+
+      return traces;
+    }
+
+    function buildTailTraces(payload) {
+      const points = getSeriesPoints(payload);
+      if (!points.length) {
+        return [];
+      }
+
+      const traces = [
+        lineTraceFromPoints(points, "p10", "P10", COLORS.blue),
+        lineTraceFromPoints(points, "median", "Median", COLORS.teal),
+        lineTraceFromPoints(points, "p90", "P90", COLORS.rust),
+      ];
+
+      const rawSample = getRawSample(payload).filter((point) => Number.isFinite(point.age_years) && Number.isFinite(point.value));
+      if (rawSample.length) {
+        traces.push({
+          type: "scatter",
+          mode: "markers",
+          name: "Raw sample",
+          x: rawSample.map((point) => point.age_years),
+          y: rawSample.map((point) => point.value),
+          marker: {
+            size: 5,
+            color: "rgba(23, 36, 50, 0.18)",
+          },
+          hovertemplate: "Age %{x:.0f}<br>Value %{y:.2f}<extra></extra>",
+        });
+      }
+
+      return traces;
+    }
+
+    function buildNormalizedMedian(points) {
+      const lookup = pointLookup(points);
+      const baseline = lookup.get("20-24");
+      if (!baseline || !Number.isFinite(baseline.median) || Math.abs(baseline.median) < 1e-12) {
+        return [];
+      }
+
+      return points
+        .filter((point) => Number.isFinite(point.median))
+        .map((point) => ({
+          age_mid: point.age_mid,
+          age_bin: point.age_bin,
+          value: ((point.median / baseline.median) - 1) * 100,
+        }));
+    }
+
+    function buildSexSplitTraces(payload) {
+      const mode = trimModeKey();
+      const femalePoints = payload?.sex_points_by_filter?.[mode]?.female || [];
+      const malePoints = payload?.sex_points_by_filter?.[mode]?.male || [];
+      const femaleNorm = buildNormalizedMedian(femalePoints);
+      const maleNorm = buildNormalizedMedian(malePoints);
+      if (!femaleNorm.length || !maleNorm.length) {
+        return [];
+      }
+
+      return [
+        {
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Female",
+          x: femaleNorm.map((point) => point.age_mid),
+          y: femaleNorm.map((point) => point.value),
+          text: femaleNorm.map((point) => point.age_bin),
+          line: { color: COLORS.rose, width: 3 },
+          marker: { size: 6, color: COLORS.rose },
+          hovertemplate: "%{text}<br>Female: %{y:.1f}%<extra></extra>",
+        },
+        {
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Male",
+          x: maleNorm.map((point) => point.age_mid),
+          y: maleNorm.map((point) => point.value),
+          text: maleNorm.map((point) => point.age_bin),
+          line: { color: COLORS.blue, width: 3 },
+          marker: { size: 6, color: COLORS.blue },
+          hovertemplate: "%{text}<br>Male: %{y:.1f}%<extra></extra>",
+        },
+      ];
+    }
+
+    async function renderExplorePanel() {
+      const entry = getEntryById(state.exploreId);
+      if (!entry) {
+        renderChartEmpty(refs.explorePlot, "Choose a biomarker to begin.");
+        return;
+      }
+
+      refs.exploreTitle.textContent = entry.display_name;
+      refs.exploreSubtitle.textContent = `${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}`;
+      renderChartLoading(refs.explorePlot, `Loading ${entry.display_name}...`);
+
+      const token = ++exploreRequestToken;
+      try {
+        const payload = await loadSeries(entry.biomarker_id);
+        if (token !== exploreRequestToken) {
+          return;
+        }
+
+        renderSummaryStrip(entry, payload);
+        renderExploreTech(entry, payload);
+
+        const chartEl = refs.explorePlot;
+        let traces = [];
+        let layout = buildPlotLayout();
+        let annotation = "";
+
+        if (state.view === "typical") {
+          traces = buildTypicalTraces(payload);
+          annotation = "The thick line tracks the age-bin median. The shaded band marks the interquartile range.";
+          layout = buildPlotLayout({
+            title: { text: entry.chart_display_name, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
+            yaxis: { title: { text: entry.unit || "Value" } },
+          });
+          refs.clalitNote.textContent = entry.has_clalit_overlay
+            ? "Clalit overlays are available for median and spread views."
+            : "No Clalit overlay is available for this biomarker.";
+        } else if (state.view === "spread") {
+          traces = buildSpreadTraces(payload);
+          const label = state.spreadMetric === "std" ? "standard deviation" : state.spreadMetric === "cv" ? "coefficient of variation" : "interquartile range";
+          annotation = `This view asks whether the ${label} widens or narrows with age.`;
+          layout = buildPlotLayout({
+            title: { text: entry.chart_display_name, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
+            yaxis: { title: { text: state.spreadMetric.toUpperCase() } },
+          });
+          refs.clalitNote.textContent = entry.has_clalit_overlay
+            ? "Clalit overlays are available here."
+            : "No Clalit overlay is available for this biomarker.";
+        } else if (state.view === "tail") {
+          traces = buildTailTraces(payload);
+          annotation = "P10, median, and P90 show whether the tails stretch faster than the center. The point cloud is a capped raw sample.";
+          layout = buildPlotLayout({
+            title: { text: entry.chart_display_name, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
+            yaxis: { title: { text: entry.unit || "Value" } },
+          });
+          refs.clalitNote.textContent = "Tail view uses NHANES only because Clalit overlays do not carry P10 and P90.";
+        } else {
+          traces = buildSexSplitTraces(payload);
+          annotation = "Female and male medians are each normalized to their own 20-24 baseline to highlight divergence in trajectory shape, not just baseline separation.";
+          layout = buildPlotLayout({
+            title: { text: `${entry.display_name}: female vs male`, x: 0, font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink } },
+            yaxis: { title: { text: "% change vs own 20-24 median" } },
+          });
+          refs.clalitNote.textContent = "Sex split compares NHANES female vs male trajectories.";
+        }
+
+        if (!traces.length) {
+          renderChartEmpty(chartEl, "This biomarker does not have enough data for the current view.");
+          setExploreAnnotation(annotation || "No analyzable age-bin summary is available for this context.");
+          return;
+        }
+
+        Plotly.react(chartEl, traces, layout, { responsive: true, displaylogo: false });
+        state.lastChartId = "explore-plot";
+        setExploreAnnotation(annotation);
+      } catch (error) {
+        renderChartEmpty(refs.explorePlot, "This biomarker could not be loaded.");
+        setExploreAnnotation(error.message);
+      }
+    }
+
+    function rankingValue(entry) {
+      const metrics = metricsForCurrentContext(entry);
+      if (state.rankingsMetric === "median_rise" || state.rankingsMetric === "median_fall") {
+        return metrics.median_change_pct_20_24_to_80_84;
+      }
+      if (state.rankingsMetric === "spread_rise") {
+        if (state.rankingsSpreadMode === "std") {
+          return metrics.sd_change_pct_20_24_to_80_84;
+        }
+        if (state.rankingsSpreadMode === "cv") {
+          return metrics.cv_change_pct_20_24_to_80_84;
+        }
+        return metrics.iqr_change_pct_20_24_to_80_84;
+      }
+      if (state.rankingsMetric === "upper_tail_rise") {
+        return metrics.upper_tail_change_pct;
+      }
+      return metrics.sex_divergence_score;
+    }
+
+    function filteredRankingEntries() {
+      let entries = state.manifest.slice();
+      if (state.rankingsCollection !== "all") {
+        entries = entries.filter((entry) => entry.featured_collection === state.rankingsCollection);
+      }
+      if (state.rankingsDomain !== "all") {
+        entries = entries.filter((entry) => entry.aging_domain === state.rankingsDomain);
+      }
+      if (state.rankingsOrgan !== "all") {
+        entries = entries.filter((entry) => entry.primary_organ_system === state.rankingsOrgan);
+      }
+      if (state.rankingsClass !== "all") {
+        entries = entries.filter((entry) => entry.measurement_class === state.rankingsClass);
+      }
+
+      entries = entries
+        .map((entry) => ({ entry, value: rankingValue(entry) }))
+        .filter((row) => Number.isFinite(row.value));
+
+      const descending = state.rankingsMetric !== "median_fall";
+      entries.sort((left, right) => descending ? right.value - left.value : left.value - right.value);
+      return entries.slice(0, state.rankingsTopN);
+    }
+
+    function renderRankings() {
+      const rows = filteredRankingEntries();
+      if (!rows.length) {
+        renderChartEmpty(refs.rankingsPlot, "No biomarkers match the current ranking filters.");
+        refs.rankingsList.innerHTML = "";
+        return;
+      }
+
+      const label = state.rankingsMetric === "median_rise"
+        ? "Median change"
+        : state.rankingsMetric === "median_fall"
+          ? "Median change"
+          : state.rankingsMetric === "spread_rise"
+            ? `${state.rankingsSpreadMode.toUpperCase()} change`
+            : state.rankingsMetric === "upper_tail_rise"
+              ? "Upper-tail change"
+              : "Sex divergence";
+
+      const x = rows.map((row) => row.value).reverse();
+      const y = rows.map((row) => row.entry.display_name).reverse();
+      const colors = x.map((value) => {
+        if (state.rankingsMetric === "sex_divergence") {
+          return COLORS.violet;
+        }
+        return value >= 0 ? COLORS.rust : COLORS.blue;
+      });
+
+      Plotly.react(
+        refs.rankingsPlot,
+        [
+          {
+            type: "bar",
+            orientation: "h",
+            x,
+            y,
+            marker: {
+              color: colors,
+            },
+            hovertemplate: "%{y}<br>%{x:.1f}<extra></extra>",
+          },
+        ],
+        buildPlotLayout({
+          title: {
+            text: `${label} | ${state.cohort} | ${currentTrimLabel()}`,
+            x: 0,
+            font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink },
+          },
+          xaxis: {
+            title: { text: state.rankingsMetric === "sex_divergence" ? "mean absolute gap" : "% change" },
+            gridcolor: "rgba(23, 36, 50, 0.08)",
+          },
+          yaxis: {
+            automargin: true,
+          },
+          margin: { l: 160, r: 18, t: 54, b: 50 },
+        }),
+        { responsive: true, displaylogo: false }
+      );
+      state.lastChartId = "rankings-plot";
+
+      refs.rankingsList.innerHTML = rows
+        .map(({ entry, value }) => `
+          <article class="ranking-card">
+            <header>
+              <div>
+                <h4>${entry.display_name}</h4>
+                <p>${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}</p>
+              </div>
+              <div class="value">${state.rankingsMetric === "sex_divergence" ? formatUnsigned(value, 1) : formatSignedPercent(value, 0)}</div>
+            </header>
+            <button class="open-link" data-open-id="${entry.biomarker_id}" type="button">Open in explorer</button>
+          </article>
+        `)
+        .join("");
+    }
+
+    function compareAccessor(point) {
+      if (state.compareMode === "median") {
+        return point.median;
+      }
+      if (state.compareMode === "iqr") {
+        return point.iqr;
+      }
+      if (state.compareMode === "std") {
+        return point.std;
+      }
+      if (state.compareMode === "cv") {
+        return point.cv;
+      }
+      if (state.compareMode === "upper_tail") {
+        if (!Number.isFinite(point.p90) || !Number.isFinite(point.median)) {
+          return null;
+        }
+        return point.p90 - point.median;
+      }
+      if (!Number.isFinite(point.median) || !Number.isFinite(point.p10)) {
+        return null;
+      }
+      return point.median - point.p10;
+    }
+
+    function buildCompareSeries(entry, payload, color) {
+      const points = getSeriesPoints(payload);
+      const baselinePoint = points.find((point) => point.age_bin === "20-24");
+      const baselineValue = baselinePoint ? compareAccessor(baselinePoint) : null;
+      if (!Number.isFinite(baselineValue) || Math.abs(baselineValue) < 1e-12) {
+        return null;
+      }
+
+      const usable = points
+        .map((point) => {
+          const value = compareAccessor(point);
+          if (!Number.isFinite(value)) {
+            return null;
+          }
+          return {
+            age_mid: point.age_mid,
+            age_bin: point.age_bin,
+            value: ((value / baselineValue) - 1) * 100,
+          };
+        })
+        .filter(Boolean);
+
+      if (!usable.length) {
+        return null;
+      }
+
+      return {
+        type: "scatter",
+        mode: "lines+markers",
+        name: entry.display_name,
+        x: usable.map((point) => point.age_mid),
+        y: usable.map((point) => point.value),
+        text: usable.map((point) => point.age_bin),
+        line: { color, width: 3 },
+        marker: { size: 6, color },
+        hovertemplate: "%{text}<br>%{y:.1f}%<extra></extra>",
+      };
+    }
+
+    async function renderComparePanel() {
+      if (!state.compareIds.length) {
+        renderChartEmpty(refs.comparePlot, "Add up to four biomarkers to compare them on a shared normalized scale.");
+        refs.compareNote.textContent = "";
+        return;
+      }
+
+      renderChartLoading(refs.comparePlot, "Loading compare set...");
+      const token = ++compareRequestToken;
+
+      try {
+        const entries = state.compareIds.map((id) => getEntryById(id)).filter(Boolean);
+        const payloads = await Promise.all(entries.map((entry) => loadSeries(entry.biomarker_id)));
+        if (token !== compareRequestToken) {
+          return;
+        }
+
+        const palette = [COLORS.teal, COLORS.rust, COLORS.blue, COLORS.rose];
+        const skipped = [];
+        const traces = entries
+          .map((entry, index) => {
+            const trace = buildCompareSeries(entry, payloads[index], palette[index % palette.length]);
+            if (!trace) {
+              skipped.push(entry.display_name);
+            }
+            return trace;
+          })
+          .filter(Boolean);
+
+        if (!traces.length) {
+          renderChartEmpty(refs.comparePlot, "The selected biomarkers do not have enough baseline data for this compare mode.");
+          refs.compareNote.textContent = "";
+          return;
+        }
+
+        Plotly.react(
+          refs.comparePlot,
+          traces,
+          buildPlotLayout({
+            title: {
+              text: `Relative change vs age 20-24 | ${state.cohort} | ${currentTrimLabel()}`,
+              x: 0,
+              font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink },
+            },
+            yaxis: {
+              title: { text: "% change from each marker's 20-24 baseline" },
+            },
+          }),
+          { responsive: true, displaylogo: false }
+        );
+        state.lastChartId = "compare-plot";
+        refs.compareNote.textContent = skipped.length
+          ? `Skipped for this mode: ${skipped.join(", ")}.`
+          : "All selected biomarkers were normalized to their own 20-24 baseline.";
+      } catch (error) {
+        renderChartEmpty(refs.comparePlot, "The compare view could not be rendered.");
+        refs.compareNote.textContent = error.message;
+      }
+    }
+
+    function renderCompareSelected() {
+      refs.compareSelected.innerHTML = state.compareIds
+        .map((id) => {
+          const entry = getEntryById(id);
+          if (!entry) {
+            return "";
+          }
+          return `
+            <div class="selected-pill">
+              <span>${entry.display_name}</span>
+              <button type="button" data-remove-compare="${entry.biomarker_id}" aria-label="Remove ${entry.display_name}">x</button>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function renderCompareQuickPicks() {
+      refs.compareQuickPicks.innerHTML = state.manifest
+        .filter((entry) => entry.is_priority_marker)
+        .slice(0, 10)
+        .map((entry) => `<button class="chip-btn" data-add-compare="${entry.biomarker_id}" type="button">${entry.display_name}</button>`)
+        .join("");
+    }
+
+    function addCompareMarkerByName(name) {
+      const target = state.manifest.find((entry) => entry.display_name.toLowerCase() === String(name || "").trim().toLowerCase());
+      if (!target) {
+        showToast("Marker not found in the public set.");
+        return;
+      }
+      addCompareMarker(target.biomarker_id);
+    }
+
+    function addCompareMarker(id) {
+      if (state.compareIds.includes(id)) {
+        showToast("That marker is already in the compare set.");
+        return;
+      }
+      if (state.compareIds.length >= 4) {
+        showToast("You can compare up to four markers at once.");
+        return;
+      }
+      state.compareIds = [...state.compareIds, id];
+      renderCompareSelected();
+      renderComparePanel();
+      writeHash();
+    }
+
+    function removeCompareMarker(id) {
+      state.compareIds = state.compareIds.filter((item) => item !== id);
+      renderCompareSelected();
+      renderComparePanel();
+      writeHash();
+    }
+
+    function openMarker(id) {
+      if (!state.manifestById.has(id)) {
+        return;
+      }
+      state.exploreId = id;
+      state.tab = "explore";
+      renderTabs();
+      renderPanels();
+      renderExploreList();
+      renderExplorePanel();
+      writeHash();
+    }
+
+    function bindEvents() {
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setTab(button.dataset.tab);
+          if (button.dataset.tab === "compare") {
+            renderComparePanel();
+          }
+          if (button.dataset.tab === "rankings") {
+            renderRankings();
+          }
+          if (button.dataset.tab === "explore") {
+            renderExplorePanel();
+          }
+        });
+      });
+
+      document.addEventListener("click", (event) => {
+        const openId = event.target.closest("[data-open-id]")?.dataset.openId;
+        if (openId) {
+          openMarker(openId);
+          return;
+        }
+
+        const addId = event.target.closest("[data-add-compare]")?.dataset.addCompare;
+        if (addId) {
+          addCompareMarker(addId);
+          return;
+        }
+
+        const removeId = event.target.closest("[data-remove-compare]")?.dataset.removeCompare;
+        if (removeId) {
+          removeCompareMarker(removeId);
+        }
+      });
+
+      refs.copyLinkBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          showToast("View link copied.");
+        } catch (error) {
+          showToast("Copy failed.");
+        }
+      });
+
+      refs.saveChartBtn.addEventListener("click", () => {
+        const chartId = activeChartId();
+        const chartEl = $(chartId);
+        if (!chartEl || !chartEl.data) {
+          showToast("There is no active chart to export.");
+          return;
+        }
+        Plotly.downloadImage(chartEl, {
+          format: "png",
+          filename: `aging-biomarkers-${state.tab}`,
+          width: 1440,
+          height: 900,
+          scale: 2,
+        });
+      });
+
+      refs.exploreSearch.addEventListener("input", renderExploreList);
+      refs.exploreCollection.addEventListener("change", renderExploreList);
+
+      document.querySelectorAll("[data-cohort-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.cohort = button.dataset.value;
+          renderGlobalButtons();
+          renderExplorePanel();
+          renderRankings();
+          renderComparePanel();
+          writeHash();
+        });
+      });
+
+      document.querySelectorAll("[data-trim-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.trim = button.dataset.value;
+          renderGlobalButtons();
+          renderExplorePanel();
+          renderRankings();
+          renderComparePanel();
+          writeHash();
+        });
+      });
+
+      document.querySelectorAll("[data-view-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.view = button.dataset.value;
+          renderGlobalButtons();
+          renderExplorePanel();
+          writeHash();
+        });
+      });
+
+      document.querySelectorAll("[data-spread-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.spreadMetric = button.dataset.value;
+          renderGlobalButtons();
+          renderExplorePanel();
+          writeHash();
+        });
+      });
+
+      refs.showClalit.addEventListener("change", () => {
+        state.showClalit = refs.showClalit.checked;
+        renderExplorePanel();
+      });
+
+      refs.rankingsMetric.addEventListener("change", () => {
+        state.rankingsMetric = refs.rankingsMetric.value;
+        renderRankings();
+      });
+      refs.rankingsSpreadMode.addEventListener("change", () => {
+        state.rankingsSpreadMode = refs.rankingsSpreadMode.value;
+        renderRankings();
+      });
+      refs.rankingsCollection.addEventListener("change", () => {
+        state.rankingsCollection = refs.rankingsCollection.value;
+        renderRankings();
+      });
+      refs.rankingsDomain.addEventListener("change", () => {
+        state.rankingsDomain = refs.rankingsDomain.value;
+        renderRankings();
+      });
+      refs.rankingsOrgan.addEventListener("change", () => {
+        state.rankingsOrgan = refs.rankingsOrgan.value;
+        renderRankings();
+      });
+      refs.rankingsClass.addEventListener("change", () => {
+        state.rankingsClass = refs.rankingsClass.value;
+        renderRankings();
+      });
+      refs.rankingsTopN.addEventListener("change", () => {
+        const next = Number.parseInt(refs.rankingsTopN.value, 10);
+        state.rankingsTopN = Number.isFinite(next) ? Math.max(5, Math.min(30, next)) : 12;
+        refs.rankingsTopN.value = String(state.rankingsTopN);
+        renderRankings();
+      });
+      refs.rankingsReset.addEventListener("click", () => {
+        state.rankingsMetric = "median_rise";
+        state.rankingsSpreadMode = "iqr";
+        state.rankingsCollection = "all";
+        state.rankingsDomain = "all";
+        state.rankingsOrgan = "all";
+        state.rankingsClass = "all";
+        state.rankingsTopN = 12;
+        refs.rankingsMetric.value = state.rankingsMetric;
+        refs.rankingsSpreadMode.value = state.rankingsSpreadMode;
+        refs.rankingsCollection.value = state.rankingsCollection;
+        refs.rankingsDomain.value = state.rankingsDomain;
+        refs.rankingsOrgan.value = state.rankingsOrgan;
+        refs.rankingsClass.value = state.rankingsClass;
+        refs.rankingsTopN.value = String(state.rankingsTopN);
+        renderRankings();
+      });
+
+      refs.compareMode.addEventListener("change", () => {
+        state.compareMode = refs.compareMode.value;
+        renderComparePanel();
+        writeHash();
+      });
+
+      refs.compareAdd.addEventListener("click", () => {
+        addCompareMarkerByName(refs.compareSearch.value);
+        refs.compareSearch.value = "";
+      });
+
+      refs.compareSearch.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        addCompareMarkerByName(refs.compareSearch.value);
+        refs.compareSearch.value = "";
+      });
+
+      window.addEventListener("hashchange", () => {
+        if (state.hashLock) {
+          return;
+        }
+        applyHash();
+        ensureDefaults();
+        syncControls();
+        renderTabs();
+        renderPanels();
+        renderExploreList();
+        renderExplorePanel();
+        renderRankings();
+        renderCompareSelected();
+        renderComparePanel();
+      });
+    }
+
+    function syncControls() {
+      renderGlobalButtons();
+      refs.rankingsMetric.value = state.rankingsMetric;
+      refs.rankingsSpreadMode.value = state.rankingsSpreadMode;
+      refs.rankingsCollection.value = state.rankingsCollection;
+      refs.rankingsDomain.value = state.rankingsDomain;
+      refs.rankingsOrgan.value = state.rankingsOrgan;
+      refs.rankingsClass.value = state.rankingsClass;
+      refs.rankingsTopN.value = String(state.rankingsTopN);
+      refs.compareMode.value = state.compareMode;
+    }
+
+    function primeStaticControls() {
+      populateFilterSelect(
+        refs.exploreCollection,
+        Object.keys(COLLECTION_COPY),
+        (value) => COLLECTION_COPY[value]?.title || value
+      );
+      populateFilterSelect(
+        refs.rankingsCollection,
+        Object.keys(COLLECTION_COPY),
+        (value) => COLLECTION_COPY[value]?.title || value
+      );
+      populateFilterSelect(
+        refs.rankingsDomain,
+        [...new Set(state.manifest.map((entry) => entry.aging_domain).filter(Boolean))].sort()
+      );
+      populateFilterSelect(
+        refs.rankingsOrgan,
+        [...new Set(state.manifest.map((entry) => entry.primary_organ_system).filter(Boolean))].sort()
+      );
+      populateFilterSelect(
+        refs.rankingsClass,
+        [...new Set(state.manifest.map((entry) => entry.measurement_class).filter(Boolean))].sort(),
+        humanizeMeasurementClass
+      );
+
+      refs.compareOptions.innerHTML = state.manifest
+        .map((entry) => `<option value="${entry.display_name}"></option>`)
+        .join("");
+    }
+
+    function observeReveal() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.18 });
+
+      document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+    }
+
+    async function init() {
+      refs.heroStatus = $("hero-status");
+      refs.collectionGrid = $("collection-grid");
+      refs.rankingModules = $("ranking-modules");
+      refs.exploreSearch = $("explore-search");
+      refs.exploreCollection = $("explore-collection");
+      refs.exploreList = $("explore-list");
+      refs.exploreTitle = $("explore-title");
+      refs.exploreSubtitle = $("explore-subtitle");
+      refs.showClalit = $("show-clalit");
+      refs.clalitNote = $("clalit-note");
+      refs.exploreSummaryStrip = $("explore-summary-strip");
+      refs.explorePlot = $("explore-plot");
+      refs.exploreAnnotation = $("explore-annotation");
+      refs.exploreTech = $("explore-tech");
+      refs.rankingsMetric = $("rankings-metric");
+      refs.rankingsSpreadMode = $("rankings-spread-mode");
+      refs.rankingsCollection = $("rankings-collection");
+      refs.rankingsDomain = $("rankings-domain");
+      refs.rankingsOrgan = $("rankings-organ");
+      refs.rankingsClass = $("rankings-class");
+      refs.rankingsTopN = $("rankings-top-n");
+      refs.rankingsReset = $("rankings-reset");
+      refs.rankingsPlot = $("rankings-plot");
+      refs.rankingsList = $("rankings-list");
+      refs.compareSearch = $("compare-search");
+      refs.compareOptions = $("compare-options");
+      refs.compareAdd = $("compare-add");
+      refs.compareSelected = $("compare-selected");
+      refs.compareQuickPicks = $("compare-quick-picks");
+      refs.compareMode = $("compare-mode");
+      refs.comparePlot = $("compare-plot");
+      refs.compareNote = $("compare-note");
+      refs.copyLinkBtn = $("copy-link-btn");
+      refs.saveChartBtn = $("save-chart-btn");
+      refs.toast = $("toast");
+
+      try {
+        setStatus("Loading curated blood markers...");
+        const manifest = await fetchJson(`${DATA_BASE}/manifest.json`);
+        state.manifest = manifest;
+        state.manifestById = new Map(manifest.map((entry) => [entry.biomarker_id, entry]));
+        state.manifestBySlug = new Map(manifest.map((entry) => [entry.slug, entry]));
+        applyHash();
+        ensureDefaults();
+        primeStaticControls();
+        renderCollectionGrid();
+        renderRankingModules();
+        renderExploreList();
+        renderCompareQuickPicks();
+        renderCompareSelected();
+        bindEvents();
+        syncControls();
+        renderTabs();
+        renderPanels();
+        await renderExplorePanel();
+        renderRankings();
+        await renderComparePanel();
+        setStatus(`${manifest.length} curated blood biomarkers loaded.`);
+        writeHash();
+        observeReveal();
+      } catch (error) {
+        setStatus("Failed to load the public dashboard bundle.");
+        document.querySelector("main").innerHTML = `
+          <div class="about-copy">
+            <h2>Dashboard failed to load</h2>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 Interactive explorer for age-related blood and urinary biomarker trajectories in the NHANES dataset.
 
-This project builds static web dashboards where users can search biomarkers, compare trends across age and sex, and inspect ranking metrics across hundreds of tests.
+This project builds static web dashboards where users can search biomarkers, compare trends across age and sex, inspect ranking metrics across hundreds of tests, and browse a curated public-facing aging biomarker explorer.
 
 Documentation rule: when dashboard features/metrics change, update this README in the same commit.
 
@@ -12,8 +12,10 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data, with candidate selection controlled by `--candidate-column`.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds the blood-dashboard Q-Q comparison payload under `projects/sr_comparison/blood/`.
-- `src/build_dashboard.py` builds both static interactive HTML dashboards: blood (`dashboard/index.html`) and urinary (`dashboard/urinary.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
+- `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
+- `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
+- `src/templates/aging_biomarkers_dashboard_template.html` is the standalone editorial-science template used for the public-facing aging biomarkers explorer.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
@@ -134,16 +136,23 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - Double-click `Open_NHANES_Dashboard.command`
   - It starts a local server and opens `http://127.0.0.1:8765/dashboard/index.html` (blood dashboard)
   - Urinary dashboard is at `http://127.0.0.1:8765/dashboard/urinary.html` (or use the `Urinary Tests` tab button inside the blood dashboard)
+  - Public aging biomarkers dashboard is at `http://127.0.0.1:8765/dashboard/aging_biomarkers_dashboard.html`
 - Online:
   - Open the GitHub Pages site (if enabled in your repo settings):
   - Blood: `https://<github-username>.github.io/<repo-name>/dashboard/index.html`
   - Urinary: `https://<github-username>.github.io/<repo-name>/dashboard/urinary.html`
+  - Public aging biomarkers: `https://<github-username>.github.io/<repo-name>/dashboard/aging_biomarkers_dashboard.html`
 
 ## Dashboard UI architecture
 - The blood and urinary dashboards share one HTML/CSS/JS shell from `src/templates/dashboard_template.html`.
 - `src/build_dashboard.py` injects specimen-specific metadata, dataset paths, counts, and specimen-switch links into that template, then writes:
   - `dashboard/index.html`
   - `dashboard/urinary.html`
+- The public-facing aging biomarkers dashboard uses a separate shell from `src/templates/aging_biomarkers_dashboard_template.html`.
+- `src/build_dashboard.py` also calls `src/build_aging_biomarkers_dashboard.py` to write:
+  - `dashboard/aging_biomarkers_dashboard.html`
+  - `dashboard/dashboard_data_aging_biomarkers.json`
+  - `dashboard/aging_biomarkers_public/manifest.json`
 - The redesign keeps the existing static single-page model and DOM IDs used by the inline dashboard logic, while modernizing:
   - hero/header hierarchy
   - specimen and analysis navigation
@@ -174,6 +183,35 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - The blood dashboard also lazy-loads one shared SR reference payload only when the side-by-side SR waterfall is requested:
   - `dashboard/data/sr_waterfall_reference.json`
   - it contains compact quantile-sampled SR-model `X` distributions for the 5-year age bins used by the SR comparison analysis
+
+## Public aging biomarkers dashboard
+- Artifact:
+  - `dashboard/aging_biomarkers_dashboard.html`
+- Summary payload:
+  - `dashboard/dashboard_data_aging_biomarkers.json`
+- Curated manifest:
+  - `dashboard/aging_biomarkers_public/manifest.json`
+- Data contract:
+  - built from the matched blood rows in `projects/aging_biomarkers/catalog/aging_biomarkers.csv`
+  - each manifest row includes the public display name, collection assignment, aging metadata, source-series path, Clalit availability, and precomputed public metrics
+  - public metrics are precomputed for `pooled`, `female`, and `male`, each in `raw` and `10-90 trimmed` contexts
+  - the public dashboard reuses the existing blood detail series files in `dashboard/data/series/*.json` for lazy-loaded chart detail
+- Navigation:
+  - `Start Here`
+  - `Explore a Biomarker`
+  - `What Changes Most?`
+  - `Compare Biomarkers`
+  - `About the Data`
+- Explore views:
+  - `Typical level`
+  - `Spread`
+  - `Tail shape`
+  - `Sex split`
+- State model:
+  - URL hash restores tab, biomarker, cohort, trim mode, view, spread metric, compare mode, and compare-set selection
+- Scope:
+  - blood only in v1
+  - focused on the curated aging biomarker subset and familiar clinical markers rather than the full blood dashboard inventory
 
 ## Plot modes
 - In `Dashboard` analysis view, use:
@@ -435,6 +473,7 @@ python3 -m http.server 8765 --directory .
 - Playwright/manual validation checklist used for the current redesign:
   - blood tabs: `#dashboard`, `#compare`, `#filter-tests`, `#scatter`, `#hist`, `#waterfall`, `#sr-comparison`, `#info`
   - urinary spot-checks with preserved hash navigation (for example `urinary.html#compare` and switch back to `index.html#compare`)
+  - public dashboard tabs: `aging_biomarkers_dashboard.html#tab=start`, `explore`, `rankings`, `compare`, and `about` states via hash restore
   - representative interactions:
     - dashboard mode, cohort, and trim changes
     - compare statistic, sort, cohort, and top-N changes
@@ -443,6 +482,7 @@ python3 -m http.server 8765 --directory .
     - waterfall biomarker search/selection, cohort, and minimum-n changes
     - SR comparison age-bin slider, ranking sort changes, biomarker row switching, and urine fallback from `#sr-comparison` to `#dashboard`
     - filter-tests clause editing and execution
+    - public dashboard biomarker search, collection filtering, pooled/female/male switching, raw vs `10-90 trimmed`, compare-set add/remove, and chart export
   - keyboard focus visibility across specimen links, top tabs, and form controls
   - mobile-width spot checks for stacked navigation and control layouts
 - Example screenshots from the current pass were written to `output/playwright/`.

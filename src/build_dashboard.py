@@ -16,6 +16,7 @@ import pandas as pd
 from scipy.stats import skew as scipy_skew
 from scipy.stats import spearmanr
 
+from build_aging_biomarkers_dashboard import build_public_manifest, write_public_dashboard_bundle
 from nhanes_common import ensure_dir
 
 
@@ -3825,6 +3826,12 @@ def main() -> None:
     ap.add_argument("--json-out", default="dashboard/dashboard_data.json")
     ap.add_argument("--urine-out", default="dashboard/urinary.html")
     ap.add_argument("--urine-json-out", default="dashboard/dashboard_data_urine.json")
+    ap.add_argument("--aging-public-out", default="dashboard/aging_biomarkers_dashboard.html")
+    ap.add_argument("--aging-public-json-out", default="dashboard/dashboard_data_aging_biomarkers.json")
+    ap.add_argument(
+        "--aging-biomarkers-catalog-csv",
+        default=str(ROOT / "projects" / "aging_biomarkers" / "catalog" / "aging_biomarkers.csv"),
+    )
     ap.add_argument("--clalit-f", default="data/clalit/females_all_statistics.csv")
     ap.add_argument("--clalit-m", default="data/clalit/males_all_statistics.csv")
     ap.add_argument("--clalit-map", default="data/clalit_mapping.json")
@@ -3903,6 +3910,8 @@ def main() -> None:
     blood_out_json = Path(args.json_out)
     urine_out_html = Path(args.urine_out)
     urine_out_json = Path(args.urine_json_out)
+    aging_public_out_html = Path(args.aging_public_out)
+    aging_public_out_json = Path(args.aging_public_json_out)
 
     write_dashboard_bundle(
         out_html=blood_out_html,
@@ -3914,6 +3923,18 @@ def main() -> None:
         series_payloads=blood_series_payloads,
         raw_sample_n=args.raw_sample_n,
         shared_payloads=dashboard_shared_payloads(sr_comparison_bundle),
+    )
+    public_manifest = build_public_manifest(
+        metadata=blood_metadata,
+        series_index=blood_series_index,
+        series_payloads=blood_series_payloads,
+        aging_catalog_csv=args.aging_biomarkers_catalog_csv,
+    )
+    write_public_dashboard_bundle(
+        out_html=aging_public_out_html,
+        out_json=aging_public_out_json,
+        data_dir_name="aging_biomarkers_public",
+        manifest=public_manifest,
     )
     write_dashboard_bundle(
         out_html=urine_out_html,
