@@ -368,7 +368,7 @@
 
     .editorial-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.72fr);
+      grid-template-columns: 1fr;
       gap: 20px;
       align-items: start;
     }
@@ -483,11 +483,6 @@
       background: rgba(23, 36, 50, 0.04);
       font-size: 12px;
       line-height: 1;
-    }
-
-    .side-stack {
-      display: grid;
-      gap: 20px;
     }
 
     .ranking-module-list,
@@ -878,11 +873,20 @@
     .tab-summary-card {
       display: grid;
       gap: 6px;
+      width: 100%;
+      text-align: left;
       padding: 16px 18px;
       border-radius: 20px;
       border: 1px solid rgba(23, 36, 50, 0.08);
       background: rgba(252, 248, 241, 0.92);
       box-shadow: var(--shadow-soft);
+      transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+    }
+
+    .tab-summary-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(15, 103, 97, 0.22);
+      box-shadow: var(--shadow-deep);
     }
 
     .tab-summary-card strong {
@@ -1607,33 +1611,33 @@
       <section id="panel-start" class="panel active reveal">
         <div class="editorial-grid">
           <article class="note-card">
-            <div class="section-kicker">At a glance</div>
+            <div class="section-kicker">Choose your path</div>
             <h3>What each tab lets you do</h3>
             <div class="tab-summary-grid">
-              <div class="tab-summary-card">
+              <button class="tab-summary-card" data-tab-jump="start" type="button">
                 <strong>Start Here</strong>
                 <span>See the featured collections and jump into the clearest aging signals fast.</span>
-              </div>
-              <div class="tab-summary-card">
+              </button>
+              <button class="tab-summary-card" data-tab-jump="explore" type="button">
                 <strong>Explore a Biomarker</strong>
                 <span>Trace one test across age using typical level, spread, tails, or sex split.</span>
-              </div>
-              <div class="tab-summary-card">
+              </button>
+              <button class="tab-summary-card" data-tab-jump="disease" type="button">
                 <strong>Disease Explorer</strong>
                 <span>Compare healthy participants with selected disease groups for one biomarker at a time.</span>
-              </div>
-              <div class="tab-summary-card">
+              </button>
+              <button class="tab-summary-card" data-tab-jump="rankings" type="button">
                 <strong>What Changes Most?</strong>
                 <span>Rank biomarkers by how much they rise, fall, spread out, or diverge by sex.</span>
-              </div>
-              <div class="tab-summary-card">
+              </button>
+              <button class="tab-summary-card" data-tab-jump="compare" type="button">
                 <strong>Compare Biomarkers</strong>
                 <span>Overlay up to four markers on the same normalized age scale.</span>
-              </div>
-              <div class="tab-summary-card">
+              </button>
+              <button class="tab-summary-card" data-tab-jump="calculator" type="button">
                 <strong>Blood Age</strong>
                 <span>Try the open PhenoAge calculator and read the caveats in plain language.</span>
-              </div>
+              </button>
             </div>
           </article>
 
@@ -1645,14 +1649,12 @@
             <div id="collection-grid" class="lead-grid"></div>
           </article>
 
-          <div class="side-stack">
-            <article class="note-card ranking-modules">
-              <div class="section-kicker">At a glance</div>
-              <h3>Fast entry points</h3>
-              <p>Tap any marker to jump into the detailed explorer.</p>
-              <div id="ranking-modules" class="ranking-module-list"></div>
-            </article>
-          </div>
+          <article class="note-card ranking-modules">
+            <div class="section-kicker">Jump in</div>
+            <h3>Fast entry points</h3>
+            <p>Tap any marker to jump into the detailed explorer.</p>
+            <div id="ranking-modules" class="ranking-module-list"></div>
+          </article>
         </div>
       </section>
 
@@ -3025,6 +3027,10 @@
       el.innerHTML = `<div class="loading-state">${message}</div>`;
     }
 
+    function hasRenderedPlot(el) {
+      return Boolean(el?.data?.length);
+    }
+
     function lineTraceFromPoints(points, field, name, color, dash = "solid") {
       const filtered = (points || []).filter((point) => Number.isFinite(point[field]));
       return {
@@ -3069,7 +3075,7 @@
               fillcolor: cohortFill(sex),
               line: { color: "rgba(0,0,0,0)" },
               hoverinfo: "skip",
-              name: `${cohortLabel(sex)} IQR`,
+              showlegend: false,
             });
           }
 
@@ -3104,7 +3110,7 @@
           fillcolor: COLORS.band,
           line: { color: "rgba(0,0,0,0)" },
           hoverinfo: "skip",
-          name: "IQR band",
+          showlegend: false,
         });
       }
 
@@ -3166,7 +3172,7 @@
               fillcolor: cohortFill(sex),
               line: { color: "rgba(0,0,0,0)" },
               hoverinfo: "skip",
-              name: `${cohortLabel(sex)} P10-P90`,
+              showlegend: false,
             });
           }
 
@@ -3266,7 +3272,9 @@
 
       refs.exploreTitle.textContent = entry.display_name;
       refs.exploreSubtitle.textContent = `${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}`;
-      renderChartLoading(refs.explorePlot, `Loading ${entry.display_name}...`);
+      if (!hasRenderedPlot(refs.explorePlot)) {
+        renderChartLoading(refs.explorePlot, `Loading ${entry.display_name}...`);
+      }
 
       const token = ++exploreRequestToken;
       try {
@@ -3478,7 +3486,7 @@
           fillcolor: fillColor,
           line: { color: "rgba(0,0,0,0)" },
           hoverinfo: "skip",
-          name: `${label} IQR`,
+          showlegend: false,
         });
       }
 
@@ -3620,7 +3628,9 @@
       }
 
       renderDiseaseConditionList();
-      renderChartLoading(refs.diseasePlot, "Loading disease comparison...");
+      if (!hasRenderedPlot(refs.diseasePlot)) {
+        renderChartLoading(refs.diseasePlot, "Loading disease comparison...");
+      }
 
       try {
         const payload = await loadDiseaseCondition(state.diseaseCondition);
@@ -3890,7 +3900,9 @@
         return;
       }
 
-      renderChartLoading(refs.comparePlot, "Loading compare set...");
+      if (!hasRenderedPlot(refs.comparePlot)) {
+        renderChartLoading(refs.comparePlot, "Loading compare set...");
+      }
       const token = ++compareRequestToken;
 
       try {
@@ -4352,6 +4364,24 @@
             renderRankings();
           }
           if (button.dataset.tab === "explore") {
+            renderExplorePanel();
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-tab-jump]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setTab(button.dataset.tabJump);
+          if (button.dataset.tabJump === "disease") {
+            renderDiseasePanel();
+          }
+          if (button.dataset.tabJump === "compare") {
+            renderComparePanel();
+          }
+          if (button.dataset.tabJump === "rankings") {
+            renderRankings();
+          }
+          if (button.dataset.tabJump === "explore") {
             renderExplorePanel();
           }
         });
