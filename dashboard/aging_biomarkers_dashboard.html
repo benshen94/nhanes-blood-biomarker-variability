@@ -625,6 +625,7 @@
     }
 
     .explore-grid,
+    .disease-grid,
     .rankings-grid,
     .compare-grid {
       display: grid;
@@ -634,9 +635,11 @@
     }
 
     .explore-rail,
+    .disease-rail,
     .compare-rail,
     .rankings-rail,
     .explore-stage,
+    .disease-stage,
     .compare-stage,
     .rankings-stage {
       display: grid;
@@ -679,6 +682,7 @@
     input[type="search"],
     input[type="text"],
     input[type="number"],
+    input[type="date"],
     select {
       width: 100%;
       min-height: var(--control-h);
@@ -783,10 +787,11 @@
     }
 
     #explore-plot,
+    #disease-plot,
     #rankings-plot,
     #compare-plot {
       width: 100%;
-      height: 100%;
+      height: 560px;
       min-height: 520px;
     }
 
@@ -905,6 +910,358 @@
       font-size: 14px;
     }
 
+    .bioage-grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .bioage-form-shell,
+    .bioage-stage,
+    .bioage-form,
+    .bioage-support-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .bioage-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .mini-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.1);
+      background: rgba(15, 103, 97, 0.08);
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .bioage-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .bioage-form-grid.single {
+      grid-template-columns: 1fr;
+    }
+
+    .bioage-input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 110px;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .input-hint {
+      display: block;
+      margin-top: 6px;
+      color: var(--ink-faint);
+      font-size: 12px;
+      line-height: 1.4;
+      letter-spacing: normal;
+      text-transform: none;
+      font-weight: 500;
+    }
+
+    .bioage-form-note {
+      min-height: 52px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(23, 36, 50, 0.04);
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .bioage-form-note.error {
+      border-color: rgba(182, 88, 58, 0.2);
+      background: rgba(182, 88, 58, 0.1);
+      color: #7d422d;
+    }
+
+    .bioage-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bioage-hero-card {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.05fr);
+      gap: 18px;
+      padding: 22px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: linear-gradient(135deg, rgba(252, 248, 241, 0.98) 0%, rgba(239, 246, 241, 0.94) 54%, rgba(245, 236, 228, 0.96) 100%);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .lab-stage {
+      position: relative;
+      min-height: 360px;
+      padding: 28px 26px 24px;
+      overflow: hidden;
+      border-radius: 28px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background:
+        radial-gradient(circle at 24% 18%, rgba(15, 103, 97, 0.14), transparent 32%),
+        radial-gradient(circle at 82% 18%, rgba(182, 88, 58, 0.16), transparent 30%),
+        linear-gradient(180deg, rgba(252, 248, 241, 0.98) 0%, rgba(232, 242, 239, 0.94) 100%);
+    }
+
+    .lab-stage::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      pointer-events: none;
+    }
+
+    .lab-stage::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 34px;
+      width: 220px;
+      height: 24px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(23, 36, 50, 0.16), rgba(23, 36, 50, 0.02) 70%);
+      filter: blur(1px);
+    }
+
+    .lab-orb {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.88);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .beaker {
+      position: relative;
+      width: 188px;
+      height: 238px;
+      margin: 44px auto 26px;
+      border-left: 4px solid rgba(23, 36, 50, 0.28);
+      border-right: 4px solid rgba(23, 36, 50, 0.28);
+      border-bottom: 4px solid rgba(23, 36, 50, 0.28);
+      border-radius: 0 0 30px 30px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.1) 100%);
+      clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+      box-shadow: inset 0 1px 24px rgba(255, 255, 255, 0.3);
+    }
+
+    .beaker::before {
+      content: "";
+      position: absolute;
+      top: -16px;
+      left: 28px;
+      right: 28px;
+      height: 18px;
+      border-left: 4px solid rgba(23, 36, 50, 0.28);
+      border-right: 4px solid rgba(23, 36, 50, 0.28);
+      border-top: 4px solid rgba(23, 36, 50, 0.28);
+      border-radius: 18px 18px 0 0;
+      background: rgba(252, 248, 241, 0.85);
+    }
+
+    .beaker-liquid {
+      position: absolute;
+      left: 16%;
+      right: 16%;
+      bottom: 10px;
+      height: 38%;
+      border-radius: 22px 22px 16px 16px;
+      background: linear-gradient(180deg, rgba(15, 103, 97, 0.94) 0%, rgba(83, 116, 146, 0.88) 100%);
+      box-shadow: inset 0 10px 18px rgba(255, 255, 255, 0.18);
+      transform-origin: center bottom;
+      transition: height 680ms cubic-bezier(0.16, 1, 0.3, 1), background 320ms ease;
+      animation: beaker-slosh 4.6s ease-in-out infinite;
+    }
+
+    .lab-stage.is-calculating .beaker-liquid {
+      height: 60%;
+      background: linear-gradient(180deg, rgba(182, 88, 58, 0.92) 0%, rgba(15, 103, 97, 0.92) 100%);
+    }
+
+    .lab-stage.is-ready .beaker-liquid {
+      height: 48%;
+    }
+
+    .bubble {
+      position: absolute;
+      bottom: 82px;
+      left: 50%;
+      width: 12px;
+      height: 12px;
+      margin-left: -6px;
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.86);
+      opacity: 0;
+      transform: translateY(0) scale(0.7);
+    }
+
+    .bubble.b2 {
+      left: 44%;
+      width: 10px;
+      height: 10px;
+    }
+
+    .bubble.b3 {
+      left: 56%;
+      width: 14px;
+      height: 14px;
+    }
+
+    .lab-stage.is-calculating .bubble.b1 {
+      animation: bubble-rise 1.6s ease-out infinite;
+    }
+
+    .lab-stage.is-calculating .bubble.b2 {
+      animation: bubble-rise 1.8s ease-out 0.24s infinite;
+    }
+
+    .lab-stage.is-calculating .bubble.b3 {
+      animation: bubble-rise 1.5s ease-out 0.48s infinite;
+    }
+
+    .lab-reading {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 22px;
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .bioage-output {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .bioage-output h3 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 0.96;
+      letter-spacing: -0.05em;
+      max-width: 11ch;
+    }
+
+    .bioage-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .bioage-metric-card {
+      display: grid;
+      gap: 4px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.84);
+    }
+
+    .bioage-metric-card span,
+    .bioage-metric-card small {
+      color: var(--ink-faint);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .bioage-metric-card strong {
+      font-family: var(--font-display);
+      font-size: 1.9rem;
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .bioage-converted {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .bioage-converted .fact-row {
+      padding: 0;
+      border-bottom: 0;
+    }
+
+    .condition-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bioage-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--ink-soft);
+      display: grid;
+      gap: 8px;
+    }
+
+    .citation-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .citation-item {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.84);
+    }
+
+    .citation-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .citation-item p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .citation-item a {
+      color: var(--teal);
+      font-weight: 700;
+    }
+
     .about-layout {
       display: grid;
       grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
@@ -984,6 +1341,30 @@
       }
     }
 
+    @keyframes bubble-rise {
+      0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.65);
+      }
+      20% {
+        opacity: 0.9;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-128px) scale(1.08);
+      }
+    }
+
+    @keyframes beaker-slosh {
+      0%,
+      100% {
+        transform: rotate(-1.2deg) scaleX(1);
+      }
+      50% {
+        transform: rotate(1.2deg) scaleX(1.03);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       html {
         scroll-behavior: auto;
@@ -1005,6 +1386,7 @@
     @media (max-width: 1180px) {
       .hero,
       .editorial-grid,
+      .bioage-hero-card,
       .about-layout,
       .details-grid {
         grid-template-columns: 1fr;
@@ -1017,8 +1399,10 @@
 
     @media (max-width: 980px) {
       .explore-grid,
+      .disease-grid,
       .rankings-grid,
-      .compare-grid {
+      .compare-grid,
+      .bioage-grid {
         grid-template-columns: 1fr;
       }
 
@@ -1027,8 +1411,10 @@
       }
 
       #explore-plot,
+      #disease-plot,
       #rankings-plot,
       #compare-plot {
+        height: 500px;
         min-height: 460px;
       }
     }
@@ -1049,6 +1435,9 @@
 
       .lead-grid,
       .summary-strip,
+      .bioage-metrics,
+      .bioage-form-grid,
+      .bioage-converted,
       .rankings-list,
       .hero-age-row {
         grid-template-columns: 1fr;
@@ -1060,7 +1449,8 @@
 
       .tabbar,
       .toolbar-actions,
-      .segmented {
+      .segmented,
+      .bioage-action-row {
         width: 100%;
       }
 
@@ -1078,8 +1468,10 @@
       }
 
       #explore-plot,
+      #disease-plot,
       #rankings-plot,
       #compare-plot {
+        height: 420px;
         min-height: 400px;
       }
     }
@@ -1134,8 +1526,10 @@
       <div class="tabbar" role="tablist" aria-label="Dashboard sections">
         <button id="tab-start" class="tab-btn active" data-tab="start" type="button">Start Here</button>
         <button id="tab-explore" class="tab-btn" data-tab="explore" type="button">Explore a Biomarker</button>
+        <button id="tab-disease" class="tab-btn" data-tab="disease" type="button">Disease Explorer</button>
         <button id="tab-rankings" class="tab-btn" data-tab="rankings" type="button">What Changes Most?</button>
         <button id="tab-compare" class="tab-btn" data-tab="compare" type="button">Compare Biomarkers</button>
+        <button id="tab-calculator" class="tab-btn" data-tab="calculator" type="button">Blood Age</button>
         <button id="tab-about" class="tab-btn" data-tab="about" type="button">About the Data</button>
       </div>
       <div class="toolbar-actions">
@@ -1264,6 +1658,73 @@
         </div>
       </section>
 
+      <section id="panel-disease" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Condition comparisons</div>
+            <h2>Disease Explorer</h2>
+            <p>
+              The main explorer stays healthy-only. This tab intentionally brings selected disease cohorts back in so you can compare cross-sectional biomarker profiles against that healthy baseline.
+            </p>
+          </div>
+        </div>
+
+        <div class="disease-grid">
+          <aside class="disease-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Choose a condition</div>
+              <h3>Healthy baseline vs selected disease group</h3>
+              <p class="rail-copy">
+                Each disease cohort comes from the processed NHANES participant flags. People in the disease group can still have other comorbidities, so this is a broad population comparison rather than a clean case-control study.
+              </p>
+              <div id="disease-condition-list" class="condition-list"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Choose a test</div>
+              <h3>Compare one biomarker at a time</h3>
+              <label class="control-label" for="disease-search">Search</label>
+              <input id="disease-search" type="search" placeholder="Creatinine, HbA1c, CRP..." autocomplete="off" spellcheck="false" />
+              <div id="disease-list" class="marker-list" aria-live="polite"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Comparison controls</div>
+              <h3>Use the same cohort and trim logic</h3>
+              <label class="control-label">Cohort</label>
+              <div class="segmented">
+                <button class="tone-btn" data-cohort-btn data-value="pooled" type="button">Pooled</button>
+                <button class="tone-btn" data-cohort-btn data-value="female" type="button">Female</button>
+                <button class="tone-btn" data-cohort-btn data-value="male" type="button">Male</button>
+              </div>
+              <label class="control-label">Trim</label>
+              <div class="segmented">
+                <button class="tone-btn" data-trim-btn data-value="raw" type="button">Raw</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_10_90" type="button">10-90 trimmed</button>
+              </div>
+              <div id="disease-condition-note" class="rail-copy"></div>
+            </div>
+          </aside>
+
+          <div class="disease-stage">
+            <div id="disease-summary-strip" class="summary-strip" aria-live="polite"></div>
+            <div class="chart-shell">
+              <div id="disease-plot"></div>
+            </div>
+            <div class="details-grid">
+              <div class="stage-block">
+                <div class="section-kicker">Interpretation</div>
+                <div id="disease-annotation" class="stage-note"></div>
+              </div>
+              <div class="details-card">
+                <div class="section-kicker">Condition details</div>
+                <div id="disease-tech" class="facts"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="panel-rankings" class="panel reveal">
         <div class="section-head">
           <div>
@@ -1362,6 +1823,243 @@
         </div>
       </section>
 
+      <section id="panel-calculator" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Personal calculator</div>
+            <h2>Try the open blood-age model.</h2>
+            <p>
+              This tab implements the published PhenoAge blood-chemistry equation using age plus nine routine lab markers.
+              It runs locally in your browser and never uploads your values from this page.
+            </p>
+          </div>
+        </div>
+
+        <div class="bioage-grid">
+          <aside class="bioage-form-shell">
+            <article class="rail-block">
+              <div class="section-kicker">What it is</div>
+              <h3>PhenoAge, built from NHANES blood chemistry</h3>
+              <p class="rail-copy">
+                PhenoAge is an open blood-based model from Morgan Levine and colleagues. It maps your age and nine routine biomarkers to the age in a reference U.S. population that had a similar mortality-associated blood profile.
+              </p>
+              <p class="rail-copy">
+                The blood model was developed in adults from NHANES III and later evaluated in NHANES IV. It is best understood as a research-oriented summary of blood chemistry and hematology, not a diagnosis.
+              </p>
+              <div class="bioage-pill-row">
+                <span class="mini-pill">9 biomarkers</span>
+                <span class="mini-pill">Browser only</span>
+                <span class="mini-pill">NHANES-derived</span>
+              </div>
+            </article>
+
+            <article class="rail-block">
+              <div class="section-kicker">Enter your labs</div>
+              <h3>Use the values from one blood draw</h3>
+              <form id="bioage-form" class="bioage-form">
+                <div class="bioage-form-grid">
+                  <label class="control-label" for="bioage-birth-date">
+                    Birth date
+                    <input id="bioage-birth-date" type="date" />
+                    <span class="input-hint">Used to compute chronological age at the time of the blood draw.</span>
+                  </label>
+                  <label class="control-label" for="bioage-sample-date">
+                    Blood draw date
+                    <input id="bioage-sample-date" type="date" />
+                    <span class="input-hint">PhenoAge should use age on the lab date, not today.</span>
+                  </label>
+                </div>
+
+                <div class="bioage-form-grid">
+                  <label class="control-label" for="bioage-sex">
+                    Sex at birth
+                    <select id="bioage-sex">
+                      <option value="">Prefer not to say</option>
+                      <option value="female">Female</option>
+                      <option value="male">Male</option>
+                      <option value="intersex">Intersex / another variation</option>
+                    </select>
+                    <span class="input-hint">Recorded for context only. This published PhenoAge equation does not use sex.</span>
+                  </label>
+                </div>
+
+                <div class="bioage-form-grid">
+                  <label class="control-label" for="bioage-albumin-value">
+                    Albumin
+                    <div class="bioage-input-row">
+                      <input id="bioage-albumin-value" type="number" min="0" step="0.01" placeholder="4.3" />
+                      <select id="bioage-albumin-unit">
+                        <option value="g/dL">g/dL</option>
+                        <option value="g/L">g/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">Published unit inside the model: g/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-creatinine-value">
+                    Creatinine
+                    <div class="bioage-input-row">
+                      <input id="bioage-creatinine-value" type="number" min="0" step="0.01" placeholder="0.90" />
+                      <select id="bioage-creatinine-unit">
+                        <option value="mg/dL">mg/dL</option>
+                        <option value="umol/L">umol/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">Published unit inside the model: umol/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-glucose-value">
+                    Glucose
+                    <div class="bioage-input-row">
+                      <input id="bioage-glucose-value" type="number" min="0" step="0.1" placeholder="93" />
+                      <select id="bioage-glucose-unit">
+                        <option value="mg/dL">mg/dL</option>
+                        <option value="mmol/L">mmol/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">Published unit inside the model: mmol/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-crp-value">
+                    CRP or hs-CRP
+                    <div class="bioage-input-row">
+                      <input id="bioage-crp-value" type="number" min="0.001" step="0.001" placeholder="1.5" />
+                      <select id="bioage-crp-unit">
+                        <option value="mg/L">mg/L</option>
+                        <option value="mg/dL">mg/dL</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">The published model uses log(CRP) in mg/dL, so this value must be greater than 0.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-lymph-value">
+                    Lymphocyte percent
+                    <input id="bioage-lymph-value" type="number" min="0" step="0.1" placeholder="30.0" />
+                    <span class="input-hint">Use the reported percentage, not an absolute count.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-mcv-value">
+                    Mean cell volume
+                    <input id="bioage-mcv-value" type="number" min="0" step="0.1" placeholder="90.0" />
+                    <span class="input-hint">Enter fL.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-rdw-value">
+                    RDW
+                    <input id="bioage-rdw-value" type="number" min="0" step="0.1" placeholder="13.2" />
+                    <span class="input-hint">Enter the percent value from your CBC.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-alp-value">
+                    Alkaline phosphatase
+                    <input id="bioage-alp-value" type="number" min="0" step="0.1" placeholder="70" />
+                    <span class="input-hint">Enter U/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-wbc-value">
+                    White blood cell count
+                    <div class="bioage-input-row">
+                      <input id="bioage-wbc-value" type="number" min="0" step="0.01" placeholder="6.0" />
+                      <select id="bioage-wbc-unit">
+                        <option value="10^3/uL">10^3/uL</option>
+                        <option value="10^9/L">10^9/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">These two WBC unit choices are numerically equivalent.</span>
+                  </label>
+                </div>
+
+                <div class="bioage-action-row">
+                  <button id="bioage-calc-btn" class="ghost-btn primary" type="submit">Calculate PhenoAge</button>
+                  <button id="bioage-reset-btn" class="ghost-btn" type="button">Reset form</button>
+                </div>
+              </form>
+
+              <div id="bioage-form-note" class="bioage-form-note">
+                This page does not store your lab values in the URL or upload them from the browser. Use one set of labs from the same draw whenever possible.
+              </div>
+            </article>
+          </aside>
+
+          <div class="bioage-stage">
+            <article class="bioage-hero-card">
+              <div id="bioage-lab-stage" class="lab-stage">
+                <div class="lab-orb">PhenoAge</div>
+                <div class="beaker">
+                  <div class="beaker-liquid"></div>
+                  <div class="bubble b1"></div>
+                  <div class="bubble b2"></div>
+                  <div class="bubble b3"></div>
+                </div>
+                <div id="bioage-result-status" class="lab-reading">Waiting for a complete blood panel.</div>
+              </div>
+
+              <div class="bioage-output">
+                <div class="section-kicker">Your estimate</div>
+                <h3 id="bioage-result-title">Enter your values to calculate PhenoAge.</h3>
+                <div class="bioage-metrics">
+                  <div class="bioage-metric-card">
+                    <span>PhenoAge</span>
+                    <strong id="bioage-result-age">--</strong>
+                    <small>years</small>
+                  </div>
+                  <div class="bioage-metric-card">
+                    <span>Calendar age</span>
+                    <strong id="bioage-result-chrono">--</strong>
+                    <small>at blood draw</small>
+                  </div>
+                  <div class="bioage-metric-card">
+                    <span>Difference</span>
+                    <strong id="bioage-result-gap">--</strong>
+                    <small>PhenoAge minus age</small>
+                  </div>
+                </div>
+                <p id="bioage-result-copy" class="muted-copy">
+                  PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a compact way to compare one lab pattern with the reference population used to train the model.
+                </p>
+                <div id="bioage-converted" class="bioage-converted"></div>
+              </div>
+            </article>
+
+            <div class="bioage-support-grid">
+              <article class="details-card">
+                <div class="section-kicker">Caveats</div>
+                <h3>Useful context, not personal destiny.</h3>
+                <ul class="bioage-list">
+                  <li>PhenoAge was calibrated on U.S. adults in NHANES, so it is a population-reference model rather than a direct measure of how fast your body is aging internally.</li>
+                  <li>Short-term inflammation, infection, recent hard training, medications, dehydration, and lab-method differences can move the result.</li>
+                  <li>This tab is for adults and should not be used as a diagnosis, a screening decision, or a substitute for medical advice.</li>
+                  <li>If your CRP report uses a lower-limit symbol such as &lt;0.1, this calculator still needs a positive numeric value because the published equation uses log(CRP).</li>
+                </ul>
+              </article>
+
+              <article class="details-card">
+                <div class="section-kicker">Sources and credit</div>
+                <h3>The papers behind this tab</h3>
+                <div class="citation-list">
+                  <div class="citation-item">
+                    <strong>Levine ME et al. (2018), AGING.</strong>
+                    <p>
+                      This paper and its supplementary methods describe the open phenotypic age blood model, including the NHANES III training set, the 9 biomarkers, and the published coefficients used here.
+                      <a href="https://www.aging-us.com/article/101414/text" target="_blank" rel="noreferrer">Paper</a>
+                      |
+                      <a href="https://www.aging-us.com/article/101414/supplementary/SD1/0/aging-v10i4-101414-supplementary-material-SD1.pdf" target="_blank" rel="noreferrer">Supplement</a>
+                    </p>
+                  </div>
+                  <div class="citation-item">
+                    <strong>Liu Z, Kuo P-L, Horvath S, Crimmins E, Ferrucci L, Levine M (2018), PLOS Medicine.</strong>
+                    <p>
+                      This later NHANES IV paper evaluated how the blood-age measure related to mortality and disease burden across diverse adult subgroups.
+                      <a href="https://doi.org/10.1371/journal.pmed.1002718" target="_blank" rel="noreferrer">DOI</a>
+                    </p>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="panel-about" class="panel reveal">
         <div class="section-head">
           <div>
@@ -1428,7 +2126,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1775373233";
+    const DATA_VERSION = "1775382053";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -1449,14 +2147,42 @@
       clalit: "#a47521",
     };
 
+    const BIOAGE_FACTORS = {
+      albumin: {
+        "g/dL": 10,
+        "g/L": 1,
+      },
+      creatinine: {
+        "mg/dL": 88.4017,
+        "umol/L": 1,
+      },
+      glucose: {
+        "mg/dL": 0.0555,
+        "mmol/L": 1,
+      },
+      crp: {
+        "mg/dL": 1,
+        "mg/L": 0.1,
+      },
+      wbc: {
+        "10^3/uL": 1,
+        "10^9/L": 1,
+      },
+    };
+
     const state = {
       manifest: [],
       manifestById: new Map(),
       manifestBySlug: new Map(),
       seriesCache: new Map(),
+      diseaseIndex: [],
+      diseaseIndexByKey: new Map(),
+      diseaseCache: new Map(),
       tab: "start",
       exploreId: "",
       exploreCollection: "all",
+      diseaseCondition: "",
+      diseaseBiomarkerId: "",
       cohort: "pooled",
       trim: "trim_10_90",
       view: "typical",
@@ -1479,6 +2205,7 @@
     const refs = {};
     let exploreRequestToken = 0;
     let compareRequestToken = 0;
+    let bioAgeTimer = 0;
 
     function $(id) {
       return document.getElementById(id);
@@ -1649,13 +2376,19 @@
     }
 
     function activeChartId() {
+      if (state.tab === "disease") {
+        return "disease-plot";
+      }
       if (state.tab === "rankings") {
         return "rankings-plot";
       }
       if (state.tab === "compare") {
         return "compare-plot";
       }
-      return "explore-plot";
+      if (state.tab === "explore") {
+        return "explore-plot";
+      }
+      return null;
     }
 
     function showToast(message) {
@@ -1682,6 +2415,8 @@
       const params = new URLSearchParams();
       params.set("tab", state.tab);
       params.set("biomarker", state.exploreId);
+      params.set("diseaseCondition", state.diseaseCondition);
+      params.set("diseaseBiomarker", state.diseaseBiomarkerId);
       params.set("cohort", state.cohort);
       params.set("trim", state.trim);
       params.set("view", state.view);
@@ -1705,6 +2440,8 @@
       const params = new URLSearchParams(hash);
       const tab = params.get("tab");
       const biomarker = params.get("biomarker");
+      const diseaseCondition = params.get("diseaseCondition");
+      const diseaseBiomarker = params.get("diseaseBiomarker");
       const cohort = params.get("cohort");
       const trim = params.get("trim");
       const view = params.get("view");
@@ -1712,11 +2449,17 @@
       const compareMode = params.get("compareMode");
       const compare = params.get("compare");
 
-      if (tab && ["start", "explore", "rankings", "compare", "about"].includes(tab)) {
+      if (tab && ["start", "explore", "disease", "rankings", "compare", "calculator", "about"].includes(tab)) {
         state.tab = tab;
       }
       if (biomarker && state.manifestById.has(biomarker)) {
         state.exploreId = biomarker;
+      }
+      if (diseaseCondition && state.diseaseIndexByKey.has(diseaseCondition)) {
+        state.diseaseCondition = diseaseCondition;
+      }
+      if (diseaseBiomarker && state.manifestById.has(diseaseBiomarker)) {
+        state.diseaseBiomarkerId = diseaseBiomarker;
       }
       if (cohort && ["pooled", "female", "male"].includes(cohort)) {
         state.cohort = cohort;
@@ -1754,6 +2497,16 @@
           .filter(Boolean)
           .map((entry) => entry.biomarker_id)
           .slice(0, 4);
+      }
+
+      if (!state.diseaseCondition) {
+        state.diseaseCondition = state.diseaseIndex.find((entry) => entry.key === "diabetes")?.key
+          || state.diseaseIndex[0]?.key
+          || "";
+      }
+
+      if (!state.diseaseBiomarkerId) {
+        state.diseaseBiomarkerId = state.exploreId;
       }
     }
 
@@ -2272,12 +3025,289 @@
           return;
         }
 
-        Plotly.react(chartEl, traces, layout, { responsive: true, displaylogo: false });
+        Plotly.newPlot(chartEl, traces, layout, { responsive: true, displaylogo: false });
         state.lastChartId = "explore-plot";
         setExploreAnnotation(annotation);
       } catch (error) {
         renderChartEmpty(refs.explorePlot, "This biomarker could not be loaded.");
         setExploreAnnotation(error.message);
+      }
+    }
+
+    function getDiseaseConditionMeta(key) {
+      return state.diseaseIndexByKey.get(key) || null;
+    }
+
+    function loadDiseaseCondition(key) {
+      if (state.diseaseCache.has(key)) {
+        return Promise.resolve(state.diseaseCache.get(key));
+      }
+
+      const condition = getDiseaseConditionMeta(key);
+      if (!condition?.detail_path) {
+        return Promise.reject(new Error("Unknown disease condition"));
+      }
+
+      return fetchJson(`${DATA_BASE}/${condition.detail_path}`).then((payload) => {
+        state.diseaseCache.set(key, payload);
+        return payload;
+      });
+    }
+
+    function renderDiseaseConditionList() {
+      refs.diseaseConditionList.innerHTML = state.diseaseIndex
+        .map((condition) => `
+          <button class="marker-item ${condition.key === state.diseaseCondition ? "active" : ""}" data-select-condition="${condition.key}" type="button">
+            <strong>${condition.title}</strong>
+            <span>${condition.kicker} | ${formatCount(condition.participant_count)} participants</span>
+          </button>
+        `)
+        .join("");
+    }
+
+    function diseaseEntries(diseasePayload) {
+      const search = normalizeText(refs.diseaseSearch.value);
+      const biomarkers = diseasePayload?.biomarkers || [];
+      return biomarkers
+        .filter((entry) => {
+          if (!search) {
+            return true;
+          }
+          const haystack = `${entry.display_name} ${entry.aging_domain || ""} ${entry.featured_collection_title || ""}`;
+          return normalizeText(haystack).includes(search);
+        })
+        .sort((left, right) => {
+          const leftPriority = getEntryById(left.biomarker_id)?.is_priority_marker ? 1 : 0;
+          const rightPriority = getEntryById(right.biomarker_id)?.is_priority_marker ? 1 : 0;
+          if (leftPriority !== rightPriority) {
+            return rightPriority - leftPriority;
+          }
+          return left.display_name.localeCompare(right.display_name);
+        });
+    }
+
+    function renderDiseaseBiomarkerList(diseasePayload) {
+      const entries = diseaseEntries(diseasePayload);
+      refs.diseaseList.innerHTML = entries
+        .map((entry) => `
+          <button class="marker-item ${entry.biomarker_id === state.diseaseBiomarkerId ? "active" : ""}" data-open-disease-id="${entry.biomarker_id}" type="button">
+            <strong>${entry.display_name}</strong>
+            <span>${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}</span>
+          </button>
+        `)
+        .join("");
+    }
+
+    function getDiseaseGroupPoints(record, groupKey) {
+      const mode = trimModeKey();
+      const group = record?.groups?.[groupKey] || {};
+      if (state.cohort === "pooled") {
+        return group?.points_by_filter?.[mode] || [];
+      }
+      return group?.sex_points_by_filter?.[mode]?.[state.cohort] || [];
+    }
+
+    function getDiseaseGroupCount(record, groupKey) {
+      const group = record?.groups?.[groupKey] || {};
+      if (state.cohort === "pooled") {
+        return group?.raw_total_n || 0;
+      }
+      return group?.raw_total_n_by_sex?.[state.cohort] || 0;
+    }
+
+    function medianGapAtAgeBin(record, ageBin) {
+      const healthyLookup = pointLookup(getDiseaseGroupPoints(record, "healthy"));
+      const conditionLookup = pointLookup(getDiseaseGroupPoints(record, "condition"));
+      const healthyPoint = healthyLookup.get(ageBin);
+      const conditionPoint = conditionLookup.get(ageBin);
+      if (!Number.isFinite(healthyPoint?.median) || !Number.isFinite(conditionPoint?.median)) {
+        return null;
+      }
+      return conditionPoint.median - healthyPoint.median;
+    }
+
+    function formatSignedValue(value, unit = "", digits = 1) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      const number = `${value >= 0 ? "+" : ""}${value.toFixed(digits)}`;
+      return unit ? `${number} ${unit}` : number;
+    }
+
+    function buildDiseaseBandTraces(points, label, lineColor, fillColor) {
+      if (!points.length) {
+        return [];
+      }
+
+      const traces = [];
+      const bandPoints = points.filter((point) => Number.isFinite(point.q25) && Number.isFinite(point.q75));
+      if (bandPoints.length) {
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q75),
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          showlegend: false,
+        });
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q25),
+          fill: "tonexty",
+          fillcolor: fillColor,
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          name: `${label} IQR`,
+        });
+      }
+
+      traces.push(lineTraceFromPoints(points, "median", `${label} median`, lineColor));
+      return traces;
+    }
+
+    function renderDiseaseSummaryStrip(conditionMeta, record) {
+      refs.diseaseSummaryStrip.innerHTML = [
+        {
+          label: "Healthy sample count",
+          value: formatCount(getDiseaseGroupCount(record, "healthy")),
+          note: `${state.cohort} healthy observations`,
+        },
+        {
+          label: `${conditionMeta.title} sample count`,
+          value: formatCount(getDiseaseGroupCount(record, "condition")),
+          note: `${state.cohort} condition observations`,
+        },
+        {
+          label: "40s median gap",
+          value: formatSignedValue(medianGapAtAgeBin(record, "40-44"), record.unit),
+          note: `${conditionMeta.title} minus healthy`,
+        },
+        {
+          label: "60s median gap",
+          value: formatSignedValue(medianGapAtAgeBin(record, "60-64"), record.unit),
+          note: `${conditionMeta.title} minus healthy`,
+        },
+        {
+          label: "80s median gap",
+          value: formatSignedValue(medianGapAtAgeBin(record, "80-84"), record.unit),
+          note: `${conditionMeta.title} minus healthy`,
+        },
+      ]
+        .map((item) => `
+          <div class="summary-card">
+            <div class="label">${item.label}</div>
+            <strong>${item.value}</strong>
+            <span>${item.note}</span>
+          </div>
+        `)
+        .join("");
+    }
+
+    function renderDiseaseTech(conditionMeta, record) {
+      const facts = [
+        ["Condition", conditionMeta.title],
+        ["Definition", conditionMeta.source || "Condition definition not provided"],
+        ["Biomarker", record.chart_display_name],
+        ["Collection", record.featured_collection_title],
+        ["Aging domain", record.aging_domain || "General aging"],
+        ["Cohort", state.cohort],
+        ["Trim mode", currentTrimLabel()],
+        ["Important caveat", "The disease cohort can include other comorbidities. This is a broad cross-sectional comparison, not an isolated causal effect."],
+      ];
+
+      refs.diseaseTech.innerHTML = facts
+        .map(([label, value]) => `
+          <div class="fact-row">
+            <span>${label}</span>
+            <div>${value}</div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function setDiseaseAnnotation(message) {
+      refs.diseaseAnnotation.textContent = message;
+    }
+
+    async function renderDiseasePanel() {
+      if (!state.diseaseCondition) {
+        renderChartEmpty(refs.diseasePlot, "Choose a disease condition to begin.");
+        refs.diseaseSummaryStrip.innerHTML = "";
+        refs.diseaseList.innerHTML = "";
+        refs.diseaseConditionNote.textContent = "";
+        refs.diseaseTech.innerHTML = "";
+        setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
+        return;
+      }
+
+      renderDiseaseConditionList();
+      renderChartLoading(refs.diseasePlot, "Loading disease comparison...");
+
+      try {
+        const payload = await loadDiseaseCondition(state.diseaseCondition);
+        const conditionMeta = payload?.condition || getDiseaseConditionMeta(state.diseaseCondition);
+        const biomarkerLookup = new Map((payload?.biomarkers || []).map((entry) => [entry.biomarker_id, entry]));
+        if (!biomarkerLookup.has(state.diseaseBiomarkerId)) {
+          state.diseaseBiomarkerId = payload?.biomarkers?.[0]?.biomarker_id || "";
+        }
+
+        renderDiseaseBiomarkerList(payload);
+
+        const record = biomarkerLookup.get(state.diseaseBiomarkerId);
+        if (!record || !conditionMeta) {
+          renderChartEmpty(refs.diseasePlot, "Choose a biomarker to compare against the selected disease cohort.");
+          refs.diseaseSummaryStrip.innerHTML = "";
+          refs.diseaseTech.innerHTML = "";
+          refs.diseaseConditionNote.textContent = "";
+          setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
+          return;
+        }
+
+        const healthyPoints = getDiseaseGroupPoints(record, "healthy");
+        const conditionPoints = getDiseaseGroupPoints(record, "condition");
+        refs.diseaseConditionNote.textContent = `${conditionMeta.kicker} | ${conditionMeta.source}`;
+
+        if (!healthyPoints.length || !conditionPoints.length) {
+          renderChartEmpty(refs.diseasePlot, "This biomarker does not have enough data for the current cohort and disease condition.");
+          refs.diseaseSummaryStrip.innerHTML = "";
+          renderDiseaseTech(conditionMeta, record);
+          setDiseaseAnnotation("Some disease-by-age cells are sparse. Try pooled view or switch to the trimmed mode for a cleaner comparison.");
+          return;
+        }
+
+        const traces = [
+          ...buildDiseaseBandTraces(healthyPoints, "Healthy baseline", COLORS.teal, "rgba(15, 103, 97, 0.12)"),
+          ...buildDiseaseBandTraces(conditionPoints, conditionMeta.title, COLORS.rust, "rgba(182, 88, 58, 0.14)"),
+        ];
+
+        Plotly.newPlot(
+          refs.diseasePlot,
+          traces,
+          buildPlotLayout({
+            title: {
+              text: `${record.display_name}: healthy vs ${conditionMeta.title.toLowerCase()}`,
+              x: 0,
+              font: { family: "\"Fraunces\", serif", size: 22, color: COLORS.ink },
+            },
+            yaxis: {
+              title: { text: record.unit || "Value" },
+            },
+          }),
+          { responsive: true, displaylogo: false }
+        );
+        state.lastChartId = "disease-plot";
+        renderDiseaseSummaryStrip(conditionMeta, record);
+        renderDiseaseTech(conditionMeta, record);
+        setDiseaseAnnotation(`${conditionMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort in the same age bins.`);
+      } catch (error) {
+        renderChartEmpty(refs.diseasePlot, "The disease explorer could not be loaded.");
+        refs.diseaseSummaryStrip.innerHTML = "";
+        refs.diseaseTech.innerHTML = "";
+        refs.diseaseConditionNote.textContent = "";
+        setDiseaseAnnotation(error.message);
       }
     }
 
@@ -2352,7 +3382,7 @@
         return value >= 0 ? COLORS.rust : COLORS.blue;
       });
 
-      Plotly.react(
+      Plotly.newPlot(
         refs.rankingsPlot,
         [
           {
@@ -2500,7 +3530,7 @@
           return;
         }
 
-        Plotly.react(
+        Plotly.newPlot(
           refs.comparePlot,
           traces,
           buildPlotLayout({
@@ -2581,6 +3611,331 @@
       writeHash();
     }
 
+    function isoToday() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseIsoDate(value) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) {
+        return null;
+      }
+      const [year, month, day] = value.split("-").map(Number);
+      return new Date(Date.UTC(year, month - 1, day));
+    }
+
+    function formatYears(value) {
+      if (!Number.isFinite(value)) {
+        return "--";
+      }
+      return value.toFixed(1);
+    }
+
+    function formatNumber(value, digits = 1) {
+      if (!Number.isFinite(value)) {
+        return "--";
+      }
+      return value.toFixed(digits);
+    }
+
+    function formatSignedYears(value) {
+      if (!Number.isFinite(value)) {
+        return "--";
+      }
+      return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
+    }
+
+    function setBioAgeFormNote(message, isError = false) {
+      refs.bioageFormNote.textContent = message;
+      refs.bioageFormNote.classList.toggle("error", Boolean(isError));
+    }
+
+    function setBioAgeStage(mode, message) {
+      refs.bioageLabStage.classList.remove("is-calculating", "is-ready");
+      if (mode === "calculating") {
+        refs.bioageLabStage.classList.add("is-calculating");
+      }
+      if (mode === "ready") {
+        refs.bioageLabStage.classList.add("is-ready");
+      }
+      refs.bioageResultStatus.textContent = message;
+    }
+
+    function resetBioAgeOutput() {
+      window.clearTimeout(bioAgeTimer);
+      refs.bioageResultTitle.textContent = "Enter your values to calculate PhenoAge.";
+      refs.bioageResultAge.textContent = "--";
+      refs.bioageResultChrono.textContent = "--";
+      refs.bioageResultGap.textContent = "--";
+      refs.bioageResultCopy.textContent = "PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a compact way to compare one lab pattern with the reference population used to train the model.";
+      refs.bioageConverted.innerHTML = "";
+      setBioAgeStage("idle", "Waiting for a complete blood panel.");
+    }
+
+    function yearsBetweenDates(birthValue, sampleValue) {
+      const birthDate = parseIsoDate(birthValue);
+      const sampleDate = parseIsoDate(sampleValue);
+      if (!birthDate || !sampleDate) {
+        return null;
+      }
+      if (sampleDate <= birthDate) {
+        return null;
+      }
+      const diffDays = (sampleDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays / 365.2425;
+    }
+
+    function readRequiredNumber(inputEl, label, minimum = 0, inclusive = true) {
+      const raw = String(inputEl.value || "").trim();
+      if (!raw) {
+        return { error: `${label} is required.` };
+      }
+
+      const value = Number.parseFloat(raw);
+      if (!Number.isFinite(value)) {
+        return { error: `${label} must be numeric.` };
+      }
+
+      if (inclusive && value < minimum) {
+        return { error: `${label} must be at least ${minimum}.` };
+      }
+      if (!inclusive && value <= minimum) {
+        return { error: `${label} must be greater than ${minimum}.` };
+      }
+
+      return { value };
+    }
+
+    function convertBioAgeValue(kind, value, unit) {
+      const factor = BIOAGE_FACTORS?.[kind]?.[unit];
+      if (!Number.isFinite(factor)) {
+        throw new Error(`Unsupported ${kind} unit: ${unit}`);
+      }
+      return value * factor;
+    }
+
+    function calculatePhenoAgeModel(fields) {
+      const ageYears = yearsBetweenDates(fields.birthDate, fields.sampleDate);
+      if (!Number.isFinite(ageYears)) {
+        throw new Error("Birth date must be earlier than the blood draw date.");
+      }
+
+      const albuminGL = convertBioAgeValue("albumin", fields.albumin, fields.albuminUnit);
+      const creatinineUmolL = convertBioAgeValue("creatinine", fields.creatinine, fields.creatinineUnit);
+      const glucoseMmolL = convertBioAgeValue("glucose", fields.glucose, fields.glucoseUnit);
+      const crpMgDl = convertBioAgeValue("crp", fields.crp, fields.crpUnit);
+      const wbcKPerUl = convertBioAgeValue("wbc", fields.wbc, fields.wbcUnit);
+
+      if (crpMgDl <= 0) {
+        throw new Error("CRP must be greater than 0 because the published equation uses log(CRP).");
+      }
+
+      const xb = -19.90667
+        + (-0.03359355 * albuminGL)
+        + (0.009506491 * creatinineUmolL)
+        + (0.1953192 * glucoseMmolL)
+        + (0.09536762 * Math.log(crpMgDl))
+        + (-0.01199984 * fields.lymphocyte)
+        + (0.02676401 * fields.mcv)
+        + (0.3306156 * fields.rdw)
+        + (0.001868778 * fields.alp)
+        + (0.05542406 * wbcKPerUl)
+        + (0.08035356 * ageYears);
+
+      const mortalityScore = 1 - Math.exp((-1.51714 * Math.exp(xb)) / 0.007692696);
+      if (!Number.isFinite(mortalityScore) || mortalityScore <= 0 || mortalityScore >= 1) {
+        throw new Error("The calculation produced an invalid result. Double-check the units and values.");
+      }
+
+      const phenoAge = (Math.log(-0.0055305 * Math.log(1 - mortalityScore)) / 0.090165) + 141.50225;
+      return {
+        chronologicalAgeYears: ageYears,
+        phenoAgeYears: phenoAge,
+        differenceYears: phenoAge - ageYears,
+        converted: {
+          albuminGL,
+          creatinineUmolL,
+          glucoseMmolL,
+          crpMgDl,
+          wbcKPerUl,
+        },
+        sex: fields.sex,
+      };
+    }
+
+    function bioAgeInterpretation(result) {
+      const gap = result.differenceYears;
+      const gapAbs = Math.abs(gap).toFixed(1);
+      const agePhrase = `${result.phenoAgeYears.toFixed(1)} years`;
+
+      if (gap <= -2) {
+        return {
+          title: `${agePhrase}, younger than your calendar age in this model.`,
+          copy: `In the published PhenoAge model, your lab pattern matched the average mortality-associated profile of someone about ${agePhrase} in the NHANES reference population. That is ${gapAbs} years lower than your calendar age at the time of the blood draw. This is still only a one-time blood snapshot, not a diagnosis or guarantee.`,
+        };
+      }
+
+      if (gap >= 2) {
+        return {
+          title: `${agePhrase}, older than your calendar age in this model.`,
+          copy: `In the published PhenoAge model, your lab pattern matched the average mortality-associated profile of someone about ${agePhrase} in the NHANES reference population. That is ${gapAbs} years higher than your calendar age at the time of the blood draw. Acute illness, inflammation, medications, and lab context can move this estimate, so interpret it cautiously.`,
+        };
+      }
+
+      return {
+        title: `${agePhrase}, broadly close to your calendar age.`,
+        copy: `In the published PhenoAge model, your blood panel looked similar to the average mortality-associated profile of someone about ${agePhrase} in the NHANES reference population. That puts you close to your calendar age on this one blood draw. Researchers usually interpret this as a compact summary of risk-related blood chemistry, not as a diagnosis.`,
+      };
+    }
+
+    function renderBioAgeConverted(result) {
+      const facts = [
+        ["Converted albumin", `${formatNumber(result.converted.albuminGL, 1)} g/L`],
+        ["Converted creatinine", `${formatNumber(result.converted.creatinineUmolL, 1)} umol/L`],
+        ["Converted glucose", `${formatNumber(result.converted.glucoseMmolL, 2)} mmol/L`],
+        ["Converted CRP", `${formatNumber(result.converted.crpMgDl, 3)} mg/dL`],
+        ["Converted WBC", `${formatNumber(result.converted.wbcKPerUl, 2)} x10^3/uL`],
+      ];
+
+      refs.bioageConverted.innerHTML = facts
+        .map(([label, value]) => `
+          <div class="fact-row">
+            <span>${label}</span>
+            <div>${value}</div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function readBioAgeForm() {
+      const albumin = readRequiredNumber(refs.bioageAlbuminValue, "Albumin");
+      if (albumin.error) {
+        return albumin;
+      }
+
+      const creatinine = readRequiredNumber(refs.bioageCreatinineValue, "Creatinine");
+      if (creatinine.error) {
+        return creatinine;
+      }
+
+      const glucose = readRequiredNumber(refs.bioageGlucoseValue, "Glucose");
+      if (glucose.error) {
+        return glucose;
+      }
+
+      const crp = readRequiredNumber(refs.bioageCrpValue, "CRP", 0, false);
+      if (crp.error) {
+        return crp;
+      }
+
+      const lymphocyte = readRequiredNumber(refs.bioageLymphValue, "Lymphocyte percent");
+      if (lymphocyte.error) {
+        return lymphocyte;
+      }
+
+      const mcv = readRequiredNumber(refs.bioageMcvValue, "Mean cell volume");
+      if (mcv.error) {
+        return mcv;
+      }
+
+      const rdw = readRequiredNumber(refs.bioageRdwValue, "RDW");
+      if (rdw.error) {
+        return rdw;
+      }
+
+      const alp = readRequiredNumber(refs.bioageAlpValue, "Alkaline phosphatase");
+      if (alp.error) {
+        return alp;
+      }
+
+      const wbc = readRequiredNumber(refs.bioageWbcValue, "White blood cell count");
+      if (wbc.error) {
+        return wbc;
+      }
+
+      if (!refs.bioageBirthDate.value || !refs.bioageSampleDate.value) {
+        return { error: "Birth date and blood draw date are both required." };
+      }
+
+      return {
+        birthDate: refs.bioageBirthDate.value,
+        sampleDate: refs.bioageSampleDate.value,
+        sex: refs.bioageSex.value,
+        albumin: albumin.value,
+        albuminUnit: refs.bioageAlbuminUnit.value,
+        creatinine: creatinine.value,
+        creatinineUnit: refs.bioageCreatinineUnit.value,
+        glucose: glucose.value,
+        glucoseUnit: refs.bioageGlucoseUnit.value,
+        crp: crp.value,
+        crpUnit: refs.bioageCrpUnit.value,
+        lymphocyte: lymphocyte.value,
+        mcv: mcv.value,
+        rdw: rdw.value,
+        alp: alp.value,
+        wbc: wbc.value,
+        wbcUnit: refs.bioageWbcUnit.value,
+      };
+    }
+
+    function runBioAgeCalculation(event) {
+      event.preventDefault();
+      window.clearTimeout(bioAgeTimer);
+
+      const fields = readBioAgeForm();
+      if (fields.error) {
+        setBioAgeFormNote(fields.error, true);
+        setBioAgeStage("idle", "Waiting for valid inputs.");
+        return;
+      }
+
+      let result = null;
+      try {
+        result = calculatePhenoAgeModel(fields);
+      } catch (error) {
+        setBioAgeFormNote(error.message, true);
+        setBioAgeStage("idle", "Waiting for valid inputs.");
+        return;
+      }
+
+      setBioAgeFormNote("Calculating locally in your browser. Nothing from this form is sent to the server.");
+      setBioAgeStage("calculating", "Mixing the nine-marker panel...");
+      refs.bioageResultTitle.textContent = "Running the published PhenoAge equation...";
+      refs.bioageResultCopy.textContent = "The model first converts your lab values to the published units, then estimates the corresponding age in the NHANES reference population.";
+      refs.bioageResultAge.textContent = "...";
+      refs.bioageResultChrono.textContent = formatYears(result.chronologicalAgeYears);
+      refs.bioageResultGap.textContent = "...";
+      refs.bioageConverted.innerHTML = "";
+
+      bioAgeTimer = window.setTimeout(() => {
+        const interpretation = bioAgeInterpretation(result);
+        refs.bioageResultTitle.textContent = interpretation.title;
+        refs.bioageResultAge.textContent = formatYears(result.phenoAgeYears);
+        refs.bioageResultChrono.textContent = formatYears(result.chronologicalAgeYears);
+        refs.bioageResultGap.textContent = formatSignedYears(result.differenceYears);
+        refs.bioageResultCopy.textContent = interpretation.copy;
+        renderBioAgeConverted(result);
+        setBioAgeStage("ready", "Calculated locally from age and 9 blood markers.");
+      }, 1450);
+    }
+
+    function resetBioAgeForm() {
+      window.clearTimeout(bioAgeTimer);
+      refs.bioageForm.reset();
+      refs.bioageSampleDate.value = isoToday();
+      setBioAgeFormNote("This page does not store your lab values in the URL or upload them from the browser. Use one set of labs from the same draw whenever possible.");
+      resetBioAgeOutput();
+    }
+
+    function primeBioAgeForm() {
+      refs.bioageSampleDate.value = isoToday();
+      setBioAgeFormNote("This page does not store your lab values in the URL or upload them from the browser. Use one set of labs from the same draw whenever possible.");
+      resetBioAgeOutput();
+    }
+
     function openMarker(id) {
       if (!state.manifestById.has(id)) {
         return;
@@ -2598,6 +3953,9 @@
       document.querySelectorAll("[data-tab]").forEach((button) => {
         button.addEventListener("click", () => {
           setTab(button.dataset.tab);
+          if (button.dataset.tab === "disease") {
+            renderDiseasePanel();
+          }
           if (button.dataset.tab === "compare") {
             renderComparePanel();
           }
@@ -2614,6 +3972,23 @@
         const openId = event.target.closest("[data-open-id]")?.dataset.openId;
         if (openId) {
           openMarker(openId);
+          return;
+        }
+
+        const conditionKey = event.target.closest("[data-select-condition]")?.dataset.selectCondition;
+        if (conditionKey) {
+          state.diseaseCondition = conditionKey;
+          state.diseaseBiomarkerId = state.exploreId;
+          renderDiseasePanel();
+          writeHash();
+          return;
+        }
+
+        const diseaseBiomarkerId = event.target.closest("[data-open-disease-id]")?.dataset.openDiseaseId;
+        if (diseaseBiomarkerId) {
+          state.diseaseBiomarkerId = diseaseBiomarkerId;
+          renderDiseasePanel();
+          writeHash();
           return;
         }
 
@@ -2640,6 +4015,10 @@
 
       refs.saveChartBtn.addEventListener("click", () => {
         const chartId = activeChartId();
+        if (!chartId) {
+          showToast("There is no active chart on this tab.");
+          return;
+        }
         const chartEl = $(chartId);
         if (!chartEl || !chartEl.data) {
           showToast("There is no active chart to export.");
@@ -2656,12 +4035,16 @@
 
       refs.exploreSearch.addEventListener("input", renderExploreList);
       refs.exploreCollection.addEventListener("change", renderExploreList);
+      refs.diseaseSearch.addEventListener("input", () => {
+        renderDiseasePanel();
+      });
 
       document.querySelectorAll("[data-cohort-btn]").forEach((button) => {
         button.addEventListener("click", () => {
           state.cohort = button.dataset.value;
           renderGlobalButtons();
           renderExplorePanel();
+          renderDiseasePanel();
           renderRankings();
           renderComparePanel();
           writeHash();
@@ -2673,6 +4056,7 @@
           state.trim = button.dataset.value;
           renderGlobalButtons();
           renderExplorePanel();
+          renderDiseasePanel();
           renderRankings();
           renderComparePanel();
           writeHash();
@@ -2770,6 +4154,9 @@
         refs.compareSearch.value = "";
       });
 
+      refs.bioageForm.addEventListener("submit", runBioAgeCalculation);
+      refs.bioageResetBtn.addEventListener("click", resetBioAgeForm);
+
       window.addEventListener("hashchange", () => {
         if (state.hashLock) {
           return;
@@ -2781,6 +4168,7 @@
         renderPanels();
         renderExploreList();
         renderExplorePanel();
+        renderDiseasePanel();
         renderRankings();
         renderCompareSelected();
         renderComparePanel();
@@ -2852,6 +4240,14 @@
       refs.exploreList = $("explore-list");
       refs.exploreTitle = $("explore-title");
       refs.exploreSubtitle = $("explore-subtitle");
+      refs.diseaseConditionList = $("disease-condition-list");
+      refs.diseaseSearch = $("disease-search");
+      refs.diseaseList = $("disease-list");
+      refs.diseaseConditionNote = $("disease-condition-note");
+      refs.diseaseSummaryStrip = $("disease-summary-strip");
+      refs.diseasePlot = $("disease-plot");
+      refs.diseaseAnnotation = $("disease-annotation");
+      refs.diseaseTech = $("disease-tech");
       refs.showClalit = $("show-clalit");
       refs.clalitNote = $("clalit-note");
       refs.exploreSummaryStrip = $("explore-summary-strip");
@@ -2876,32 +4272,69 @@
       refs.compareMode = $("compare-mode");
       refs.comparePlot = $("compare-plot");
       refs.compareNote = $("compare-note");
+      refs.bioageForm = $("bioage-form");
+      refs.bioageBirthDate = $("bioage-birth-date");
+      refs.bioageSampleDate = $("bioage-sample-date");
+      refs.bioageSex = $("bioage-sex");
+      refs.bioageAlbuminValue = $("bioage-albumin-value");
+      refs.bioageAlbuminUnit = $("bioage-albumin-unit");
+      refs.bioageCreatinineValue = $("bioage-creatinine-value");
+      refs.bioageCreatinineUnit = $("bioage-creatinine-unit");
+      refs.bioageGlucoseValue = $("bioage-glucose-value");
+      refs.bioageGlucoseUnit = $("bioage-glucose-unit");
+      refs.bioageCrpValue = $("bioage-crp-value");
+      refs.bioageCrpUnit = $("bioage-crp-unit");
+      refs.bioageLymphValue = $("bioage-lymph-value");
+      refs.bioageMcvValue = $("bioage-mcv-value");
+      refs.bioageRdwValue = $("bioage-rdw-value");
+      refs.bioageAlpValue = $("bioage-alp-value");
+      refs.bioageWbcValue = $("bioage-wbc-value");
+      refs.bioageWbcUnit = $("bioage-wbc-unit");
+      refs.bioageCalcBtn = $("bioage-calc-btn");
+      refs.bioageResetBtn = $("bioage-reset-btn");
+      refs.bioageFormNote = $("bioage-form-note");
+      refs.bioageLabStage = $("bioage-lab-stage");
+      refs.bioageResultStatus = $("bioage-result-status");
+      refs.bioageResultTitle = $("bioage-result-title");
+      refs.bioageResultAge = $("bioage-result-age");
+      refs.bioageResultChrono = $("bioage-result-chrono");
+      refs.bioageResultGap = $("bioage-result-gap");
+      refs.bioageResultCopy = $("bioage-result-copy");
+      refs.bioageConverted = $("bioage-converted");
       refs.copyLinkBtn = $("copy-link-btn");
       refs.saveChartBtn = $("save-chart-btn");
       refs.toast = $("toast");
 
       try {
         setStatus("Loading curated blood markers...");
-        const manifest = await fetchJson(`${DATA_BASE}/manifest.json`);
+        const [manifest, diseaseIndex] = await Promise.all([
+          fetchJson(`${DATA_BASE}/manifest.json`),
+          fetchJson(`${DATA_BASE}/disease_index.json`),
+        ]);
         state.manifest = manifest;
         state.manifestById = new Map(manifest.map((entry) => [entry.biomarker_id, entry]));
         state.manifestBySlug = new Map(manifest.map((entry) => [entry.slug, entry]));
+        state.diseaseIndex = diseaseIndex;
+        state.diseaseIndexByKey = new Map(diseaseIndex.map((entry) => [entry.key, entry]));
         applyHash();
         ensureDefaults();
         primeStaticControls();
         renderCollectionGrid();
         renderRankingModules();
         renderExploreList();
+        renderDiseaseConditionList();
         renderCompareQuickPicks();
         renderCompareSelected();
+        primeBioAgeForm();
         bindEvents();
         syncControls();
         renderTabs();
         renderPanels();
         await renderExplorePanel();
+        await renderDiseasePanel();
         renderRankings();
         await renderComparePanel();
-        setStatus(`${manifest.length} curated blood biomarkers loaded.`);
+        setStatus(`${manifest.length} curated blood biomarkers loaded, plus ${diseaseIndex.length} disease comparison cohorts.`);
         writeHash();
         observeReveal();
       } catch (error) {

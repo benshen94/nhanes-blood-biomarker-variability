@@ -1,6 +1,7 @@
 {
   "manifest_count": 62,
   "featured_collection_count": 6,
+  "disease_condition_count": 9,
   "default_trim_mode": "trim_10_90",
   "data_dir": "dashboard/aging_biomarkers_public"
 }

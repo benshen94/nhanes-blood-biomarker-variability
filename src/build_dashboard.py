@@ -16,7 +16,12 @@ import pandas as pd
 from scipy.stats import skew as scipy_skew
 from scipy.stats import spearmanr
 
-from build_aging_biomarkers_dashboard import build_public_manifest, write_public_dashboard_bundle
+from build_aging_biomarkers_dashboard import (
+    build_disease_explorer_bundle,
+    build_public_manifest,
+    load_public_disease_long,
+    write_public_dashboard_bundle,
+)
 from nhanes_common import ensure_dir
 
 
@@ -3832,6 +3837,10 @@ def main() -> None:
         "--aging-biomarkers-catalog-csv",
         default=str(ROOT / "projects" / "aging_biomarkers" / "catalog" / "aging_biomarkers.csv"),
     )
+    ap.add_argument("--participant-flags", default="data/processed/participant_health_flags.parquet")
+    ap.add_argument("--raw-dir", default="data/raw")
+    ap.add_argument("--variable-screening-summary", default="data/processed/variable_screening_summary.csv")
+    ap.add_argument("--duplicate-merge-map", default="data/processed/duplicate_merge_map.csv")
     ap.add_argument("--clalit-f", default="data/clalit/females_all_statistics.csv")
     ap.add_argument("--clalit-m", default="data/clalit/males_all_statistics.csv")
     ap.add_argument("--clalit-map", default="data/clalit_mapping.json")
@@ -3876,6 +3885,7 @@ def main() -> None:
     if Path(args.clalit_map).exists():
         with open(args.clalit_map) as f:
             clalit_map = json.load(f)
+    participant_flags = pd.read_parquet(args.participant_flags) if Path(args.participant_flags).exists() else None
     has_blood_clalit = bool(clalit_f is not None and clalit_m is not None and clalit_map)
     sr_comparison_bundle = load_sr_comparison_bundle(args.sr_comparison_root)
     has_blood_sr_comparison = bool(sr_comparison_bundle)
@@ -3930,11 +3940,24 @@ def main() -> None:
         series_payloads=blood_series_payloads,
         aging_catalog_csv=args.aging_biomarkers_catalog_csv,
     )
+    disease_long_df = load_public_disease_long(
+        public_manifest=public_manifest,
+        participant_flags=participant_flags,
+        raw_dir=args.raw_dir,
+        screening_summary_path=args.variable_screening_summary,
+        merge_map_path=args.duplicate_merge_map,
+    )
+    disease_bundle = build_disease_explorer_bundle(
+        public_manifest=public_manifest,
+        long_df=disease_long_df,
+        participant_flags=participant_flags,
+    )
     write_public_dashboard_bundle(
         out_html=aging_public_out_html,
         out_json=aging_public_out_json,
         data_dir_name="aging_biomarkers_public",
         manifest=public_manifest,
+        disease_bundle=disease_bundle,
     )
     write_dashboard_bundle(
         out_html=urine_out_html,

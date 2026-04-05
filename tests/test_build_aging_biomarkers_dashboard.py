@@ -5,13 +5,16 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
 sys.path.insert(0, str((Path(__file__).resolve().parents[1] / "src")))
 
 from build_aging_biomarkers_dashboard import (
+    build_disease_explorer_bundle,
     build_public_manifest,
+    load_public_disease_long,
     render_public_dashboard_html,
     write_public_dashboard_bundle,
 )
@@ -152,14 +155,151 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         self.assertIn('const DATA_BASE = "aging_biomarkers_public";', html)
         self.assertIn('id="tab-start"', html)
         self.assertIn('id="tab-explore"', html)
+        self.assertIn('id="tab-disease"', html)
         self.assertIn('id="tab-rankings"', html)
         self.assertIn('id="tab-compare"', html)
+        self.assertIn('id="tab-calculator"', html)
         self.assertIn('id="explore-search"', html)
+        self.assertIn('id="disease-condition-list"', html)
+        self.assertIn('id="disease-plot"', html)
         self.assertIn('id="show-clalit" type="checkbox"', html)
         self.assertIn('id="rankings-metric"', html)
         self.assertIn('id="compare-mode"', html)
+        self.assertIn('id="bioage-form"', html)
+        self.assertIn('id="bioage-birth-date"', html)
+        self.assertIn('id="bioage-calc-btn"', html)
+        self.assertIn("Calculate PhenoAge", html)
         self.assertIn('id="copy-link-btn"', html)
         self.assertIn('id="save-chart-btn"', html)
+
+    def test_build_disease_explorer_bundle_emits_condition_payloads(self):
+        public_manifest = [
+            {
+                "biomarker_id": "creatinine",
+                "display_name": "Creatinine",
+                "chart_display_name": "Creatinine (mg/dL)",
+                "unit": "mg/dL",
+                "featured_collection": "kidney_reserve",
+                "featured_collection_title": "Kidney & Reserve",
+                "aging_domain": "organ reserve",
+            }
+        ]
+        long_df = pd.DataFrame(
+            [
+                {"seqn": 1, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 42, "value": 0.8, "sex": "female"},
+                {"seqn": 2, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 42, "value": 1.3, "sex": "female"},
+                {"seqn": 3, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 62, "value": 0.9, "sex": "male"},
+                {"seqn": 4, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 62, "value": 1.5, "sex": "male"},
+            ]
+            * 20
+        )
+        participant_flags = pd.DataFrame(
+            [
+                {"seqn": 1, "cycle_start_year": 2001, "sex": "female", "healthy_flag": True, "diabetes": False, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
+                {"seqn": 2, "cycle_start_year": 2001, "sex": "female", "healthy_flag": False, "diabetes": True, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
+                {"seqn": 3, "cycle_start_year": 2001, "sex": "male", "healthy_flag": True, "diabetes": False, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
+                {"seqn": 4, "cycle_start_year": 2001, "sex": "male", "healthy_flag": False, "diabetes": True, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
+            ]
+        )
+
+        bundle = build_disease_explorer_bundle(
+            public_manifest=public_manifest,
+            long_df=long_df,
+            participant_flags=participant_flags,
+        )
+
+        self.assertTrue(bundle["conditions"])
+        diabetes = next(item for item in bundle["conditions"] if item["key"] == "diabetes")
+        self.assertEqual(diabetes["title"], "Diabetes")
+        self.assertIn("diseases/diabetes.json", diabetes["detail_path"])
+
+        detail = bundle["by_condition"]["diabetes"]
+        self.assertEqual(detail["condition"]["title"], "Diabetes")
+        biomarker = detail["biomarkers"][0]
+        self.assertEqual(biomarker["display_name"], "Creatinine")
+        self.assertEqual(biomarker["groups"]["healthy"]["raw_total_n"], 40)
+        self.assertEqual(biomarker["groups"]["condition"]["raw_total_n"], 40)
+        self.assertIn("trim_10_90", biomarker["groups"]["healthy"]["points_by_filter"])
+        self.assertIn("female", biomarker["groups"]["condition"]["sex_points_by_filter"]["all"])
+
+    def test_load_public_disease_long_reads_selected_public_biomarkers(self):
+        public_manifest = [
+            {"biomarker_id": "albumin"},
+            {"biomarker_id": "creatinine"},
+        ]
+        participant_flags = pd.DataFrame(
+            [
+                {"seqn": 1, "cycle_start_year": 2001, "age_years": 42, "sex": "female"},
+                {"seqn": 2, "cycle_start_year": 2001, "age_years": 64, "sex": "male"},
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            raw_dir = root / "raw" / "2001"
+            raw_dir.mkdir(parents=True)
+            (raw_dir / "BIOPRO_B.xpt").write_text("")
+
+            screening_path = root / "variable_screening_summary.csv"
+            pd.DataFrame(
+                [
+                    {
+                        "cycle_start_year": 2001,
+                        "data_file_name": "BIOPRO_B",
+                        "variable_name": "LBXSAL",
+                        "variable_desc": "Albumin (g/dL)",
+                        "screen_result": "kept",
+                        "pooled_id": "albumin",
+                    },
+                    {
+                        "cycle_start_year": 2001,
+                        "data_file_name": "BIOPRO_B",
+                        "variable_name": "LBXSCR",
+                        "variable_desc": "Creatinine (mg/dL)",
+                        "screen_result": "kept",
+                        "pooled_id": "creatinine",
+                    },
+                ]
+            ).to_csv(screening_path, index=False)
+
+            merge_map_path = root / "duplicate_merge_map.csv"
+            pd.DataFrame(
+                [
+                    {
+                        "pooled_id": "albumin",
+                        "variable_name": "LBXSAL",
+                        "variable_desc": "Albumin (g/dL)",
+                        "conversion_factor_to_pooled_unit": 1.0,
+                    },
+                    {
+                        "pooled_id": "creatinine",
+                        "variable_name": "LBXSCR",
+                        "variable_desc": "Creatinine (mg/dL)",
+                        "conversion_factor_to_pooled_unit": 1.0,
+                    },
+                ]
+            ).to_csv(merge_map_path, index=False)
+
+            fake_xpt = pd.DataFrame(
+                [
+                    {"SEQN": 1, "LBXSAL": 4.2, "LBXSCR": 0.9},
+                    {"SEQN": 2, "LBXSAL": 3.9, "LBXSCR": 1.3},
+                ]
+            )
+
+            with patch("build_aging_biomarkers_dashboard.read_xpt_columns", return_value=fake_xpt):
+                long_df = load_public_disease_long(
+                    public_manifest=public_manifest,
+                    participant_flags=participant_flags,
+                    raw_dir=root / "raw",
+                    screening_summary_path=screening_path,
+                    merge_map_path=merge_map_path,
+                )
+
+        self.assertIsNotNone(long_df)
+        self.assertEqual(set(long_df["biomarker_id"]), {"albumin", "creatinine"})
+        self.assertEqual(len(long_df), 4)
+        self.assertEqual(set(long_df["sex"]), {"female", "male"})
 
     def test_write_public_dashboard_bundle_writes_manifest_html_and_summary(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -173,18 +313,38 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
                     "public_metrics": {"sample_count": 100},
                 }
             ]
+            disease_bundle = {
+                "conditions": [
+                    {
+                        "key": "diabetes",
+                        "title": "Diabetes",
+                        "detail_path": "diseases/diabetes.json",
+                    }
+                ],
+                "by_condition": {
+                    "diabetes": {
+                        "condition": {"key": "diabetes", "title": "Diabetes"},
+                        "biomarkers": [],
+                    }
+                },
+            }
 
             write_public_dashboard_bundle(
                 out_html=out_html,
                 out_json=out_json,
                 data_dir_name="aging_biomarkers_public",
                 manifest=manifest,
+                disease_bundle=disease_bundle,
             )
 
             manifest_path = root / "dashboard" / "aging_biomarkers_public" / "manifest.json"
+            disease_index_path = root / "dashboard" / "aging_biomarkers_public" / "disease_index.json"
+            disease_detail_path = root / "dashboard" / "aging_biomarkers_public" / "diseases" / "diabetes.json"
             self.assertTrue(out_html.exists())
             self.assertTrue(out_json.exists())
             self.assertTrue(manifest_path.exists())
+            self.assertTrue(disease_index_path.exists())
+            self.assertTrue(disease_detail_path.exists())
 
             written_manifest = json.loads(manifest_path.read_text())
             summary = json.loads(out_json.read_text())
@@ -192,6 +352,7 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
 
             self.assertEqual(written_manifest[0]["display_name"], "Albumin")
             self.assertEqual(summary["manifest_count"], 1)
+            self.assertEqual(summary["disease_condition_count"], 1)
             self.assertIn("aging_biomarkers_public", summary["data_dir"])
             self.assertIn("Aging Biomarkers Dashboard", html)
 

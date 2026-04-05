@@ -8,8 +8,10 @@ import math
 import time
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
+from build_analysis_dataset import normalize_seqn, read_xpt_columns
 from nhanes_common import ensure_dir
 
 
@@ -160,6 +162,90 @@ PRIORITY_MARKERS = {
 DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"]
 DEFAULT_EXPLORE_MARKER = "Albumin"
 
+AGE_BINS = list(np.arange(20, 90, 5))
+AGE_LABELS = [f"{age}-{age + 4}" for age in range(20, 85, 5)]
+AGE_MIDS = {label: age + 2.5 for label, age in zip(AGE_LABELS, range(20, 85, 5))}
+
+PUBLIC_DISEASES = {
+    "diabetes": {
+        "title": "Diabetes",
+        "kicker": "Diagnosed diabetes",
+        "summary": "Self-reported doctor diagnosis in NHANES. This comparison intentionally reintroduces participants excluded from the healthy-aging baseline.",
+        "accent": "rust",
+        "source": "DIQ010 == 1",
+    },
+    "hypertension": {
+        "title": "Hypertension",
+        "kicker": "High blood pressure",
+        "summary": "People reporting high blood pressure often show different kidney, inflammatory, and vascular biomarker patterns across adulthood.",
+        "accent": "amber",
+        "source": "BPQ020 == 1",
+    },
+    "cvd": {
+        "title": "Cardiovascular disease",
+        "kicker": "Heart and vascular disease history",
+        "summary": "This NHANES flag combines reported congestive heart failure, coronary heart disease, angina, heart attack, and stroke diagnoses.",
+        "accent": "blue",
+        "source": "MCQ160B/C/D/E/F == 1",
+    },
+    "kidney": {
+        "title": "Kidney disease",
+        "kicker": "Weak or failing kidneys",
+        "summary": "The disease group comes from the NHANES kidney-history question and can reveal how renal markers separate from the healthy baseline.",
+        "accent": "teal",
+        "source": "KIQ022 == 1",
+    },
+    "liver": {
+        "title": "Liver disease",
+        "kicker": "Liver condition history",
+        "summary": "This comparison groups participants who reported liver disease on the standard NHANES medical history items.",
+        "accent": "amber",
+        "source": "MCQ160L or MCQ500/MCQ510A-F == 1",
+    },
+    "cancer": {
+        "title": "Cancer history",
+        "kicker": "Any reported malignancy",
+        "summary": "This uses the broad cancer-history question, so the disease group is heterogeneous by design.",
+        "accent": "rose",
+        "source": "MCQ220 == 1",
+    },
+    "asthma": {
+        "title": "Asthma",
+        "kicker": "Respiratory disease",
+        "summary": "Asthma is tracked in the processed participant file even though it is not part of the healthy-aging exclusion rule.",
+        "accent": "violet",
+        "source": "MCQ010 == 1",
+    },
+    "thyroid_problem": {
+        "title": "Thyroid problem",
+        "kicker": "Reported thyroid disorder",
+        "summary": "This group captures participants who reported a thyroid problem in NHANES. It is useful for comparing endocrine markers against the healthy baseline.",
+        "accent": "violet",
+        "source": "MCQ160M == 1",
+    },
+    "stroke": {
+        "title": "Stroke",
+        "kicker": "Reported stroke history",
+        "summary": "Stroke is shown as its own narrower disease comparison for biomarkers tied to vascular strain and inflammation.",
+        "accent": "blue",
+        "source": "MCQ160F == 1",
+    },
+}
+
+DISEASE_TRIMS: dict[str, tuple[float, float] | None] = {
+    "all": None,
+    DEFAULT_TRIM_MODE: (0.10, 0.90),
+}
+
+DISEASE_LONG_COLUMNS = [
+    "seqn",
+    "cycle_start_year",
+    "age_years",
+    "sex",
+    "biomarker_id",
+    "value",
+]
+
 
 def _clean_text(value: object) -> str:
     if value is None:
@@ -211,6 +297,378 @@ def _point_lookup(points: list[dict]) -> dict[str, dict]:
             continue
         out[age_bin] = point
     return out
+
+
+def _quantile_skewness_from_stats(q25: pd.Series, median: pd.Series, q75: pd.Series) -> pd.Series:
+    denom = q75 - q25
+    out = (q75 + q25 - 2.0 * median) / denom
+    return out.where(denom.abs() > 1e-12, np.nan)
+
+
+def load_public_disease_long(
+    public_manifest: list[dict],
+    participant_flags: pd.DataFrame | None,
+    raw_dir: str | Path,
+    screening_summary_path: str | Path,
+    merge_map_path: str | Path,
+) -> pd.DataFrame | None:
+    if participant_flags is None or participant_flags.empty:
+        return None
+
+    raw_root = Path(raw_dir)
+    screening_path = Path(screening_summary_path)
+    merge_path = Path(merge_map_path)
+    if not raw_root.exists() or not screening_path.exists() or not merge_path.exists():
+        return None
+
+    biomarker_ids = {str(entry["biomarker_id"]) for entry in public_manifest}
+    if not biomarker_ids:
+        return None
+
+    screening = pd.read_csv(screening_path)
+    screening = screening[screening["screen_result"].eq("kept")].copy()
+    screening = screening[screening["pooled_id"].astype(str).isin(biomarker_ids)].copy()
+    if screening.empty:
+        return None
+
+    merge_map = pd.read_csv(merge_path)
+    merge_map = merge_map[
+        ["pooled_id", "variable_name", "variable_desc", "conversion_factor_to_pooled_unit"]
+    ].drop_duplicates(subset=["pooled_id", "variable_name", "variable_desc"])
+
+    screening = screening.merge(
+        merge_map,
+        on=["pooled_id", "variable_name", "variable_desc"],
+        how="left",
+    )
+    screening["conversion_factor_to_pooled_unit"] = pd.to_numeric(
+        screening["conversion_factor_to_pooled_unit"],
+        errors="coerce",
+    ).fillna(1.0)
+
+    people = participant_flags[["seqn", "cycle_start_year", "age_years", "sex"]].drop_duplicates(
+        subset=["seqn", "cycle_start_year"]
+    )
+
+    frames: list[pd.DataFrame] = []
+    for (cycle_start_year, data_file_name), group in screening.groupby(
+        ["cycle_start_year", "data_file_name"],
+        observed=True,
+    ):
+        year = int(cycle_start_year)
+        xpt_path = raw_root / str(year) / f"{data_file_name}.xpt"
+        if not xpt_path.exists():
+            continue
+
+        variable_names = sorted(group["variable_name"].dropna().astype(str).unique())
+        if not variable_names:
+            continue
+
+        try:
+            raw_df = read_xpt_columns(xpt_path, columns=["SEQN", *variable_names])
+        except Exception:
+            continue
+
+        if "SEQN" not in raw_df.columns:
+            continue
+
+        base = pd.DataFrame(
+            {
+                "seqn": normalize_seqn(raw_df),
+                "cycle_start_year": year,
+            }
+        )
+        base = base.dropna(subset=["seqn"])
+        base = base.merge(
+            people[people["cycle_start_year"] == year],
+            on=["seqn", "cycle_start_year"],
+            how="inner",
+        )
+        if base.empty:
+            continue
+
+        for row in group.itertuples(index=False):
+            variable_name = str(row.variable_name)
+            if variable_name not in raw_df.columns:
+                continue
+
+            tmp = base.copy()
+            tmp["value"] = pd.to_numeric(raw_df[variable_name], errors="coerce")
+            tmp = tmp.dropna(subset=["value"])
+            if tmp.empty:
+                continue
+
+            factor = float(row.conversion_factor_to_pooled_unit)
+            if factor != 1.0:
+                tmp["value"] = tmp["value"] * factor
+
+            tmp["biomarker_id"] = str(row.pooled_id)
+            frames.append(tmp[DISEASE_LONG_COLUMNS])
+
+    if not frames:
+        return None
+
+    return pd.concat(frames, ignore_index=True)
+
+
+def _compute_binned_long(
+    df: pd.DataFrame,
+    group_cols: list[str],
+    trim_quantiles: tuple[float, float] | None = None,
+) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    tmp = df.copy()
+    tmp["age_bin"] = pd.cut(tmp["age_years"], bins=AGE_BINS, labels=AGE_LABELS, right=False, include_lowest=True)
+    tmp["age_mid"] = tmp["age_bin"].map(AGE_MIDS).astype(float)
+    tmp = tmp.dropna(subset=["age_bin", "value"])
+    if tmp.empty:
+        return pd.DataFrame()
+
+    keys = [*group_cols, "age_bin", "age_mid"]
+    if trim_quantiles is not None:
+        q_lo, q_hi = trim_quantiles
+        quantiles = (
+            tmp.groupby(keys, observed=True)["value"]
+            .quantile([q_lo, q_hi])
+            .unstack(level=-1)
+            .rename(columns={q_lo: "trim_lo", q_hi: "trim_hi"})
+            .reset_index()
+        )
+        tmp = tmp.merge(quantiles, on=keys, how="left")
+        tmp = tmp[(tmp["value"] >= tmp["trim_lo"]) & (tmp["value"] <= tmp["trim_hi"])].copy()
+
+    grouped = (
+        tmp.groupby(keys, observed=True)["value"]
+        .agg(
+            n="count",
+            mean="mean",
+            std="std",
+            median="median",
+            q25=lambda series: float(np.nanpercentile(series.to_numpy(dtype=float), 25)),
+            q75=lambda series: float(np.nanpercentile(series.to_numpy(dtype=float), 75)),
+            p10=lambda series: float(np.nanpercentile(series.to_numpy(dtype=float), 10)),
+            p90=lambda series: float(np.nanpercentile(series.to_numpy(dtype=float), 90)),
+            skewness=lambda series: float(pd.Series(series.to_numpy(dtype=float)).skew()),
+        )
+        .reset_index()
+    )
+    if grouped.empty:
+        return grouped
+
+    grouped["cv"] = grouped["std"] / grouped["mean"].abs()
+    grouped.loc[grouped["mean"].abs() < 1e-8, "cv"] = np.nan
+    grouped["quantile_skewness"] = _quantile_skewness_from_stats(grouped["q25"], grouped["median"], grouped["q75"])
+    grouped["passes_n_threshold"] = grouped["n"] >= 30
+    return grouped.reset_index(drop=True)
+
+
+def _grouped_to_points_map(df: pd.DataFrame) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = {}
+    if df is None or df.empty:
+        return out
+
+    for biomarker_id, group_df in df.groupby("biomarker_id", observed=True):
+        points: list[dict] = []
+        for row in group_df.sort_values("age_mid").itertuples(index=False):
+            points.append(
+                {
+                    "age_bin": str(row.age_bin),
+                    "age_mid": float(row.age_mid),
+                    "n": int(row.n),
+                    "mean": _number_or_none(row.mean),
+                    "std": _number_or_none(row.std),
+                    "median": _number_or_none(row.median),
+                    "q25": _number_or_none(row.q25),
+                    "q75": _number_or_none(row.q75),
+                    "p10": _number_or_none(row.p10),
+                    "p90": _number_or_none(row.p90),
+                    "skewness": _number_or_none(row.skewness),
+                    "quantile_skewness": _number_or_none(row.quantile_skewness),
+                    "cv": _number_or_none(row.cv),
+                    "iqr": _number_or_none(row.q75) - _number_or_none(row.q25)
+                    if _number_or_none(row.q75) is not None and _number_or_none(row.q25) is not None
+                    else None,
+                    "passes_n_threshold": bool(row.passes_n_threshold),
+                }
+            )
+        out[str(biomarker_id)] = points
+    return out
+
+
+def _grouped_to_sex_points_map(df: pd.DataFrame) -> dict[str, dict[str, list[dict]]]:
+    out: dict[str, dict[str, list[dict]]] = {}
+    if df is None or df.empty:
+        return out
+
+    for (biomarker_id, sex_norm), group_df in df.groupby(["biomarker_id", "sex_norm"], observed=True):
+        out.setdefault(str(biomarker_id), {})[str(sex_norm)] = _grouped_to_points_map(group_df)[str(biomarker_id)]
+    return out
+
+
+def _build_group_payload(long_df: pd.DataFrame) -> dict[str, dict]:
+    empty_payload = {
+        "points_by_mode": {mode: {} for mode in DISEASE_TRIMS},
+        "sex_points_by_mode": {mode: {} for mode in DISEASE_TRIMS},
+        "raw_counts": {},
+        "raw_counts_by_sex": {},
+    }
+    if long_df is None or long_df.empty:
+        return empty_payload
+
+    use = long_df[["biomarker_id", "age_years", "value", "sex"]].dropna(subset=["biomarker_id", "age_years", "value"]).copy()
+    if use.empty:
+        return empty_payload
+
+    use["sex_norm"] = use["sex"].astype(str).str.strip().str.lower()
+    use.loc[~use["sex_norm"].isin(["female", "male"]), "sex_norm"] = "unknown"
+    sex_use = use[use["sex_norm"].isin(["female", "male"])][["biomarker_id", "age_years", "value", "sex_norm"]].copy()
+
+    points_by_mode: dict[str, dict[str, list[dict]]] = {}
+    sex_points_by_mode: dict[str, dict[str, dict[str, list[dict]]]] = {}
+    for mode, quantiles in DISEASE_TRIMS.items():
+        pooled_binned = _compute_binned_long(
+            use[["biomarker_id", "age_years", "value"]],
+            group_cols=["biomarker_id"],
+            trim_quantiles=quantiles,
+        )
+        sex_binned = _compute_binned_long(
+            sex_use,
+            group_cols=["biomarker_id", "sex_norm"],
+            trim_quantiles=quantiles,
+        )
+        points_by_mode[mode] = _grouped_to_points_map(pooled_binned)
+        sex_points_by_mode[mode] = _grouped_to_sex_points_map(sex_binned)
+
+    raw_counts = use.groupby("biomarker_id", observed=True).size().astype(int).to_dict()
+    raw_counts_by_sex: dict[str, dict[str, int]] = {}
+    sex_counts = (
+        use[use["sex_norm"].isin(["female", "male"])]
+        .groupby(["biomarker_id", "sex_norm"], observed=True)
+        .size()
+        .reset_index(name="n")
+    )
+    for row in sex_counts.itertuples(index=False):
+        raw_counts_by_sex.setdefault(str(row.biomarker_id), {})[str(row.sex_norm)] = int(row.n)
+
+    return {
+        "points_by_mode": points_by_mode,
+        "sex_points_by_mode": sex_points_by_mode,
+        "raw_counts": {str(key): int(value) for key, value in raw_counts.items()},
+        "raw_counts_by_sex": raw_counts_by_sex,
+    }
+
+
+def build_disease_explorer_bundle(
+    public_manifest: list[dict],
+    long_df: pd.DataFrame | None,
+    participant_flags: pd.DataFrame | None,
+) -> dict[str, object]:
+    if long_df is None or long_df.empty or participant_flags is None or participant_flags.empty:
+        return {"conditions": [], "by_condition": {}}
+
+    biomarker_ids = {str(entry["biomarker_id"]) for entry in public_manifest}
+    manifest_by_id = {str(entry["biomarker_id"]): entry for entry in public_manifest}
+
+    needed_flag_columns = ["seqn", "cycle_start_year", "healthy_flag", *PUBLIC_DISEASES.keys()]
+    missing_columns = [column for column in needed_flag_columns if column not in participant_flags.columns]
+    if missing_columns:
+        raise KeyError(f"Participant flag table is missing required disease columns: {missing_columns}")
+
+    use_long = long_df[long_df["biomarker_id"].astype(str).isin(biomarker_ids)].copy()
+    use_long = use_long.dropna(subset=["seqn", "cycle_start_year", "biomarker_id", "age_years", "value"])
+    if use_long.empty:
+        return {"conditions": [], "by_condition": {}}
+
+    flag_table = participant_flags[needed_flag_columns].drop_duplicates(subset=["seqn", "cycle_start_year"]).copy()
+    merged = use_long.merge(flag_table, on=["seqn", "cycle_start_year"], how="left")
+    merged = merged[merged["age_years"].between(20, 84.999999)].copy()
+    if merged.empty:
+        return {"conditions": [], "by_condition": {}}
+
+    healthy_rows = merged[merged["healthy_flag"] == True].copy()
+    healthy_payload = _build_group_payload(healthy_rows)
+
+    condition_index: list[dict] = []
+    by_condition: dict[str, dict] = {}
+
+    participants = flag_table.copy()
+    for condition_key, meta in PUBLIC_DISEASES.items():
+        if condition_key not in merged.columns:
+            continue
+
+        disease_rows = merged[merged[condition_key] == True].copy()
+        if disease_rows.empty:
+            continue
+
+        disease_participants = participants[participants[condition_key] == True].copy()
+        if disease_participants.empty:
+            continue
+
+        disease_payload = _build_group_payload(disease_rows)
+        condition_records: list[dict] = []
+        for biomarker_id in sorted(biomarker_ids, key=lambda key: manifest_by_id[key]["display_name"]):
+            entry = manifest_by_id[biomarker_id]
+            condition_records.append(
+                {
+                    "biomarker_id": biomarker_id,
+                    "display_name": entry["display_name"],
+                    "chart_display_name": entry["chart_display_name"],
+                    "unit": entry["unit"],
+                    "featured_collection": entry["featured_collection"],
+                    "featured_collection_title": entry["featured_collection_title"],
+                    "aging_domain": entry["aging_domain"],
+                    "groups": {
+                        "healthy": {
+                            "raw_total_n": int(healthy_payload["raw_counts"].get(biomarker_id, 0)),
+                            "raw_total_n_by_sex": healthy_payload["raw_counts_by_sex"].get(biomarker_id, {}),
+                            "points_by_filter": {
+                                mode: healthy_payload["points_by_mode"].get(mode, {}).get(biomarker_id, [])
+                                for mode in DISEASE_TRIMS
+                            },
+                            "sex_points_by_filter": {
+                                mode: healthy_payload["sex_points_by_mode"].get(mode, {}).get(biomarker_id, {})
+                                for mode in DISEASE_TRIMS
+                            },
+                        },
+                        "condition": {
+                            "raw_total_n": int(disease_payload["raw_counts"].get(biomarker_id, 0)),
+                            "raw_total_n_by_sex": disease_payload["raw_counts_by_sex"].get(biomarker_id, {}),
+                            "points_by_filter": {
+                                mode: disease_payload["points_by_mode"].get(mode, {}).get(biomarker_id, [])
+                                for mode in DISEASE_TRIMS
+                            },
+                            "sex_points_by_filter": {
+                                mode: disease_payload["sex_points_by_mode"].get(mode, {}).get(biomarker_id, {})
+                                for mode in DISEASE_TRIMS
+                            },
+                        },
+                    },
+                }
+            )
+
+        condition_detail_path = f"diseases/{condition_key}.json"
+        condition_index.append(
+            {
+                "key": condition_key,
+                "title": meta["title"],
+                "kicker": meta["kicker"],
+                "summary": meta["summary"],
+                "accent": meta["accent"],
+                "source": meta["source"],
+                "detail_path": condition_detail_path,
+                "participant_count": int(len(disease_participants)),
+                "female_count": int(((disease_participants["sex"] == "female")).sum()) if "sex" in disease_participants.columns else 0,
+                "male_count": int(((disease_participants["sex"] == "male")).sum()) if "sex" in disease_participants.columns else 0,
+            }
+        )
+        by_condition[condition_key] = {
+            "condition": condition_index[-1],
+            "biomarkers": condition_records,
+        }
+
+    return {"conditions": condition_index, "by_condition": by_condition}
 
 
 def _collection_rank(collection_key: str) -> int:
@@ -453,27 +911,42 @@ def write_public_dashboard_bundle(
     out_json: Path,
     data_dir_name: str,
     manifest: list[dict],
+    disease_bundle: dict[str, object] | None = None,
 ) -> None:
     data_dir = out_html.parent / data_dir_name
+    disease_dir = data_dir / "diseases"
 
     ensure_dir(out_html.parent)
     ensure_dir(data_dir)
+    ensure_dir(disease_dir)
     ensure_dir(out_json.parent)
 
     (data_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=True, allow_nan=False, indent=2),
         encoding="utf-8",
     )
+    disease_bundle = disease_bundle or {"conditions": [], "by_condition": {}}
+    (data_dir / "disease_index.json").write_text(
+        json.dumps(disease_bundle.get("conditions", []), ensure_ascii=True, allow_nan=False, indent=2),
+        encoding="utf-8",
+    )
+    for condition_key, payload in (disease_bundle.get("by_condition", {}) or {}).items():
+        (disease_dir / f"{condition_key}.json").write_text(
+            json.dumps(payload, ensure_ascii=True, allow_nan=False, indent=2),
+            encoding="utf-8",
+        )
     out_html.write_text(render_public_dashboard_html(data_dir_name), encoding="utf-8")
 
     summary = {
         "manifest_count": len(manifest),
         "featured_collection_count": len(COLLECTION_COPY),
+        "disease_condition_count": len(disease_bundle.get("conditions", [])),
         "default_trim_mode": DEFAULT_TRIM_MODE,
         "data_dir": str(data_dir),
     }
     out_json.write_text(json.dumps(summary, ensure_ascii=True, indent=2, allow_nan=False), encoding="utf-8")
 
     print(f"Wrote public manifest: {data_dir / 'manifest.json'}")
+    print(f"Wrote public disease index: {data_dir / 'disease_index.json'}")
     print(f"Wrote public dashboard HTML: {out_html}")
     print(f"Wrote public dashboard summary JSON: {out_json}")

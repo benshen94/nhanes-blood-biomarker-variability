@@ -191,27 +191,44 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `dashboard/dashboard_data_aging_biomarkers.json`
 - Curated manifest:
   - `dashboard/aging_biomarkers_public/manifest.json`
+- Disease explorer index:
+  - `dashboard/aging_biomarkers_public/disease_index.json`
+- Disease explorer detail payloads:
+  - `dashboard/aging_biomarkers_public/diseases/*.json`
 - Data contract:
   - built from the matched blood rows in `projects/aging_biomarkers/catalog/aging_biomarkers.csv`
   - each manifest row includes the public display name, collection assignment, aging metadata, source-series path, Clalit availability, and precomputed public metrics
   - public metrics are precomputed for `pooled`, `female`, and `male`, each in `raw` and `10-90 trimmed` contexts
   - the public dashboard reuses the existing blood detail series files in `dashboard/data/series/*.json` for lazy-loaded chart detail
+  - the main public explorer still relies on the healthy-only blood long table in `data/processed/biomarker_long.parquet`
+  - the disease explorer rebuilds only the curated public biomarker subset from raw NHANES lab files, then joins `data/processed/participant_health_flags.parquet` so excluded disease cohorts can be compared against the same healthy baseline in matched age bins
 - Navigation:
   - `Start Here`
   - `Explore a Biomarker`
+  - `Disease Explorer`
   - `What Changes Most?`
   - `Compare Biomarkers`
+  - `Blood Age`
   - `About the Data`
 - Explore views:
   - `Typical level`
   - `Spread`
   - `Tail shape`
   - `Sex split`
+- Disease Explorer:
+  - healthy-only main tabs stay unchanged
+  - this tab intentionally reintroduces selected disease cohorts (`diabetes`, `hypertension`, `cvd`, `kidney`, `liver`, `cancer`, `asthma`, `thyroid_problem`, `stroke`)
+  - per condition, one biomarker can be compared at a time between the healthy baseline and the selected disease cohort using the same pooled/female/male and raw vs `10-90 trimmed` logic
+- Blood Age:
+  - browser-only calculator tab for the open PhenoAge blood model
+  - uses birth date, blood draw date, and 9 routine biomarkers with in-browser unit conversion
+  - cites the Levine et al. and Liu et al. NHANES papers directly in the UI
 - State model:
-  - URL hash restores tab, biomarker, cohort, trim mode, view, spread metric, compare mode, and compare-set selection
+  - URL hash restores tab, biomarker, disease condition, disease biomarker, cohort, trim mode, view, spread metric, compare mode, and compare-set selection
 - Scope:
   - blood only in v1
   - focused on the curated aging biomarker subset and familiar clinical markers rather than the full blood dashboard inventory
+  - main exploration uses the healthy cohort exclusions documented below; disease comparisons live in their own tab so they do not contaminate the healthy-aging views
 
 ## Plot modes
 - In `Dashboard` analysis view, use:
@@ -473,7 +490,7 @@ python3 -m http.server 8765 --directory .
 - Playwright/manual validation checklist used for the current redesign:
   - blood tabs: `#dashboard`, `#compare`, `#filter-tests`, `#scatter`, `#hist`, `#waterfall`, `#sr-comparison`, `#info`
   - urinary spot-checks with preserved hash navigation (for example `urinary.html#compare` and switch back to `index.html#compare`)
-  - public dashboard tabs: `aging_biomarkers_dashboard.html#tab=start`, `explore`, `rankings`, `compare`, and `about` states via hash restore
+  - public dashboard tabs: `aging_biomarkers_dashboard.html#tab=start`, `explore`, `disease`, `rankings`, `compare`, `calculator`, and `about` states via hash restore
   - representative interactions:
     - dashboard mode, cohort, and trim changes
     - compare statistic, sort, cohort, and top-N changes
@@ -482,7 +499,7 @@ python3 -m http.server 8765 --directory .
     - waterfall biomarker search/selection, cohort, and minimum-n changes
     - SR comparison age-bin slider, ranking sort changes, biomarker row switching, and urine fallback from `#sr-comparison` to `#dashboard`
     - filter-tests clause editing and execution
-    - public dashboard biomarker search, collection filtering, pooled/female/male switching, raw vs `10-90 trimmed`, compare-set add/remove, and chart export
+    - public dashboard biomarker search, disease-condition switching, pooled/female/male switching, raw vs `10-90 trimmed`, compare-set add/remove, Blood Age calculation, and chart export
   - keyboard focus visibility across specimen links, top tabs, and form controls
   - mobile-width spot checks for stacked navigation and control layouts
 - Example screenshots from the current pass were written to `output/playwright/`.

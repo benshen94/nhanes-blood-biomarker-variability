@@ -1,0 +1,110 @@
+[
+  {
+    "key": "diabetes",
+    "title": "Diabetes",
+    "kicker": "Diagnosed diabetes",
+    "summary": "Self-reported doctor diagnosis in NHANES. This comparison intentionally reintroduces participants excluded from the healthy-aging baseline.",
+    "accent": "rust",
+    "source": "DIQ010 == 1",
+    "detail_path": "diseases/diabetes.json",
+    "participant_count": 6673,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "hypertension",
+    "title": "Hypertension",
+    "kicker": "High blood pressure",
+    "summary": "People reporting high blood pressure often show different kidney, inflammatory, and vascular biomarker patterns across adulthood.",
+    "accent": "amber",
+    "source": "BPQ020 == 1",
+    "detail_path": "diseases/hypertension.json",
+    "participant_count": 19101,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "cvd",
+    "title": "Cardiovascular disease",
+    "kicker": "Heart and vascular disease history",
+    "summary": "This NHANES flag combines reported congestive heart failure, coronary heart disease, angina, heart attack, and stroke diagnoses.",
+    "accent": "blue",
+    "source": "MCQ160B/C/D/E/F == 1",
+    "detail_path": "diseases/cvd.json",
+    "participant_count": 6338,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "kidney",
+    "title": "Kidney disease",
+    "kicker": "Weak or failing kidneys",
+    "summary": "The disease group comes from the NHANES kidney-history question and can reveal how renal markers separate from the healthy baseline.",
+    "accent": "teal",
+    "source": "KIQ022 == 1",
+    "detail_path": "diseases/kidney.json",
+    "participant_count": 1611,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "liver",
+    "title": "Liver disease",
+    "kicker": "Liver condition history",
+    "summary": "This comparison groups participants who reported liver disease on the standard NHANES medical history items.",
+    "accent": "amber",
+    "source": "MCQ160L or MCQ500/MCQ510A-F == 1",
+    "detail_path": "diseases/liver.json",
+    "participant_count": 2065,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "cancer",
+    "title": "Cancer history",
+    "kicker": "Any reported malignancy",
+    "summary": "This uses the broad cancer-history question, so the disease group is heterogeneous by design.",
+    "accent": "rose",
+    "source": "MCQ220 == 1",
+    "detail_path": "diseases/cancer.json",
+    "participant_count": 5166,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "asthma",
+    "title": "Asthma",
+    "kicker": "Respiratory disease",
+    "summary": "Asthma is tracked in the processed participant file even though it is not part of the healthy-aging exclusion rule.",
+    "accent": "violet",
+    "source": "MCQ010 == 1",
+    "detail_path": "diseases/asthma.json",
+    "participant_count": 7293,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "thyroid_problem",
+    "title": "Thyroid problem",
+    "kicker": "Reported thyroid disorder",
+    "summary": "This group captures participants who reported a thyroid problem in NHANES. It is useful for comparing endocrine markers against the healthy baseline.",
+    "accent": "violet",
+    "source": "MCQ160M == 1",
+    "detail_path": "diseases/thyroid_problem.json",
+    "participant_count": 4508,
+    "female_count": 0,
+    "male_count": 0
+  },
+  {
+    "key": "stroke",
+    "title": "Stroke",
+    "kicker": "Reported stroke history",
+    "summary": "Stroke is shown as its own narrower disease comparison for biomarkers tied to vascular strain and inflammation.",
+    "accent": "blue",
+    "source": "MCQ160F == 1",
+    "detail_path": "diseases/stroke.json",
+    "participant_count": 2197,
+    "female_count": 0,
+    "male_count": 0
+  }
+]
