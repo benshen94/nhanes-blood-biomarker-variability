@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import sys
@@ -14,6 +15,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from scipy.stats import wasserstein_distance
+
+try:
+    import orjson
+except ImportError:  # pragma: no cover
+    orjson = None
 
 from nhanes_common import ensure_dir
 
@@ -45,7 +51,10 @@ SR_TRIM_MODES = [
     {"key": "trim_5_95", "label": "5% each tail", "tail_pct": 5, "lo": 0.05, "hi": 0.95},
     {"key": "trim_10_90", "label": "10% each tail", "tail_pct": 10, "lo": 0.10, "hi": 0.90},
 ]
+SR_RANK_TRIM_MODES = [mode for mode in SR_TRIM_MODES if str(mode["key"]) != "all"]
 DEFAULT_SR_TRIM_MODE = "trim_3_97"
+DEFAULT_SR_RANK_TRIM_MODE = "trim_3_97"
+RANK_TIE_BREAK_SEED = 20260405
 SR_TRIM_MODE_BY_KEY = {mode["key"]: mode for mode in SR_TRIM_MODES}
 
 
@@ -69,6 +78,13 @@ def rounded_list(values: np.ndarray | list[float], digits: int = 6) -> list[floa
     if arr.size == 0:
         return []
     return [round(float(v), digits) for v in arr.tolist()]
+
+
+def integer_list(values: np.ndarray | list[int]) -> list[int]:
+    arr = np.asarray(values, dtype=int)
+    if arr.size == 0:
+        return []
+    return [int(v) for v in arr.tolist()]
 
 
 def clean_sorted_values(values: np.ndarray | pd.Series) -> np.ndarray:
@@ -129,9 +145,9 @@ def sr_trim_mode(trim_mode_key: str) -> dict[str, Any]:
     return SR_TRIM_MODE_BY_KEY.get(trim_mode_key, SR_TRIM_MODE_BY_KEY[DEFAULT_SR_TRIM_MODE])
 
 
-def rounded_trim_modes() -> list[dict[str, Any]]:
+def rounded_trim_modes(trim_modes: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    for trim_mode in SR_TRIM_MODES:
+    for trim_mode in trim_modes or SR_TRIM_MODES:
         rows.append(
             {
                 "key": str(trim_mode["key"]),
@@ -142,6 +158,26 @@ def rounded_trim_modes() -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def stable_seed(seed_key: str) -> int:
+    digest = hashlib.sha256(seed_key.encode("utf-8")).hexdigest()
+    return (int(digest[:8], 16) + RANK_TIE_BREAK_SEED) % (2**32)
+
+
+def sr_detail_relative_path(biomarker_id: str) -> str:
+    digest = hashlib.sha1(biomarker_id.encode("utf-8")).hexdigest()[:16]
+    return f"detail_by_biomarker/{digest}.json"
+
+
+def write_json(path: Path, payload: Any, *, pretty: bool = False) -> None:
+    if orjson is not None:
+        option = orjson.OPT_INDENT_2 if pretty else 0
+        path.write_bytes(orjson.dumps(payload, option=option))
+        return
+
+    text = json.dumps(payload, ensure_ascii=True, indent=2 if pretty else None, allow_nan=False)
+    path.write_text(text, encoding="utf-8")
 
 
 def compute_qq_fit(
@@ -214,6 +250,176 @@ def compute_qq_fit(
     result["qq_sr_values"] = rounded_list(x)
     result["qq_biomarker_values"] = rounded_list(y)
     return result
+
+
+def percentile_ranks_with_tie_breaks(values: np.ndarray, seed_key: str) -> np.ndarray:
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return np.array([], dtype=float)
+
+    rng = np.random.default_rng(stable_seed(seed_key))
+    order = np.argsort(arr, kind="mergesort")
+    sorted_values = arr[order]
+
+    shuffled_order: list[int] = []
+    start = 0
+    while start < sorted_values.size:
+        stop = start + 1
+        while stop < sorted_values.size and sorted_values[stop] == sorted_values[start]:
+            stop += 1
+
+        tie_block = order[start:stop].copy()
+        if tie_block.size > 1:
+            tie_block = rng.permutation(tie_block)
+        shuffled_order.extend(tie_block.tolist())
+        start = stop
+
+    ranks = np.empty(arr.shape[0], dtype=float)
+    n = arr.shape[0]
+    for position, original_index in enumerate(shuffled_order):
+        ranks[original_index] = (position + 0.5) / n
+    return ranks
+
+
+def normalize_ranks_1_to_100(values: np.ndarray) -> np.ndarray:
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return np.array([], dtype=np.int16)
+    normalized = np.ceil(arr * 100.0)
+    normalized = np.clip(normalized, 1, 100)
+    return normalized.astype(np.int16)
+
+
+def build_rank_bin_distributions(
+    values_by_age_bin: dict[str, np.ndarray],
+    trim_mode_key: str,
+    seed_key: str,
+) -> dict[str, np.ndarray]:
+    trim_mode = sr_trim_mode(trim_mode_key)
+
+    pooled_values: list[np.ndarray] = []
+    pooled_age_bins: list[np.ndarray] = []
+    for age_bin in AGE_BIN_LABELS:
+        values = trim_distribution(
+            values_by_age_bin.get(age_bin, np.array([], dtype=float)),
+            lo=float(trim_mode["lo"]),
+            hi=float(trim_mode["hi"]),
+        )
+        if values.size == 0:
+            continue
+        pooled_values.append(values)
+        pooled_age_bins.append(np.full(values.shape[0], age_bin, dtype=object))
+
+    if not pooled_values:
+        return {age_bin: np.array([], dtype=float) for age_bin in AGE_BIN_LABELS}
+
+    all_values = np.concatenate(pooled_values)
+    all_age_bins = np.concatenate(pooled_age_bins)
+    kept_ranks = percentile_ranks_with_tie_breaks(all_values, seed_key)
+    rank_bins: dict[str, np.ndarray] = {}
+    for age_bin in AGE_BIN_LABELS:
+        age_ranks = kept_ranks[all_age_bins == age_bin]
+        rank_bins[age_bin] = np.sort(normalize_ranks_1_to_100(age_ranks))
+    return rank_bins
+
+
+def compute_rank_bin_rows(
+    biomarker_id: str,
+    biomarker_name: str,
+    biomarker_values_by_age_bin: dict[str, np.ndarray],
+    sr_rank_bins: dict[str, np.ndarray],
+    trim_mode_key: str,
+) -> list[dict[str, Any]]:
+    trim_mode = sr_trim_mode(trim_mode_key)
+    biomarker_rank_bins = build_rank_bin_distributions(
+        biomarker_values_by_age_bin,
+        trim_mode_key=trim_mode_key,
+        seed_key=f"biomarker:{biomarker_id}:{trim_mode_key}",
+    )
+
+    rows: list[dict[str, Any]] = []
+    for age_bin in AGE_BIN_LABELS:
+        age_mid = float(AGE_BIN_MIDS[age_bin])
+        nhanes_ranks = biomarker_rank_bins.get(age_bin, np.array([], dtype=float))
+        sr_ranks = sr_rank_bins.get(age_bin, np.array([], dtype=float))
+        wasserstein_rank = None
+        if nhanes_ranks.size >= MIN_BIN_N and sr_ranks.size >= MIN_BIN_N:
+            wasserstein_rank = safe_float(wasserstein_distance(sr_ranks, nhanes_ranks))
+
+        rows.append(
+            {
+                "biomarker_id": biomarker_id,
+                "biomarker_name": biomarker_name,
+                "age_bin": age_bin,
+                "age_mid": age_mid,
+                "trim_mode": trim_mode_key,
+                "trim_label": str(trim_mode["label"]),
+                "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+                "wasserstein_rank": wasserstein_rank,
+                "nhanes_n": int(nhanes_ranks.size),
+                "sr_n": int(sr_ranks.size),
+                "nhanes_rank_values": integer_list(nhanes_ranks),
+            }
+        )
+    return rows
+
+
+def build_sr_rank_reference_payload(
+    sr_rank_bins_by_trim: dict[str, dict[str, np.ndarray]],
+) -> dict[str, Any]:
+    trim_details: dict[str, dict[str, Any]] = {}
+    for trim_mode in SR_RANK_TRIM_MODES:
+        trim_key = str(trim_mode["key"])
+        bins: list[dict[str, Any]] = []
+        sr_rank_bins = sr_rank_bins_by_trim.get(trim_key, {})
+        for age_bin in AGE_BIN_LABELS:
+            sr_ranks = sr_rank_bins.get(age_bin, np.array([], dtype=np.int16))
+            bins.append(
+                {
+                    "age_bin": age_bin,
+                    "age_mid": float(AGE_BIN_MIDS[age_bin]),
+                    "sr_n": int(sr_ranks.size),
+                    "sr_rank_values": integer_list(sr_ranks),
+                }
+            )
+        trim_details[trim_key] = {
+            "trim_mode": trim_key,
+            "trim_label": str(trim_mode["label"]),
+            "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+            "bins": bins,
+        }
+
+    default_detail = trim_details[DEFAULT_SR_RANK_TRIM_MODE]
+    return {
+        "default_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
+        "trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
+        "bins": default_detail["bins"],
+        "trim_details": trim_details,
+    }
+
+
+def summarize_rank_bins(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    wasserstein_values = [row["wasserstein_rank"] for row in rows if row.get("wasserstein_rank") is not None]
+
+    def mean_or_none(values: list[float]) -> float | None:
+        if not values:
+            return None
+        return safe_float(np.mean(values))
+
+    return {
+        "mean_wasserstein_rank": mean_or_none(wasserstein_values),
+        "min_wasserstein_rank": safe_float(np.min(wasserstein_values)) if wasserstein_values else None,
+        "median_wasserstein_rank": safe_float(np.median(wasserstein_values)) if wasserstein_values else None,
+        "valid_rank_bin_count": int(len(wasserstein_values)),
+        "wasserstein_rank_by_age_bin": [
+            {
+                "age_bin": row["age_bin"],
+                "age_mid": row["age_mid"],
+                "wasserstein_rank": row.get("wasserstein_rank"),
+            }
+            for row in rows
+        ],
+    }
 
 
 def summarize_biomarker_bins(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -390,7 +596,14 @@ def build_dashboard_payload(
     sr_reference_rows: list[dict[str, Any]],
     sr_distributions: dict[str, np.ndarray],
     sr_waterfall_reference: dict[str, Any],
-) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
+) -> tuple[
+    dict[str, Any],
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    dict[str, dict[str, Any]],
+]:
     use = long_df[["biomarker_id", "biomarker_name", "age_years", "value"]].copy()
     use = use.dropna(subset=["biomarker_id", "value", "age_years"])
     use = use[(use["age_years"] >= 20) & (use["age_years"] < 85)].copy()
@@ -418,14 +631,35 @@ def build_dashboard_payload(
     sr_reference_by_bin = {row["age_bin"]: row for row in sr_reference_rows}
     summary_by_biomarker: dict[str, dict[str, Any]] = {}
     detail_by_biomarker: dict[str, dict[str, Any]] = {}
+    rank_summary_by_biomarker: dict[str, dict[str, Any]] = {}
+    rank_detail_by_biomarker: dict[str, dict[str, Any]] = {}
+    combined_detail_by_biomarker: dict[str, dict[str, Any]] = {}
     summary_rows: list[dict[str, Any]] = []
     detail_rows: list[dict[str, Any]] = []
+    rank_summary_rows: list[dict[str, Any]] = []
+    rank_detail_rows: list[dict[str, Any]] = []
+
+    sr_rank_bins_by_trim: dict[str, dict[str, np.ndarray]] = {}
+    for trim_mode in SR_RANK_TRIM_MODES:
+        trim_key = str(trim_mode["key"])
+        sr_rank_bins_by_trim[trim_key] = build_rank_bin_distributions(
+            sr_distributions,
+            trim_mode_key=trim_key,
+            seed_key=f"sr:{trim_key}",
+        )
+    sr_rank_reference = build_sr_rank_reference_payload(sr_rank_bins_by_trim)
 
     for row in biomarker_names.itertuples(index=False):
         biomarker_id = str(row.biomarker_id)
         biomarker_name = str(row.biomarker_name)
         trim_summaries: dict[str, dict[str, Any]] = {}
         trim_details: dict[str, dict[str, Any]] = {}
+        rank_trim_summaries: dict[str, dict[str, Any]] = {}
+        rank_trim_details: dict[str, dict[str, Any]] = {}
+        biomarker_values_by_age_bin = {
+            age_bin: grouped_rows.get((biomarker_id, age_bin), {}).get("values", np.array([], dtype=float))
+            for age_bin in AGE_BIN_LABELS
+        }
 
         for trim_mode in SR_TRIM_MODES:
             trim_key = str(trim_mode["key"])
@@ -521,8 +755,52 @@ def build_dashboard_payload(
                 }
             )
 
+        for trim_mode in SR_RANK_TRIM_MODES:
+            trim_key = str(trim_mode["key"])
+            rank_rows = compute_rank_bin_rows(
+                biomarker_id=biomarker_id,
+                biomarker_name=biomarker_name,
+                biomarker_values_by_age_bin=biomarker_values_by_age_bin,
+                sr_rank_bins=sr_rank_bins_by_trim[trim_key],
+                trim_mode_key=trim_key,
+            )
+            rank_summary = summarize_rank_bins(rank_rows)
+            rank_summary["trim_mode"] = trim_key
+            rank_summary["trim_label"] = str(trim_mode["label"])
+            rank_summary["trim_rule"] = {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])}
+            rank_trim_summaries[trim_key] = rank_summary
+            rank_trim_details[trim_key] = {
+                "trim_mode": trim_key,
+                "trim_label": str(trim_mode["label"]),
+                "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+                "bins": rank_rows,
+            }
+            rank_summary_rows.append(
+                {
+                    "biomarker_id": biomarker_id,
+                    "biomarker_name": biomarker_name,
+                    **rank_summary,
+                }
+            )
+            for rank_row in rank_rows:
+                rank_detail_rows.append(
+                    {
+                        "biomarker_id": biomarker_id,
+                        "biomarker_name": biomarker_name,
+                        "trim_mode": trim_key,
+                        "trim_label": str(trim_mode["label"]),
+                        "age_bin": rank_row["age_bin"],
+                        "age_mid": rank_row["age_mid"],
+                        "wasserstein_rank": rank_row["wasserstein_rank"],
+                        "nhanes_n": rank_row["nhanes_n"],
+                        "sr_n": rank_row["sr_n"],
+                    }
+                )
+
         default_summary = trim_summaries[DEFAULT_SR_TRIM_MODE]
         default_detail = trim_details[DEFAULT_SR_TRIM_MODE]
+        default_rank_summary = rank_trim_summaries[DEFAULT_SR_RANK_TRIM_MODE]
+        default_rank_detail = rank_trim_details[DEFAULT_SR_RANK_TRIM_MODE]
 
         summary_by_biomarker[biomarker_id] = {
             **default_summary,
@@ -543,23 +821,62 @@ def build_dashboard_payload(
             "bins": default_detail["bins"],
             "trim_details": trim_details,
         }
+        rank_summary_by_biomarker[biomarker_id] = {
+            **default_rank_summary,
+            "default_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
+            "trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
+            "trim_summaries": rank_trim_summaries,
+        }
+        rank_detail_by_biomarker[biomarker_id] = {
+            "biomarker_id": biomarker_id,
+            "biomarker_name": biomarker_name,
+            "age_bins": AGE_BIN_LABELS,
+            "default_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
+            "trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
+            "trim_rule": default_rank_detail["trim_rule"],
+            "trim_label": default_rank_detail["trim_label"],
+            "reference_bins": sr_reference_rows,
+            "bins": default_rank_detail["bins"],
+            "trim_details": rank_trim_details,
+        }
+        combined_detail_by_biomarker[biomarker_id] = {
+            "sr_comparison": detail_by_biomarker[biomarker_id],
+            "sr_rank_comparison": rank_detail_by_biomarker[biomarker_id],
+        }
 
+    detail_index_by_biomarker = {
+        biomarker_id: sr_detail_relative_path(biomarker_id)
+        for biomarker_id in summary_by_biomarker
+    }
     payload = {
         "meta": {
             "age_bins": AGE_BIN_LABELS,
             "age_mids": AGE_BIN_MIDS,
             "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+            "default_rank_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
             "trim_modes": rounded_trim_modes(),
+            "rank_trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
             "sr_reference_tail_policy": "alive_only_no_tail_trimming",
             "min_bin_n": MIN_BIN_N,
             "qq_probabilities": rounded_list(QQ_PROBABILITIES),
+            "rank_tail_policy": "trim_each_age_bin_then_pool_for_percentile_ranking",
+            "rank_tie_policy": "deterministic_seeded_random_tie_breaks",
         },
         "summary_by_biomarker": summary_by_biomarker,
-        "detail_by_biomarker": detail_by_biomarker,
+        "rank_summary_by_biomarker": rank_summary_by_biomarker,
+        "detail_index_by_biomarker": detail_index_by_biomarker,
+        "sr_rank_reference": sr_rank_reference,
         "sr_reference_bins": sr_reference_rows,
         "sr_waterfall_reference": sr_waterfall_reference,
     }
-    return payload, pd.DataFrame(summary_rows), pd.DataFrame(detail_rows)
+    return (
+        payload,
+        pd.DataFrame(summary_rows),
+        pd.DataFrame(detail_rows),
+        pd.DataFrame(rank_summary_rows),
+        pd.DataFrame(rank_detail_rows),
+        combined_detail_by_biomarker,
+    )
 
 
 def main() -> None:
@@ -589,7 +906,7 @@ def main() -> None:
     )
     sr_reference_rows, sr_distributions = build_sr_reference_rows(tspan, paths, death_times)
     sr_waterfall_reference = build_sr_waterfall_reference(tspan, paths, death_times)
-    payload, summary_df, detail_df = build_dashboard_payload(
+    payload, summary_df, detail_df, rank_summary_df, rank_detail_df, detail_payloads = build_dashboard_payload(
         long_df,
         sr_reference_rows,
         sr_distributions,
@@ -598,12 +915,22 @@ def main() -> None:
 
     summary_path = out_root / "biomarker_qq_summary.csv"
     detail_path = out_root / "biomarker_qq_detail.csv"
+    rank_summary_path = out_root / "biomarker_rank_summary.csv"
+    rank_detail_path = out_root / "biomarker_rank_detail.csv"
+    detail_root = out_root / "detail_by_biomarker"
     payload_path = out_root / "dashboard_payload.json"
     manifest_path = out_root / "run_manifest.json"
 
+    ensure_dir(detail_root)
     summary_df.to_csv(summary_path, index=False)
     detail_df.to_csv(detail_path, index=False)
-    payload_path.write_text(json.dumps(payload, ensure_ascii=True, allow_nan=False), encoding="utf-8")
+    rank_summary_df.to_csv(rank_summary_path, index=False)
+    rank_detail_df.to_csv(rank_detail_path, index=False)
+    for biomarker_id, detail_payload in detail_payloads.items():
+        detail_path_for_id = out_root / sr_detail_relative_path(biomarker_id)
+        ensure_dir(detail_path_for_id.parent)
+        write_json(detail_path_for_id, detail_payload)
+    write_json(payload_path, payload)
 
     manifest = {
         "built_at_unix": int(time.time()),
@@ -621,15 +948,29 @@ def main() -> None:
         "waterfall_reference_sample_n": int(len(WATERFALL_SAMPLE_PROBABILITIES)),
         "age_bins": AGE_BIN_LABELS,
         "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+        "default_rank_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
         "trim_modes": rounded_trim_modes(),
+        "rank_trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
         "sr_reference_tail_policy": "alive_only_no_tail_trimming",
+        "rank_tail_policy": "trim_each_age_bin_then_pool_for_percentile_ranking",
+        "rank_tie_policy": "deterministic_seeded_random_tie_breaks",
         "min_bin_n": MIN_BIN_N,
         "biomarker_count": int(summary_df["biomarker_id"].nunique()),
+        "outputs": {
+            "biomarker_qq_summary_csv": str(summary_path),
+            "biomarker_qq_detail_csv": str(detail_path),
+            "biomarker_rank_summary_csv": str(rank_summary_path),
+            "biomarker_rank_detail_csv": str(rank_detail_path),
+            "detail_by_biomarker_dir": str(detail_root),
+            "dashboard_payload_json": str(payload_path),
+        },
     }
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=True, indent=2, allow_nan=False), encoding="utf-8")
+    write_json(manifest_path, manifest, pretty=True)
 
     print(f"Wrote SR summary CSV: {summary_path}")
     print(f"Wrote SR detail CSV: {detail_path}")
+    print(f"Wrote SR rank summary CSV: {rank_summary_path}")
+    print(f"Wrote SR rank detail CSV: {rank_detail_path}")
     print(f"Wrote SR dashboard payload: {payload_path}")
     print(f"Wrote SR run manifest: {manifest_path}")
 

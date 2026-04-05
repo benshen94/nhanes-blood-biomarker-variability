@@ -3445,7 +3445,7 @@ def build_outputs(
 
     clalit_data_map = process_clalit_data(clalit_f_df, clalit_m_df, clalit_map)
     sr_summary_by_id = (sr_comparison_bundle or {}).get("summary_by_biomarker") or {}
-    sr_detail_by_id = (sr_comparison_bundle or {}).get("detail_by_biomarker") or {}
+    sr_rank_summary_by_id = (sr_comparison_bundle or {}).get("rank_summary_by_biomarker") or {}
 
     metrics: list[dict] = []
     for r in metadata.itertuples(index=False):
@@ -3528,6 +3528,7 @@ def build_outputs(
                 },
                 "clalit_trends": c_trends,
                 "sr_comparison_summary": sr_summary_by_id.get(bid),
+                "sr_rank_comparison_summary": sr_rank_summary_by_id.get(bid),
             }
         )
 
@@ -3539,6 +3540,7 @@ def build_outputs(
     for bid in metadata["biomarker_id"].astype(str).tolist():
         rel_path = safe_series_filename(bid)
         md = meta_by_id.get(bid, {})
+        sr_detail_payload = sr_detail_payload_for_id(sr_comparison_bundle, bid) or {}
         series_index[bid] = rel_path
         points_by_filter = {mode: pooled_points_by_mode.get(mode, {}).get(bid, []) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
         sex_points_by_filter = {mode: sex_points_by_mode.get(mode, {}).get(bid, {}) for mode in [trim_mode_key(p) for p in TRIM_PCTS]}
@@ -3600,7 +3602,8 @@ def build_outputs(
                 "quantile_skewness": sex_trends_filter_qskew,
             },
             "clalit_data": clalit_data_map.get(str(bid)),
-            "sr_comparison": sr_detail_by_id.get(bid),
+            "sr_comparison": sr_detail_payload.get("sr_comparison"),
+            "sr_rank_comparison": sr_detail_payload.get("sr_rank_comparison"),
         }
 
     return metadata, metrics, series_index, series_payloads
@@ -3628,6 +3631,12 @@ def render_dashboard_html(
           </div>
         </div>
         <div class="sr-controls">
+          <label>Method
+            <select id="sr-method-mode">
+              <option value="qq" selected>QQ / Shape</option>
+              <option value="rank">Rank-Wasserstein</option>
+            </select>
+          </label>
           <label>Search biomarker
             <input id="sr-search" list="sr-biomarker-options" placeholder="Type biomarker name..." autocomplete="off" spellcheck="false" />
             <datalist id="sr-biomarker-options"></datalist>
@@ -3643,10 +3652,10 @@ def render_dashboard_html(
             <input id="sr-age-bin-slider" type="range" min="0" max="12" step="1" value="6" />
             <div id="sr-age-bin-label" class="trim-caption">50-54</div>
           </label>
-          <label>Biomarker tail trim
+          <label>Comparison trim
             <select id="sr-trim-mode">
               <option value="all">0% each tail</option>
-              <option value="trim_3_97" selected>3% each tail</option>
+              <option value="trim_3_97">3% each tail</option>
               <option value="trim_5_95">5% each tail</option>
               <option value="trim_10_90">10% each tail</option>
             </select>
@@ -3735,7 +3744,44 @@ def load_sr_comparison_bundle(root: str | Path | None) -> dict | None:
     if not payload_path.exists():
         return None
 
-    return json.loads(payload_path.read_text(encoding="utf-8"))
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    payload["_root"] = str(Path(root))
+    payload["_detail_cache"] = {}
+    return payload
+
+
+def sr_detail_payload_for_id(sr_comparison_bundle: dict | None, biomarker_id: str) -> dict | None:
+    if not sr_comparison_bundle:
+        return None
+
+    inline_qq = (sr_comparison_bundle.get("detail_by_biomarker") or {}).get(biomarker_id)
+    inline_rank = (sr_comparison_bundle.get("rank_detail_by_biomarker") or {}).get(biomarker_id)
+    if inline_qq is not None or inline_rank is not None:
+        return {
+            "sr_comparison": inline_qq,
+            "sr_rank_comparison": inline_rank,
+        }
+
+    detail_index = sr_comparison_bundle.get("detail_index_by_biomarker") or {}
+    relative_path = detail_index.get(biomarker_id)
+    if not relative_path:
+        return None
+
+    cache = sr_comparison_bundle.setdefault("_detail_cache", {})
+    if biomarker_id in cache:
+        return cache[biomarker_id]
+
+    root = sr_comparison_bundle.get("_root")
+    if not root:
+        return None
+
+    detail_path = Path(root) / relative_path
+    if not detail_path.exists():
+        return None
+
+    detail_payload = json.loads(detail_path.read_text(encoding="utf-8"))
+    cache[biomarker_id] = detail_payload
+    return detail_payload
 
 
 def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, dict]:
@@ -3743,10 +3789,13 @@ def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, di
         return {}
 
     sr_waterfall_reference = sr_comparison_bundle.get("sr_waterfall_reference")
-    if not sr_waterfall_reference:
-        return {}
-
-    return {"sr_waterfall_reference.json": sr_waterfall_reference}
+    sr_rank_reference = sr_comparison_bundle.get("sr_rank_reference")
+    payloads: dict[str, dict] = {}
+    if sr_waterfall_reference:
+        payloads["sr_waterfall_reference.json"] = sr_waterfall_reference
+    if sr_rank_reference:
+        payloads["sr_rank_reference.json"] = sr_rank_reference
+    return payloads
 
 
 def write_dashboard_bundle(
@@ -3780,7 +3829,7 @@ def write_dashboard_bundle(
         json.dumps(series_index, ensure_ascii=True, allow_nan=False), encoding="utf-8"
     )
 
-    shared_file_names = ["sr_waterfall_reference.json"]
+    shared_file_names = ["sr_waterfall_reference.json", "sr_rank_reference.json"]
     for file_name in shared_file_names:
         shared_path = data_dir / file_name
         if file_name in shared_payloads:

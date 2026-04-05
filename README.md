@@ -11,7 +11,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/download_nhanes.py` downloads required NHANES XPT files (lab + demographics + questionnaire modules including `DIQ/MCQ/KIQ/BPQ/OSQ/VIQ/PFQ/HUQ`), with candidate selection controlled by `--candidate-column`.
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data, with candidate selection controlled by `--candidate-column`.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
-- `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds the blood-dashboard Q-Q comparison payload under `projects/sr_comparison/blood/`.
+- `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds both the Q-Q and rank-based SR comparison payloads under `projects/sr_comparison/blood/`.
 - `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
 - `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
@@ -185,6 +185,9 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - The blood dashboard also lazy-loads one shared SR reference payload only when the side-by-side SR waterfall is requested:
   - `dashboard/data/sr_waterfall_reference.json`
   - it contains compact quantile-sampled SR-model `X` distributions for the 5-year age bins used by the SR comparison analysis
+- The blood dashboard also uses one shared SR rank reference payload for `Rank-Wasserstein` mode:
+  - `dashboard/data/sr_rank_reference.json`
+  - it contains the SR normalized-rank distributions (`1` to `100`) for each SR trim mode and 5-year age bin, so those SR ranks are not duplicated inside every biomarker series file
 
 ## Public aging biomarkers dashboard
 - Artifact:
@@ -446,7 +449,9 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - `SR comparison` is available on the blood dashboard only.
 - Purpose:
   - compare pooled NHANES blood biomarkers against the SR-model `X` distribution by age-bin shape, not by shared units
-  - quantify Q-Q agreement with `R²` while also exposing the fitted slope `m`, intercept `c`, and a z-scored Wasserstein distance
+  - support two comparison methods inside one tab:
+    - `QQ / Shape`
+    - `Rank-Wasserstein`
 - Build inputs:
   - NHANES blood long table: `data/processed/biomarker_long.parquet`
   - external SR code rooted at the configured USA 2019 waterfall script + SR package path
@@ -454,23 +459,45 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 - Analysis contract:
   - age bins are `20-24` through `80-84`
   - SR `X` is sampled from the alive-only simulation cohort at each age-bin midpoint and is never tail-trimmed
-  - NHANES biomarker values are evaluated under four symmetric tail-trim modes: `0%`, `3%`, `5%`, and `10%` per tail
   - pooled blood biomarkers only in v1
-  - per-bin fit is `biomarker_quantile = m * sr_quantile + c`
-  - z-scored Wasserstein distance is computed per age bin after z-scoring SR and biomarker values separately within that bin
+  - `QQ / Shape` mode:
+    - NHANES biomarker values are evaluated under four symmetric tail-trim modes: `0%`, `3%`, `5%`, and `10%` per tail
+    - per-bin fit is \( \text{biomarker quantile} = m \cdot \text{SR quantile} + c \)
+    - z-scored Wasserstein distance is computed per age bin after z-scoring SR and biomarker values separately within that bin
+  - `Rank-Wasserstein` mode:
+    - trimming options are `3%`, `5%`, and `10%` per tail
+    - trimming is applied within each age bin first, then the trimmed values from all age bins are pooled and converted to normalized ranks from \(1\) to \(100\)
+    - each age-bin comparison uses the subset of pooled normalized ranks that belong to that age bin
+    - ties are broken with a deterministic seeded random ordering inside each exact-value tie group
+    - Wasserstein distance is then computed on those normalized-rank distributions for each age bin
 - UI behavior:
-  - one selected-bin Q-Q plot
-  - one `R²(age)` plot
-  - one coefficient plot for `m(age)` and `c(age)`
+  - one method switch between `QQ / Shape` and `Rank-Wasserstein`
+  - in `QQ / Shape` mode:
+    - one selected-bin Q-Q plot
+    - one `R²(age)` plot
+    - one coefficient plot for `m(age)` and `c(age)`
+  - in `Rank-Wasserstein` mode:
+    - one selected-bin percentile-rank CDF overlay
+    - one `Rank-Wasserstein(age)` plot
+    - one placeholder panel noting that rank mode does not use `m` or `c`
   - searchable multi-select SR category picker with `Select all visible`, `Core clinical only`, and `Clear selection`
   - `Specialized - Nutritional/Vitamin` is excluded from the SR comparison UI entirely
-  - main sortable biomarker table with selected-bin and aggregate `R²` and z-Wasserstein values, plus `mean/SD m`, `mean/SD c`, and valid-bin count
-  - secondary per-bin detail table for the selected biomarker, including `R²`, z-Wasserstein, `m`, `c`, and quartiles
-  - trim selector in the SR tab switches the biomarker tail-trim mode without changing the SR reference
+  - main sortable biomarker table changes columns and default sort by method:
+    - `QQ / Shape`: selected-bin and aggregate `R²` and z-Wasserstein values, plus `mean/SD m`, `mean/SD c`, and valid-bin count
+    - `Rank-Wasserstein`: mean/current/min/median rank-Wasserstein plus valid-bin count
+  - secondary per-bin detail table changes by method:
+    - `QQ / Shape`: `R²`, z-Wasserstein, `m`, `c`, and quartiles
+    - `Rank-Wasserstein`: rank-Wasserstein, NHANES \(n\), and SR \(n\)
+  - the SR trim selector changes behavior by method:
+    - `QQ / Shape`: trims biomarker tails within the selected age bin comparison
+    - `Rank-Wasserstein`: trims within each age bin before pooled percentile-ranking
 - Interpretation:
-  - high `R²` means the biomarker and SR model share a similar distribution shape in that age bin
-  - lower z-Wasserstein means the z-scored biomarker and SR distributions are closer overall, especially in tail placement
-  - `m` and `c` capture age-dependent scaling and offset differences even when shape agreement remains strong
+  - `QQ / Shape`:
+    - high `R²` means the biomarker and SR model share a similar distribution shape in that age bin
+    - lower z-Wasserstein means the z-scored biomarker and SR distributions are closer overall, especially in tail placement
+    - `m` and `c` capture age-dependent scaling and offset differences even when shape agreement remains strong
+  - `Rank-Wasserstein`:
+    - lower rank-Wasserstein means the biomarker age bin occupies a similar relative percentile-rank region as the SR age bin inside each variable's own pooled lifespan distribution
 
 ## Median mode interpretation
 - `Plot Median` displays the age-binned median and IQR band (25th-75th percentile).
@@ -502,7 +529,7 @@ python3 -m http.server 8765 --directory .
     - scatter X/Y metrics, category filtering, and label toggle
     - histogram metric, cohort, and category filtering
     - waterfall biomarker search/selection, cohort, and minimum-n changes
-    - SR comparison age-bin slider, ranking sort changes, biomarker row switching, and urine fallback from `#sr-comparison` to `#dashboard`
+    - SR comparison method switch, trim changes, age-bin slider, ranking sort changes, biomarker row switching, and urine fallback from `#sr-comparison` to `#dashboard`
     - filter-tests clause editing and execution
     - public dashboard biomarker search, disease-condition switching, pooled/female/male switching, raw vs `10-90 trimmed`, compare-set add/remove, Blood Age calculation, and chart export
   - keyboard focus visibility across specimen links, top tabs, and form controls

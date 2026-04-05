@@ -1700,7 +1700,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1774267365';
+    const DATA_VERSION = '1775401451';
     const HAS_CLALIT = false;
     const HAS_SR_COMPARISON = false;
     const SPECIMEN_TITLE = 'Urinary';
@@ -1831,6 +1831,7 @@
     const srSearchEl = document.getElementById('sr-search');
     const srOptionsEl = document.getElementById('sr-biomarker-options');
     const srBiomarkerEl = document.getElementById('sr-biomarker');
+    const srMethodModeEl = document.getElementById('sr-method-mode');
     const srCategorySearchEl = document.getElementById('sr-category-search');
     const srCategoryMultiEl = document.getElementById('sr-category-multi');
     const srCategoryAllBtn = document.getElementById('sr-category-all');
@@ -1882,6 +1883,9 @@
       srWaterfallReference: null,
       srWaterfallReferenceLoaded: false,
       srWaterfallReferencePromise: null,
+      srRankReference: null,
+      srRankReferenceLoaded: false,
+      srRankReferencePromise: null,
       mode: 'cv',
       lastSingleMode: 'cv',
       currentId: null,
@@ -1902,7 +1906,9 @@
       fullViewSkewMetric: 'skewness',
       filterFullViewSkewMetric: 'skewness',
       srAgeBinIndex: 6,
-      srTrimMode: 'trim_3_97',
+      srMethod: 'qq',
+      srQqTrimMode: 'trim_3_97',
+      srRankTrimMode: 'trim_3_97',
       srSortField: 'mean_r2',
       srSortDirection: 'desc',
       srCategorySelectionSet: new Set(),
@@ -1980,8 +1986,17 @@
       return srAgeBinAt(state.srAgeBinIndex).label;
     }
 
+    function srCurrentMethod() {
+      const value = srMethodModeEl?.value || state.srMethod || 'qq';
+      return value === 'rank' ? 'rank' : 'qq';
+    }
+
     function srActiveTrimMode() {
-      const value = srTrimModeEl?.value || state.srTrimMode || 'trim_3_97';
+      if (srCurrentMethod() === 'rank') {
+        const value = srTrimModeEl?.value || state.srRankTrimMode || 'trim_3_97';
+        return value || 'trim_3_97';
+      }
+      const value = srTrimModeEl?.value || state.srQqTrimMode || 'trim_3_97';
       return value || 'trim_3_97';
     }
 
@@ -1989,6 +2004,46 @@
       const pct = trimModeToPct(trimMode);
       if (pct <= 0) return '0% each tail';
       return `${pct}% each tail`;
+    }
+
+    function srTrimModeOptions(method) {
+      if (method === 'rank') {
+        return [
+          { value: 'trim_3_97', label: '3% each tail' },
+          { value: 'trim_5_95', label: '5% each tail' },
+          { value: 'trim_10_90', label: '10% each tail' },
+        ];
+      }
+      return [
+        { value: 'all', label: '0% each tail' },
+        { value: 'trim_3_97', label: '3% each tail' },
+        { value: 'trim_5_95', label: '5% each tail' },
+        { value: 'trim_10_90', label: '10% each tail' },
+      ];
+    }
+
+    function renderSrTrimModeOptions() {
+      if (!srTrimModeEl) return;
+      const method = srCurrentMethod();
+      const options = srTrimModeOptions(method);
+      const previous = method === 'rank' ? state.srRankTrimMode : state.srQqTrimMode;
+      srTrimModeEl.innerHTML = '';
+      for (const option of options) {
+        const el = document.createElement('option');
+        el.value = option.value;
+        el.textContent = option.label;
+        srTrimModeEl.appendChild(el);
+      }
+
+      const nextValue = options.some(option => option.value === previous)
+        ? previous
+        : (method === 'rank' ? 'trim_3_97' : 'trim_3_97');
+      if (method === 'rank') {
+        state.srRankTrimMode = nextValue;
+      } else {
+        state.srQqTrimMode = nextValue;
+      }
+      srTrimModeEl.value = nextValue;
     }
 
     function isSrAllowedCategory(category) {
@@ -2075,6 +2130,23 @@
           state.srWaterfallReferencePromise = null;
         });
       return await state.srWaterfallReferencePromise;
+    }
+
+    async function ensureSrRankReference() {
+      if (!HAS_SR_COMPARISON) return null;
+      if (state.srRankReferenceLoaded) return state.srRankReference;
+      if (state.srRankReferencePromise) return await state.srRankReferencePromise;
+
+      state.srRankReferencePromise = fetchOptionalJson(`${DATA_BASE}/sr_rank_reference.json`)
+        .then((payload) => {
+          state.srRankReference = payload;
+          state.srRankReferenceLoaded = true;
+          return payload;
+        })
+        .finally(() => {
+          state.srRankReferencePromise = null;
+        });
+      return await state.srRankReferencePromise;
     }
 
     function modeToStat(mode) {
@@ -2391,8 +2463,9 @@
       const includeEnv = Boolean(srIncludeEnvEl?.checked);
       const selectedCategories = selectedSrCategories();
       const trimMode = srActiveTrimMode();
+      const summaryGetter = srCurrentMethod() === 'rank' ? srRankSummaryForRecord : srSummaryForRecord;
       return getAllMetricsEnriched()
-        .filter(record => srSummaryForRecord(record, trimMode))
+        .filter(record => summaryGetter(record, trimMode))
         .filter(record => isSrAllowedCategory(record.category))
         .filter(record => includeEnv || !Boolean(record.is_environmental))
         .filter(record => selectedCategories.has(record.category || 'Other Clinical'));
@@ -3962,6 +4035,16 @@
       return root;
     }
 
+    function srRankSummaryForRecord(record, trimMode = srActiveTrimMode()) {
+      const root = record?.sr_rank_comparison_summary || null;
+      if (!root) return null;
+
+      const trimSummaries = root.trim_summaries || {};
+      if (trimSummaries[trimMode]) return trimSummaries[trimMode];
+      if (trimSummaries[root.default_trim_mode]) return trimSummaries[root.default_trim_mode];
+      return root;
+    }
+
     function srDetailForSeries(series, trimMode = srActiveTrimMode()) {
       const root = series?.sr_comparison || null;
       if (!root) return null;
@@ -3979,6 +4062,100 @@
         ...active,
         active_trim_mode: activeTrimMode,
       };
+    }
+
+    function srRankDetailForSeries(series, trimMode = srActiveTrimMode()) {
+      const root = series?.sr_rank_comparison || null;
+      if (!root) return null;
+
+      const trimDetails = root.trim_details || {};
+      let activeTrimMode = trimMode;
+      if (!trimDetails[activeTrimMode]) {
+        activeTrimMode = root.default_trim_mode || activeTrimMode;
+      }
+      if (!trimDetails[activeTrimMode]) return root;
+
+      const active = trimDetails[activeTrimMode];
+      return {
+        ...root,
+        ...active,
+        active_trim_mode: activeTrimMode,
+      };
+    }
+
+    function srSummaryForMethod(record, trimMode = srActiveTrimMode()) {
+      if (srCurrentMethod() === 'rank') return srRankSummaryForRecord(record, trimMode);
+      return srSummaryForRecord(record, trimMode);
+    }
+
+    function srDetailForMethod(series, trimMode = srActiveTrimMode()) {
+      if (srCurrentMethod() === 'rank') return srRankDetailForSeries(series, trimMode);
+      return srDetailForSeries(series, trimMode);
+    }
+
+    function srRankReferenceRow(trimMode = srActiveTrimMode(), ageBinLabel = selectedSrAgeBinLabel()) {
+      const root = state.srRankReference || null;
+      if (!root) return null;
+
+      const trimDetails = root.trim_details || {};
+      const detail = trimDetails[trimMode] || trimDetails[root.default_trim_mode] || null;
+      if (!detail) return null;
+      return srBinRowForLabel(detail.bins || [], ageBinLabel);
+    }
+
+    function srSortFieldOptions(method) {
+      if (method === 'rank') {
+        return [
+          { value: 'mean_wasserstein_rank', label: 'Mean rank-W' },
+          { value: 'current_bin_wasserstein_rank', label: 'Selected-bin rank-W' },
+          { value: 'min_wasserstein_rank', label: 'Minimum rank-W' },
+          { value: 'median_wasserstein_rank', label: 'Median rank-W' },
+          { value: 'valid_rank_bin_count', label: 'Valid bins' },
+        ];
+      }
+      return [
+        { value: 'mean_r2', label: 'Mean R²' },
+        { value: 'mean_wasserstein_z', label: 'Mean z-Wasserstein' },
+        { value: 'current_bin_r2', label: 'Selected-bin R²' },
+        { value: 'current_bin_wasserstein_z', label: 'Selected-bin z-Wasserstein' },
+        { value: 'min_r2', label: 'Minimum R²' },
+        { value: 'median_r2', label: 'Median R²' },
+        { value: 'min_wasserstein_z', label: 'Minimum z-Wasserstein' },
+        { value: 'median_wasserstein_z', label: 'Median z-Wasserstein' },
+        { value: 'valid_bin_count', label: 'Valid bins' },
+        { value: 'mean_slope_m', label: 'Mean m' },
+        { value: 'slope_m_sd', label: 'SD m' },
+        { value: 'mean_intercept_c', label: 'Mean c' },
+        { value: 'intercept_c_sd', label: 'SD c' },
+      ];
+    }
+
+    function srDefaultSortField(method) {
+      return method === 'rank' ? 'mean_wasserstein_rank' : 'mean_r2';
+    }
+
+    function srDefaultSortDirection(method) {
+      return method === 'rank' ? 'asc' : 'desc';
+    }
+
+    function renderSrSortFieldOptions() {
+      if (!srSortFieldEl) return;
+      const method = srCurrentMethod();
+      const options = srSortFieldOptions(method);
+      const previous = state.srSortField;
+      srSortFieldEl.innerHTML = '';
+      for (const option of options) {
+        const el = document.createElement('option');
+        el.value = option.value;
+        el.textContent = option.label;
+        srSortFieldEl.appendChild(el);
+      }
+
+      const nextValue = options.some(option => option.value === previous)
+        ? previous
+        : srDefaultSortField(method);
+      state.srSortField = nextValue;
+      srSortFieldEl.value = nextValue;
     }
 
     function srBinRowForLabel(rows, ageBinLabel) {
@@ -4015,7 +4192,7 @@
     function renderSrSummaryStrip(record, detail) {
       if (!srSummaryStripEl) return;
       const trimMode = detail?.active_trim_mode || srActiveTrimMode();
-      const summary = srSummaryForRecord(record, trimMode);
+      const summary = srSummaryForMethod(record, trimMode);
       if (!summary) {
         srSummaryStripEl.innerHTML = '<div class="sr-stat-card"><strong>SR summary</strong><span>NA</span></div>';
         return;
@@ -4023,28 +4200,49 @@
 
       const currentBinLabel = selectedSrAgeBinLabel();
       const currentDetailRow = srBinRowForLabel(detail?.bins || [], currentBinLabel);
-      const currentR2Row = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
-      const currentWassersteinRow = srBinRowForLabel(summary.wasserstein_z_by_age_bin || [], currentBinLabel);
-      const cards = [
-        ['Selected bin', currentBinLabel],
-        ['Biomarker trim', detail?.trim_label || summary.trim_label || srTrimLabel(trimMode)],
-        ['Current R²', formatNum(currentDetailRow?.r2 ?? currentR2Row?.r2, 4)],
-        ['Current z-W', formatNum(currentDetailRow?.wasserstein_z ?? currentWassersteinRow?.wasserstein_z, 4)],
-        ['Current m', formatNum(currentDetailRow?.slope_m, 4)],
-        ['Current c', formatNum(currentDetailRow?.intercept_c, 4)],
-        ['Mean R²', formatNum(summary.mean_r2, 4)],
-        ['Mean z-W', formatNum(summary.mean_wasserstein_z, 4)],
-        ['Min R²', formatNum(summary.min_r2, 4)],
-        ['Mean m', formatNum(summary.mean_slope_m, 4)],
-        ['Mean c', formatNum(summary.mean_intercept_c, 4)],
-        ['Valid bins', String(summary.valid_bin_count ?? 'NA')],
-      ];
+      let cards = [];
+      if (srCurrentMethod() === 'rank') {
+        const currentRankRow = srBinRowForLabel(summary.wasserstein_rank_by_age_bin || [], currentBinLabel);
+        cards = [
+          ['Selected bin', currentBinLabel],
+          ['Per-bin trim', detail?.trim_label || summary.trim_label || srTrimLabel(trimMode)],
+          ['Current rank-W', formatNum(currentDetailRow?.wasserstein_rank ?? currentRankRow?.wasserstein_rank, 4)],
+          ['Mean rank-W', formatNum(summary.mean_wasserstein_rank, 4)],
+          ['Min rank-W', formatNum(summary.min_wasserstein_rank, 4)],
+          ['Median rank-W', formatNum(summary.median_wasserstein_rank, 4)],
+          ['Current NHANES n', String(currentDetailRow?.nhanes_n ?? 'NA')],
+          ['Current SR n', String(currentDetailRow?.sr_n ?? 'NA')],
+          ['Valid bins', String(summary.valid_rank_bin_count ?? 'NA')],
+        ];
+      } else {
+        const currentR2Row = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
+        const currentWassersteinRow = srBinRowForLabel(summary.wasserstein_z_by_age_bin || [], currentBinLabel);
+        cards = [
+          ['Selected bin', currentBinLabel],
+          ['Biomarker trim', detail?.trim_label || summary.trim_label || srTrimLabel(trimMode)],
+          ['Current R²', formatNum(currentDetailRow?.r2 ?? currentR2Row?.r2, 4)],
+          ['Current z-W', formatNum(currentDetailRow?.wasserstein_z ?? currentWassersteinRow?.wasserstein_z, 4)],
+          ['Current m', formatNum(currentDetailRow?.slope_m, 4)],
+          ['Current c', formatNum(currentDetailRow?.intercept_c, 4)],
+          ['Mean R²', formatNum(summary.mean_r2, 4)],
+          ['Mean z-W', formatNum(summary.mean_wasserstein_z, 4)],
+          ['Min R²', formatNum(summary.min_r2, 4)],
+          ['Mean m', formatNum(summary.mean_slope_m, 4)],
+          ['Mean c', formatNum(summary.mean_intercept_c, 4)],
+          ['Valid bins', String(summary.valid_bin_count ?? 'NA')],
+        ];
+      }
       srSummaryStripEl.innerHTML = cards
         .map(([label, value]) => `<div class="sr-stat-card"><strong>${label}</strong><span>${value}</span></div>`)
         .join('');
     }
 
     function renderSrQQPlot(record, detail, displayName) {
+      if (srCurrentMethod() === 'rank') {
+        renderSrRankCdfPlot(record, detail, displayName);
+        return;
+      }
+
       const currentBinLabel = selectedSrAgeBinLabel();
       const row = srBinRowForLabel(detail?.bins || [], currentBinLabel);
       if (!row || !Array.isArray(row.qq_sr_values) || row.qq_sr_values.length < 2 || !Array.isArray(row.qq_biomarker_values) || row.qq_biomarker_values.length < 2) {
@@ -4098,7 +4296,79 @@
       }, mobile), { responsive: true, displaylogo: false });
     }
 
+    function buildRankCdfTrace(rankValues) {
+      const sorted = (Array.isArray(rankValues) ? rankValues : [])
+        .map(Number)
+        .filter(value => Number.isFinite(value))
+        .sort((left, right) => left - right);
+      if (!sorted.length) return { x: [], y: [] };
+
+      const x = [];
+      const y = [];
+      for (let index = 0; index < sorted.length; index += 1) {
+        x.push(sorted[index]);
+        y.push((index + 1) / sorted.length);
+      }
+      return { x, y };
+    }
+
+    function renderSrRankCdfPlot(record, detail, displayName) {
+      const currentBinLabel = selectedSrAgeBinLabel();
+      const row = srBinRowForLabel(detail?.bins || [], currentBinLabel);
+      const srRow = srRankReferenceRow(detail?.active_trim_mode, currentBinLabel);
+      const nhanesTrace = buildRankCdfTrace(row?.nhanes_rank_values || []);
+      const srTrace = buildRankCdfTrace(srRow?.sr_rank_values || []);
+      if (nhanesTrace.x.length < 2 || srTrace.x.length < 2) {
+        plotNoData(
+          'sr-qq-plot',
+          `${displayName} — rank comparison`,
+          `No valid rank-comparison data for age bin ${currentBinLabel}.`
+        );
+        return;
+      }
+
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('sr-qq-plot', [
+        {
+          type: 'scatter',
+          mode: 'lines',
+          x: srTrace.x,
+          y: srTrace.y,
+          line: { color: '#2563eb', width: 2.5 },
+          name: 'SR model X',
+          hovertemplate: 'Percentile-rank=%{x:.4f}<br>CDF=%{y:.4f}<extra></extra>',
+        },
+        {
+          type: 'scatter',
+          mode: 'lines',
+          x: nhanesTrace.x,
+          y: nhanesTrace.y,
+          line: { color: '#0f766e', width: 2.5 },
+          name: 'Biomarker',
+          hovertemplate: 'Percentile-rank=%{x:.4f}<br>CDF=%{y:.4f}<extra></extra>',
+        },
+      ], applyPlotTheme({
+        title: `${displayName} vs SR model — Rank CDF (${currentBinLabel})`,
+        annotations: [{
+          xref: 'paper',
+          yref: 'paper',
+          x: 1,
+          y: 1.08,
+          showarrow: false,
+          text: `Per-bin trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | rank-W=${formatNum(row.wasserstein_rank, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | SR alive n=${row.sr_n ?? 'NA'}`,
+          font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
+        }],
+        xaxis: { title: 'Normalized rank (1-100)' },
+        yaxis: { title: 'Cumulative fraction within selected age bin', range: [0, 1.02] },
+      }, mobile), { responsive: true, displaylogo: false });
+    }
+
     function renderSrR2Plot(record, detail) {
+      if (srCurrentMethod() === 'rank') {
+        renderSrRankDistancePlot(record, detail);
+        return;
+      }
+
       const rows = detail?.bins || [];
       const x = rows.map(row => row.age_bin);
       const y = rows.map(row => row.r2);
@@ -4131,7 +4401,49 @@
       }, mobile), { responsive: true, displaylogo: false });
     }
 
+    function renderSrRankDistancePlot(record, detail) {
+      const rows = detail?.bins || [];
+      const x = rows.map(row => row.age_bin);
+      const y = rows.map(row => row.wasserstein_rank);
+      if (!rows.length || y.every(value => value === null || value === undefined || Number.isNaN(Number(value)))) {
+        plotNoData('sr-r2-plot', 'Rank-Wasserstein across age bins', 'No valid age-bin rank distances are available for this biomarker.');
+        return;
+      }
+
+      const currentBinLabel = selectedSrAgeBinLabel();
+      const mobile = window.matchMedia('(max-width: 760px)').matches;
+      Plotly.newPlot('sr-r2-plot', [
+        {
+          type: 'scatter',
+          mode: 'lines+markers',
+          x,
+          y,
+          marker: {
+            color: x.map(label => label === currentBinLabel ? '#b45309' : '#0f766e'),
+            size: x.map(label => label === currentBinLabel ? 10 : 7),
+          },
+          line: { color: '#0f766e', width: 2 },
+          name: 'Rank-W',
+          hovertemplate: 'age_bin=%{x}<br>rank-W=%{y:.4f}<extra></extra>',
+        },
+      ], applyPlotTheme({
+        title: `Rank-Wasserstein across age bins (${detail?.trim_label || srTrimLabel(detail?.active_trim_mode)})`,
+        xaxis: { title: 'Age bin' },
+        yaxis: { title: 'Rank-Wasserstein' },
+        showlegend: false,
+      }, mobile), { responsive: true, displaylogo: false });
+    }
+
     function renderSrCoefficientPlot(record, detail) {
+      if (srCurrentMethod() === 'rank') {
+        plotNoData(
+          'sr-coef-plot',
+          'Rank mode summary',
+          'Rank-Wasserstein mode does not fit slope m or intercept c. Use the rank CDF and age-bin distance plot instead.'
+        );
+        return;
+      }
+
       const rows = detail?.bins || [];
       const slopeValues = rows.map(row => row.slope_m);
       const interceptValues = rows.map(row => row.intercept_c);
@@ -4191,16 +4503,24 @@
       if (!srRankTableEl) return;
       const currentBinLabel = selectedSrAgeBinLabel();
       const trimMode = srActiveTrimMode();
-      const sortField = srSortFieldEl?.value || state.srSortField || 'mean_r2';
-      const sortDirection = srSortDirectionEl?.value || state.srSortDirection || 'desc';
+      const method = srCurrentMethod();
+      const sortField = srSortFieldEl?.value || state.srSortField || srDefaultSortField(method);
+      const sortDirection = srSortDirectionEl?.value || state.srSortDirection || srDefaultSortDirection(method);
       state.srSortField = sortField;
       state.srSortDirection = sortDirection;
 
       const rows = getSrComparisonRecords()
-        .map(record => ({ ...record, srSummary: srSummaryForRecord(record, trimMode) }))
+        .map(record => ({ ...record, srSummary: srSummaryForMethod(record, trimMode) }))
         .filter(record => Boolean(record.srSummary));
 
       function sortableValue(record) {
+        if (method === 'rank') {
+          if (sortField === 'current_bin_wasserstein_rank') {
+            const current = srBinRowForLabel(record.srSummary.wasserstein_rank_by_age_bin || [], currentBinLabel);
+            return sortableNumber(current?.wasserstein_rank);
+          }
+          return sortableNumber(record.srSummary?.[sortField]);
+        }
         if (sortField === 'current_bin_r2') {
           const current = srBinRowForLabel(record.srSummary.r2_by_age_bin || [], currentBinLabel);
           return sortableNumber(current?.r2);
@@ -4224,12 +4544,31 @@
         return sortDirection === 'asc' ? (a - b) : (b - a);
       });
 
-      let html = '<thead><tr><th>Biomarker</th><th>Category</th><th>Mean R²</th><th>Mean z-W</th><th>Current bin R²</th><th>Current z-W</th><th>Min R²</th><th>Median R²</th><th>Min z-W</th><th>Median z-W</th><th>Mean m</th><th>SD m</th><th>Mean c</th><th>SD c</th><th>Valid bins</th></tr></thead><tbody>';
+      let html = '';
+      if (method === 'rank') {
+        html = '<thead><tr><th>Biomarker</th><th>Category</th><th>Mean rank-W</th><th>Current bin rank-W</th><th>Min rank-W</th><th>Median rank-W</th><th>Valid bins</th></tr></thead><tbody>';
+      } else {
+        html = '<thead><tr><th>Biomarker</th><th>Category</th><th>Mean R²</th><th>Mean z-W</th><th>Current bin R²</th><th>Current z-W</th><th>Min R²</th><th>Median R²</th><th>Min z-W</th><th>Median z-W</th><th>Mean m</th><th>SD m</th><th>Mean c</th><th>SD c</th><th>Valid bins</th></tr></thead><tbody>';
+      }
       for (const record of rows) {
         const summary = record.srSummary;
+        const selectedAttr = record.biomarker_id === selectedId ? ' style="background: rgba(15,118,110,0.12);"' : '';
+        if (method === 'rank') {
+          const currentRank = srBinRowForLabel(summary.wasserstein_rank_by_age_bin || [], currentBinLabel);
+          html += `<tr data-id="${record.biomarker_id}"${selectedAttr}>`
+            + `<td>${record.display_name}</td>`
+            + `<td>${record.category || 'Other Clinical'}</td>`
+            + `<td>${formatNum(summary.mean_wasserstein_rank, 4)}</td>`
+            + `<td>${formatNum(currentRank?.wasserstein_rank, 4)}</td>`
+            + `<td>${formatNum(summary.min_wasserstein_rank, 4)}</td>`
+            + `<td>${formatNum(summary.median_wasserstein_rank, 4)}</td>`
+            + `<td>${summary.valid_rank_bin_count ?? 'NA'}</td>`
+            + '</tr>';
+          continue;
+        }
+
         const currentR2 = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
         const currentW = srBinRowForLabel(summary.wasserstein_z_by_age_bin || [], currentBinLabel);
-        const selectedAttr = record.biomarker_id === selectedId ? ' style="background: rgba(15,118,110,0.12);"' : '';
         html += `<tr data-id="${record.biomarker_id}"${selectedAttr}>`
           + `<td>${record.display_name}</td>`
           + `<td>${record.category || 'Other Clinical'}</td>`
@@ -4272,9 +4611,24 @@
       }
 
       const currentBinLabel = selectedSrAgeBinLabel();
-      let html = '<thead><tr><th>Age bin</th><th>R²</th><th>z-Wasserstein</th><th>m</th><th>c</th><th>NHANES n</th><th>SR n</th><th>NHANES Q1</th><th>NHANES median</th><th>NHANES Q3</th><th>SR Q1</th><th>SR median</th><th>SR Q3</th></tr></thead><tbody>';
+      let html = '';
+      if (srCurrentMethod() === 'rank') {
+        html = '<thead><tr><th>Age bin</th><th>Rank-W</th><th>NHANES n</th><th>SR n</th></tr></thead><tbody>';
+      } else {
+        html = '<thead><tr><th>Age bin</th><th>R²</th><th>z-Wasserstein</th><th>m</th><th>c</th><th>NHANES n</th><th>SR n</th><th>NHANES Q1</th><th>NHANES median</th><th>NHANES Q3</th><th>SR Q1</th><th>SR median</th><th>SR Q3</th></tr></thead><tbody>';
+      }
       for (const row of rows) {
         const selectedAttr = row.age_bin === currentBinLabel ? ' style="background: rgba(15,118,110,0.12);"' : '';
+        if (srCurrentMethod() === 'rank') {
+          html += `<tr${selectedAttr}>`
+            + `<td>${row.age_bin}</td>`
+            + `<td>${formatNum(row.wasserstein_rank, 4)}</td>`
+            + `<td>${row.nhanes_n ?? 'NA'}</td>`
+            + `<td>${row.sr_n ?? 'NA'}</td>`
+            + '</tr>';
+          continue;
+        }
+
         html += `<tr${selectedAttr}>`
           + `<td>${row.age_bin}</td>`
           + `<td>${formatNum(row.r2, 4)}</td>`
@@ -4298,6 +4652,7 @@
     async function renderSRComparison(biomarkerId = null) {
       if (!HAS_SR_COMPARISON) return;
       const trimMode = srActiveTrimMode();
+      const method = srCurrentMethod();
 
       const available = getSrComparisonRecords();
       if (!available.length) {
@@ -4307,8 +4662,8 @@
         if (srRankTableEl) srRankTableEl.innerHTML = '';
         if (srBinTableEl) srBinTableEl.innerHTML = '';
         plotNoData('sr-qq-plot', 'SR comparison unavailable', 'No SR biomarkers match the current category filter.');
-        plotNoData('sr-r2-plot', 'R² across age bins', 'No SR biomarkers match the current category filter.');
-        plotNoData('sr-coef-plot', 'QQ coefficients across age bins', 'No SR biomarkers match the current category filter.');
+        plotNoData('sr-r2-plot', method === 'rank' ? 'Rank-Wasserstein across age bins' : 'R² across age bins', 'No SR biomarkers match the current category filter.');
+        plotNoData('sr-coef-plot', method === 'rank' ? 'Rank mode summary' : 'QQ coefficients across age bins', 'No SR biomarkers match the current category filter.');
         return;
       }
 
@@ -4324,10 +4679,15 @@
       const md = state.metadataById.get(id) || {};
       const displayName = md.display_name || record?.biomarker_name || id;
       const category = md.category || 'Other Clinical';
+      if (method === 'rank') {
+        await ensureSrRankReference();
+      }
       const series = await loadSeries(id);
-      const detail = srDetailForSeries(series, trimMode);
+      const detail = srDetailForMethod(series, trimMode);
       if (srSelectedBiomarkerEl) {
-        srSelectedBiomarkerEl.textContent = `${displayName} · ${category} · biomarker trim ${detail?.trim_label || srTrimLabel(trimMode)}`;
+        const trimPrefix = method === 'rank' ? 'per-bin trim' : 'biomarker trim';
+        const methodLabel = method === 'rank' ? 'Rank-Wasserstein' : 'QQ / Shape';
+        srSelectedBiomarkerEl.textContent = `${displayName} · ${category} · ${methodLabel} · ${trimPrefix} ${detail?.trim_label || srTrimLabel(trimMode)}`;
       }
 
       renderSrSummaryStrip(record, detail);
@@ -5692,8 +6052,8 @@
       histIncludeEnvEl.checked = false;
       if (srAgeBinSliderEl) srAgeBinSliderEl.value = String(state.srAgeBinIndex);
       if (srAgeBinLabelEl) srAgeBinLabelEl.textContent = selectedSrAgeBinLabel();
-      if (srSortFieldEl) srSortFieldEl.value = state.srSortField;
       if (srSortDirectionEl) srSortDirectionEl.value = state.srSortDirection;
+      if (srMethodModeEl) srMethodModeEl.value = state.srMethod;
       if (!HAS_CLALIT) {
         if (hideClalitWrapEl) hideClalitWrapEl.style.display = 'none';
         if (compareClalitTitleEl) compareClalitTitleEl.textContent = 'External Cohort Agreement';
@@ -5730,9 +6090,8 @@
       if (srCategoryMultiEl) {
         renderSrCategoryOptions(false);
       }
-      if (srTrimModeEl) {
-        srTrimModeEl.value = state.srTrimMode || 'trim_3_97';
-      }
+      renderSrTrimModeOptions();
+      renderSrSortFieldOptions();
       renderScatterCategoryOptions(false);
       renderHistogramCategoryOptions(false);
       renderWaterfallOptions();
@@ -6198,16 +6557,29 @@
         if (srAgeBinLabelEl) srAgeBinLabelEl.textContent = selectedSrAgeBinLabel();
         await renderSRComparison(state.currentId);
       });
+      srMethodModeEl?.addEventListener('change', async () => {
+        state.srMethod = srMethodModeEl.value === 'rank' ? 'rank' : 'qq';
+        state.srSortField = srDefaultSortField(state.srMethod);
+        state.srSortDirection = srDefaultSortDirection(state.srMethod);
+        renderSrTrimModeOptions();
+        if (srSortDirectionEl) srSortDirectionEl.value = state.srSortDirection;
+        renderSrSortFieldOptions();
+        await renderSRComparison(srBiomarkerEl?.value || state.currentId);
+      });
       srTrimModeEl?.addEventListener('change', async () => {
-        state.srTrimMode = srTrimModeEl.value || 'trim_3_97';
+        if (srCurrentMethod() === 'rank') {
+          state.srRankTrimMode = srTrimModeEl.value || 'trim_3_97';
+        } else {
+          state.srQqTrimMode = srTrimModeEl.value || 'trim_3_97';
+        }
         await renderSRComparison(srBiomarkerEl?.value || state.currentId);
       });
       srSortFieldEl?.addEventListener('change', () => {
-        state.srSortField = srSortFieldEl.value || 'mean_r2';
+        state.srSortField = srSortFieldEl.value || srDefaultSortField(srCurrentMethod());
         renderSrRankTable(state.currentId);
       });
       srSortDirectionEl?.addEventListener('change', () => {
-        state.srSortDirection = srSortDirectionEl.value || 'desc';
+        state.srSortDirection = srSortDirectionEl.value || srDefaultSortDirection(srCurrentMethod());
         renderSrRankTable(state.currentId);
       });
       window.addEventListener('hashchange', () => {

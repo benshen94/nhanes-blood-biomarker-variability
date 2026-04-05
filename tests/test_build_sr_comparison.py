@@ -15,8 +15,12 @@ from build_sr_comparison import (
     assign_age_bins,
     build_sr_reference_rows,
     build_sr_waterfall_reference,
+    build_rank_bin_distributions,
     compute_qq_fit,
+    compute_rank_bin_rows,
+    percentile_ranks_with_tie_breaks,
     summarize_biomarker_bins,
+    summarize_rank_bins,
     trim_distribution,
 )
 
@@ -80,6 +84,71 @@ class TestBuildSrComparison(unittest.TestCase):
         self.assertAlmostEqual(summary["min_wasserstein_z"], 0.10, places=8)
         self.assertEqual(len(summary["r2_by_age_bin"]), 3)
         self.assertEqual(len(summary["wasserstein_z_by_age_bin"]), 3)
+
+    def test_percentile_ranks_with_tie_breaks_is_stable(self):
+        values = np.array([1.0, 1.0, 1.0, 2.0, 2.0, 3.0], dtype=float)
+
+        first = percentile_ranks_with_tie_breaks(values, "stable-seed")
+        second = percentile_ranks_with_tie_breaks(values, "stable-seed")
+
+        self.assertTrue(np.allclose(first, second))
+        self.assertEqual(sorted(np.round(first, 6).tolist()), sorted(np.round(second, 6).tolist()))
+
+    def test_build_rank_bin_distributions_trims_each_age_bin_before_pooling(self):
+        values_by_age_bin = {
+            "20-24": np.arange(10, dtype=float),
+            "25-29": np.arange(100, 110, dtype=float),
+        }
+
+        rank_bins = build_rank_bin_distributions(values_by_age_bin, trim_mode_key="trim_10_90", seed_key="trim-test")
+
+        kept = np.concatenate([rank_bins["20-24"], rank_bins["25-29"]])
+        self.assertEqual(len(kept), 16)
+        self.assertEqual(len(rank_bins["20-24"]), 8)
+        self.assertEqual(len(rank_bins["25-29"]), 8)
+        self.assertTrue(np.all((kept >= 1) & (kept <= 100)))
+
+    def test_compute_rank_bin_rows_detects_shifted_age_localization(self):
+        biomarker_values_by_age_bin = {
+            age_bin: np.array([], dtype=float) for age_bin in AGE_BIN_LABELS
+        }
+        sr_values_by_age_bin = {
+            age_bin: np.array([], dtype=float) for age_bin in AGE_BIN_LABELS
+        }
+
+        sr_values_by_age_bin["20-24"] = np.linspace(0.0, 1.0, 40)
+        sr_values_by_age_bin["25-29"] = np.linspace(2.0, 3.0, 40)
+        biomarker_values_by_age_bin["20-24"] = np.linspace(2.0, 3.0, 40)
+        biomarker_values_by_age_bin["25-29"] = np.linspace(0.0, 1.0, 40)
+
+        sr_rank_bins = build_rank_bin_distributions(sr_values_by_age_bin, trim_mode_key="all", seed_key="sr")
+        rows = compute_rank_bin_rows(
+            biomarker_id="marker-a",
+            biomarker_name="Marker A",
+            biomarker_values_by_age_bin=biomarker_values_by_age_bin,
+            sr_rank_bins=sr_rank_bins,
+            trim_mode_key="all",
+        )
+
+        shifted_20 = next(row for row in rows if row["age_bin"] == "20-24")
+        shifted_25 = next(row for row in rows if row["age_bin"] == "25-29")
+        self.assertGreater(shifted_20["wasserstein_rank"], 40.0)
+        self.assertGreater(shifted_25["wasserstein_rank"], 40.0)
+
+    def test_summarize_rank_bins_ignores_missing_rows(self):
+        rows = [
+            {"age_bin": "20-24", "age_mid": 22.5, "wasserstein_rank": 0.10},
+            {"age_bin": "25-29", "age_mid": 27.5, "wasserstein_rank": None},
+            {"age_bin": "30-34", "age_mid": 32.5, "wasserstein_rank": 0.30},
+        ]
+
+        summary = summarize_rank_bins(rows)
+
+        self.assertEqual(summary["valid_rank_bin_count"], 2)
+        self.assertAlmostEqual(summary["mean_wasserstein_rank"], 0.20, places=8)
+        self.assertAlmostEqual(summary["min_wasserstein_rank"], 0.10, places=8)
+        self.assertAlmostEqual(summary["median_wasserstein_rank"], 0.20, places=8)
+        self.assertEqual(len(summary["wasserstein_rank_by_age_bin"]), 3)
 
     def test_build_sr_reference_rows_emits_all_nhanes_bins(self):
         tspan = np.array([AGE_BIN_MIDS[label] for label in AGE_BIN_LABELS], dtype=float)

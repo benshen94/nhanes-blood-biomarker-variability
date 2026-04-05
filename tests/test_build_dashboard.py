@@ -133,6 +133,7 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertIn('id="sr-category-all"', html)
         self.assertIn('id="sr-category-core"', html)
         self.assertIn('id="sr-category-clear"', html)
+        self.assertIn('id="sr-method-mode"', html)
         self.assertIn('id="sr-trim-mode"', html)
         self.assertIn('id="waterfall-compare-sr" type="checkbox"', html)
         self.assertIn("const HAS_SR_COMPARISON = true;", html)
@@ -255,6 +256,59 @@ class TestBuildDashboard(unittest.TestCase):
                     },
                 }
             },
+            "rank_summary_by_biomarker": {
+                "sr-marker": {
+                    "default_trim_mode": "all",
+                    "trim_modes": [{"key": "all", "label": "0% each tail", "tail_pct": 0, "lo": 0.0, "hi": 1.0}],
+                    "trim_summaries": {
+                        "all": {
+                            "trim_mode": "all",
+                            "trim_label": "0% each tail",
+                            "trim_rule": {"lo": 0.0, "hi": 1.0},
+                            "mean_wasserstein_rank": 0.08,
+                            "min_wasserstein_rank": 0.04,
+                            "median_wasserstein_rank": 0.08,
+                            "valid_rank_bin_count": 1,
+                            "wasserstein_rank_by_age_bin": [{"age_bin": "40-44", "age_mid": 42.5, "wasserstein_rank": 0.08}],
+                        }
+                    },
+                }
+            },
+            "rank_detail_by_biomarker": {
+                "sr-marker": {
+                    "default_trim_mode": "all",
+                    "trim_modes": [{"key": "all", "label": "0% each tail", "tail_pct": 0, "lo": 0.0, "hi": 1.0}],
+                    "bins": [
+                        {
+                            "age_bin": "40-44",
+                            "age_mid": 42.5,
+                            "wasserstein_rank": 0.08,
+                            "nhanes_n": 55,
+                            "sr_n": 1000,
+                            "nhanes_rank_values": [0.2, 0.5, 0.8],
+                            "sr_rank_values": [0.1, 0.4, 0.7],
+                        }
+                    ],
+                    "trim_details": {
+                        "all": {
+                            "trim_mode": "all",
+                            "trim_label": "0% each tail",
+                            "trim_rule": {"lo": 0.0, "hi": 1.0},
+                            "bins": [
+                                {
+                                    "age_bin": "40-44",
+                                    "age_mid": 42.5,
+                                    "wasserstein_rank": 0.08,
+                                    "nhanes_n": 55,
+                                    "sr_n": 1000,
+                                    "nhanes_rank_values": [0.2, 0.5, 0.8],
+                                    "sr_rank_values": [0.1, 0.4, 0.7],
+                                }
+                            ],
+                        }
+                    },
+                }
+            },
         }
 
         _, metrics, _, series_payloads = build_outputs(
@@ -270,10 +324,13 @@ class TestBuildDashboard(unittest.TestCase):
 
         self.assertEqual(metrics[0]["sr_comparison_summary"]["mean_r2"], 0.91)
         self.assertEqual(metrics[0]["sr_comparison_summary"]["trim_summaries"]["trim_3_97"]["mean_wasserstein_z"], 0.14)
+        self.assertEqual(metrics[0]["sr_rank_comparison_summary"]["trim_summaries"]["all"]["mean_wasserstein_rank"], 0.08)
         payload = next(iter(series_payloads.values()))
         self.assertIn("sr_comparison", payload)
+        self.assertIn("sr_rank_comparison", payload)
         self.assertEqual(payload["sr_comparison"]["bins"][0]["age_bin"], "40-44")
         self.assertEqual(payload["sr_comparison"]["trim_details"]["trim_3_97"]["bins"][0]["wasserstein_z"], 0.12)
+        self.assertEqual(payload["sr_rank_comparison"]["trim_details"]["all"]["bins"][0]["wasserstein_rank"], 0.08)
 
     def test_write_dashboard_bundle_writes_shared_sr_reference_payload(self):
         with tempfile.TemporaryDirectory() as tmpdir:

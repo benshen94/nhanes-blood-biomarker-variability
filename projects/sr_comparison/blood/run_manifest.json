@@ -1,6 +1,6 @@
 {
-  "built_at_unix": 1774254040,
-  "duration_seconds": 214.54,
+  "built_at_unix": 1775401106,
+  "duration_seconds": 230.74,
   "long_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/data/processed/biomarker_long.parquet",
   "out_root": "projects/sr_comparison/blood",
   "sr_script_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py",
@@ -28,6 +28,7 @@
     "80-84"
   ],
   "default_trim_mode": "trim_3_97",
+  "default_rank_trim_mode": "trim_3_97",
   "trim_modes": [
     {
       "key": "all",
@@ -58,7 +59,40 @@
       "hi": 0.9
     }
   ],
+  "rank_trim_modes": [
+    {
+      "key": "trim_3_97",
+      "label": "3% each tail",
+      "tail_pct": 3,
+      "lo": 0.03,
+      "hi": 0.97
+    },
+    {
+      "key": "trim_5_95",
+      "label": "5% each tail",
+      "tail_pct": 5,
+      "lo": 0.05,
+      "hi": 0.95
+    },
+    {
+      "key": "trim_10_90",
+      "label": "10% each tail",
+      "tail_pct": 10,
+      "lo": 0.1,
+      "hi": 0.9
+    }
+  ],
   "sr_reference_tail_policy": "alive_only_no_tail_trimming",
+  "rank_tail_policy": "trim_each_age_bin_then_pool_for_percentile_ranking",
+  "rank_tie_policy": "deterministic_seeded_random_tie_breaks",
   "min_bin_n": 30,
-  "biomarker_count": 689
+  "biomarker_count": 689,
+  "outputs": {
+    "biomarker_qq_summary_csv": "projects/sr_comparison/blood/biomarker_qq_summary.csv",
+    "biomarker_qq_detail_csv": "projects/sr_comparison/blood/biomarker_qq_detail.csv",
+    "biomarker_rank_summary_csv": "projects/sr_comparison/blood/biomarker_rank_summary.csv",
+    "biomarker_rank_detail_csv": "projects/sr_comparison/blood/biomarker_rank_detail.csv",
+    "detail_by_biomarker_dir": "projects/sr_comparison/blood/detail_by_biomarker",
+    "dashboard_payload_json": "projects/sr_comparison/blood/dashboard_payload.json"
+  }
 }
