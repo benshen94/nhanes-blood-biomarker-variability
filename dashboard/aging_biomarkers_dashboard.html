@@ -92,8 +92,8 @@
     .hero {
       position: relative;
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
-      gap: 28px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
       padding: 34px 34px 30px;
       overflow: hidden;
       border: 1px solid rgba(23, 36, 50, 0.08);
@@ -148,14 +148,14 @@
     .hero h1 {
       margin: 0;
       font-family: var(--font-display);
-      font-size: clamp(3rem, 6vw, 5.8rem);
+      font-size: clamp(3.2rem, 8vw, 6.7rem);
       line-height: 0.96;
       letter-spacing: -0.05em;
-      max-width: 9.2ch;
+      max-width: 12.5ch;
     }
 
     .hero-sub {
-      max-width: 48ch;
+      max-width: 62ch;
       margin: 0;
       font-size: 1rem;
       color: var(--ink-soft);
@@ -183,71 +183,14 @@
 
     .hero-stage {
       display: grid;
-      gap: 12px;
+      gap: 8px;
       align-content: start;
-      justify-items: end;
-      padding-top: 10px;
-    }
-
-    .hero-note {
-      justify-self: end;
-      max-width: 280px;
-      padding: 14px 16px;
-      border: 1px solid rgba(23, 36, 50, 0.1);
-      border-radius: var(--radius-sm);
-      background: rgba(252, 248, 241, 0.82);
-      color: var(--ink-soft);
-      font-size: 14px;
-      box-shadow: var(--shadow-soft);
-    }
-
-    .hero-age-track {
-      display: grid;
-      gap: 12px;
-      padding: 18px 20px;
-      border-radius: var(--radius-md);
-      background: linear-gradient(180deg, rgba(23, 36, 50, 0.04) 0%, rgba(23, 36, 50, 0.02) 100%);
-      border: 1px solid rgba(23, 36, 50, 0.08);
-    }
-
-    .hero-age-label {
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      font-weight: 700;
-      color: var(--ink-faint);
-    }
-
-    .hero-age-row {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .hero-age-cell {
-      display: grid;
-      gap: 6px;
-      padding: 12px 10px;
-      border-radius: 18px;
-      background: rgba(252, 248, 241, 0.8);
-      border: 1px solid rgba(23, 36, 50, 0.08);
-      text-align: center;
-    }
-
-    .hero-age-cell strong {
-      font-family: var(--font-display);
-      font-size: 1.2rem;
-      letter-spacing: -0.03em;
-      font-weight: 600;
-    }
-
-    .hero-age-cell span {
-      font-size: 12px;
-      color: var(--ink-faint);
+      justify-items: start;
+      padding-top: 0;
     }
 
     .hero-status {
-      justify-self: end;
+      justify-self: start;
       color: var(--ink-faint);
       font-size: 13px;
       font-weight: 600;
@@ -815,10 +758,15 @@
       background: rgba(252, 248, 241, 0.7);
     }
 
-    .details-grid,
-    .disclosure-grid {
+    .details-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .disclosure-grid {
+      display: grid;
+      grid-template-columns: 1fr;
       gap: 16px;
     }
 
@@ -919,6 +867,51 @@
       display: grid;
       gap: 16px;
       margin-top: 24px;
+    }
+
+    .tab-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .tab-summary-card {
+      display: grid;
+      gap: 6px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.92);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .tab-summary-card strong {
+      font-size: 0.98rem;
+      color: var(--ink);
+    }
+
+    .tab-summary-card span {
+      font-size: 0.93rem;
+      color: var(--ink-soft);
+    }
+
+    .test-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .test-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(255, 252, 247, 0.96);
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      font-weight: 600;
     }
 
     .big-bullet {
@@ -1572,9 +1565,9 @@
     <header class="hero reveal">
       <div class="hero-copy">
         <div class="eyebrow">Longevity Explorer</div>
-        <h1>Aging blood markers, made explorable.</h1>
+        <h1>How blood markers shift with age.</h1>
         <p class="hero-sub">
-          Familiar biomarkers across adulthood, with medians, spread, tails, disease comparisons, and an open blood-age calculator.
+          Familiar biomarkers across adulthood, with disease contrasts and an open blood-age calculator.
         </p>
       </div>
       <div class="hero-stage">
@@ -1613,40 +1606,49 @@
     <main>
       <section id="panel-start" class="panel active reveal">
         <div class="editorial-grid">
+          <article class="note-card">
+            <div class="section-kicker">At a glance</div>
+            <h3>What each tab lets you do</h3>
+            <div class="tab-summary-grid">
+              <div class="tab-summary-card">
+                <strong>Start Here</strong>
+                <span>See the featured collections and jump into the clearest aging signals fast.</span>
+              </div>
+              <div class="tab-summary-card">
+                <strong>Explore a Biomarker</strong>
+                <span>Trace one test across age using typical level, spread, tails, or sex split.</span>
+              </div>
+              <div class="tab-summary-card">
+                <strong>Disease Explorer</strong>
+                <span>Compare healthy participants with selected disease groups for one biomarker at a time.</span>
+              </div>
+              <div class="tab-summary-card">
+                <strong>What Changes Most?</strong>
+                <span>Rank biomarkers by how much they rise, fall, spread out, or diverge by sex.</span>
+              </div>
+              <div class="tab-summary-card">
+                <strong>Compare Biomarkers</strong>
+                <span>Overlay up to four markers on the same normalized age scale.</span>
+              </div>
+              <div class="tab-summary-card">
+                <strong>Blood Age</strong>
+                <span>Try the open PhenoAge calculator and read the caveats in plain language.</span>
+              </div>
+            </div>
+          </article>
+
           <article class="lead-story slab">
             <div>
-              <div class="section-kicker">Start with the big picture</div>
-              <h2>Six ways people want to read aging biology.</h2>
-              <p class="muted-copy">
-                These collections are tuned for social-facing exploration: familiar markers, strong age signal, and distribution changes that are easy to explain.
-              </p>
+              <div class="section-kicker">Featured collections</div>
+              <h2>Six windows into aging biology.</h2>
             </div>
             <div id="collection-grid" class="lead-grid"></div>
           </article>
 
           <div class="side-stack">
-            <article class="note-card reading-guide">
-              <div class="section-kicker">How to read this</div>
-              <h3>Three useful lenses</h3>
-              <ol class="reading-steps">
-                <li>
-                  <strong>1</strong>
-                  <div>Typical level shows where the middle of the distribution sits in each age bin.</div>
-                </li>
-                <li>
-                  <strong>2</strong>
-                  <div>Spread shows whether people become more or less variable with age.</div>
-                </li>
-                <li>
-                  <strong>3</strong>
-                  <div>Tail shape shows whether the upper or lower tail stretches faster than the center.</div>
-                </li>
-              </ol>
-            </article>
-
             <article class="note-card ranking-modules">
-              <div class="section-kicker">Quick entry points</div>
-              <h3>Public-friendly rankings</h3>
+              <div class="section-kicker">At a glance</div>
+              <h3>Fast entry points</h3>
               <p>Tap any marker to jump into the detailed explorer.</p>
               <div id="ranking-modules" class="ranking-module-list"></div>
             </article>
@@ -1699,7 +1701,6 @@
               </div>
               <label class="control-label">Spread uses</label>
               <div class="segmented">
-                <button class="mini-btn" data-spread-btn data-value="iqr" type="button">IQR</button>
                 <button class="mini-btn" data-spread-btn data-value="std" type="button">SD</button>
                 <button class="mini-btn" data-spread-btn data-value="cv" type="button">CV</button>
               </div>
@@ -2174,6 +2175,13 @@
             </details>
 
             <details class="fold-card">
+              <summary>Full list of biomarkers in this explorer</summary>
+              <div class="fold-card-body">
+                <div id="about-test-list" class="test-chip-list"></div>
+              </div>
+            </details>
+
+            <details class="fold-card">
               <summary>Technical notes</summary>
               <div class="fold-card-body">
                 <div class="facts">
@@ -2201,7 +2209,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1775388146";
+    const DATA_VERSION = "1775389496";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -2260,7 +2268,7 @@
       cohort: "pooled",
       trim: "trim_10_90",
       view: "typical",
-      spreadMetric: "iqr",
+      spreadMetric: "std",
       rankingsMetric: "median_rise",
       rankingsSpreadMode: "iqr",
       rankingsCollection: "all",
@@ -2602,7 +2610,7 @@
       if (view && ["typical", "spread", "tail", "sex"].includes(view)) {
         state.view = view;
       }
-      if (spread && ["iqr", "std", "cv"].includes(spread)) {
+      if (spread && ["std", "cv"].includes(spread)) {
         state.spreadMetric = spread;
       }
       if (compareMode && ["median", "iqr", "std", "cv", "upper_tail", "lower_tail"].includes(compareMode)) {
@@ -2709,6 +2717,18 @@
             </article>
           `;
         })
+        .join("");
+    }
+
+    function renderAboutTestList() {
+      if (!refs.aboutTestList) {
+        return;
+      }
+
+      refs.aboutTestList.innerHTML = state.manifest
+        .slice()
+        .sort((left, right) => left.display_name.localeCompare(right.display_name))
+        .map((entry) => `<span class="test-chip">${entry.display_name}</span>`)
         .join("");
     }
 
@@ -2844,12 +2864,10 @@
     function renderSummaryStrip(entry, payload) {
       const points = getSeriesPoints(payload);
       const metrics = computePointMetrics(points, getSampleCount(payload), entry.public_metrics?.sex_divergence_score || null);
-      const spreadKey = state.spreadMetric === "std"
-        ? "sd_change_pct_20_24_to_80_84"
-        : state.spreadMetric === "cv"
-          ? "cv_change_pct_20_24_to_80_84"
-          : "iqr_change_pct_20_24_to_80_84";
-      const spreadLabel = state.spreadMetric === "std" ? "SD change" : state.spreadMetric === "cv" ? "CV change" : "IQR change";
+      const spreadKey = state.spreadMetric === "cv"
+        ? "cv_change_pct_20_24_to_80_84"
+        : "sd_change_pct_20_24_to_80_84";
+      const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
 
       refs.exploreSummaryStrip.innerHTML = [
         {
@@ -2981,7 +2999,7 @@
       }
 
       const field = state.spreadMetric;
-      const label = state.spreadMetric === "std" ? "SD" : state.spreadMetric === "cv" ? "CV" : "IQR";
+      const label = state.spreadMetric === "cv" ? "CV" : "SD";
       return [lineTraceFromPoints(points, field, `${state.cohort} ${label}`, COLORS.teal)];
     }
 
@@ -3104,12 +3122,12 @@
           });
         } else if (state.view === "spread") {
           traces = buildSpreadTraces(payload);
-          const label = state.spreadMetric === "std" ? "standard deviation" : state.spreadMetric === "cv" ? "coefficient of variation" : "interquartile range";
+          const label = state.spreadMetric === "cv" ? "coefficient of variation" : "standard deviation";
           annotation = `This view asks whether the ${label} widens or narrows with age.`;
           layout = buildPlotLayout({
             title: chartTitle(entry.display_name),
             xaxis: { title: axisTitle("Age (years)") },
-            yaxis: { title: axisTitle(state.spreadMetric === "std" ? "Standard deviation" : state.spreadMetric === "cv" ? "Coefficient of variation" : "Interquartile range") },
+            yaxis: { title: axisTitle(state.spreadMetric === "cv" ? "Coefficient of variation" : "Standard deviation") },
           });
         } else if (state.view === "tail") {
           traces = buildTailTraces(payload);
@@ -4370,6 +4388,7 @@
       refs.compareMode = $("compare-mode");
       refs.comparePlot = $("compare-plot");
       refs.compareNote = $("compare-note");
+      refs.aboutTestList = $("about-test-list");
       refs.bioageForm = $("bioage-form");
       refs.bioageBirthDate = $("bioage-birth-date");
       refs.bioageSampleDate = $("bioage-sample-date");
@@ -4419,6 +4438,7 @@
         primeStaticControls();
         renderCollectionGrid();
         renderRankingModules();
+        renderAboutTestList();
         renderExploreList();
         renderDiseaseConditionList();
         renderCompareQuickPicks();
