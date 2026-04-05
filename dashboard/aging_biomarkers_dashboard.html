@@ -1816,7 +1816,7 @@
           <div>
             <div class="section-kicker">Overview rankings</div>
             <h2>What changes most?</h2>
-            <p>Use the pooled, female, or male context together with raw or trimmed summaries to see which markers move the most.</p>
+            <p>Use pooled or female-plus-male rankings together with raw or trimmed summaries to see which markers move the most.</p>
           </div>
         </div>
 
@@ -1833,20 +1833,15 @@
                 <option value="upper_tail_rise">Biggest upper-tail increase</option>
                 <option value="sex_divergence">Largest sex divergence</option>
               </select>
-              <label class="control-label" for="rankings-spread-mode">Spread metric</label>
-              <select id="rankings-spread-mode">
-                <option value="iqr">IQR</option>
-                <option value="std">SD</option>
-                <option value="cv">CV</option>
+              <label class="control-label" for="rankings-cohort">Ranking cohort</label>
+              <select id="rankings-cohort">
+                <option value="pooled">Pooled</option>
+                <option value="both">Female + male</option>
               </select>
               <label class="control-label" for="rankings-collection">Collection</label>
               <select id="rankings-collection"></select>
-              <label class="control-label" for="rankings-domain">Aging domain</label>
-              <select id="rankings-domain"></select>
               <label class="control-label" for="rankings-organ">Primary organ system</label>
               <select id="rankings-organ"></select>
-              <label class="control-label" for="rankings-class">Measurement class</label>
-              <select id="rankings-class"></select>
               <label class="control-label" for="rankings-top-n">Top N</label>
               <input id="rankings-top-n" type="number" min="5" max="30" step="1" value="12" />
               <button id="rankings-reset" class="ghost-btn" type="button">Reset filters</button>
@@ -2219,7 +2214,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1775390447";
+    const DATA_VERSION = "1775396770";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -2280,11 +2275,9 @@
       view: "typical",
       spreadMetric: "std",
       rankingsMetric: "median_rise",
-      rankingsSpreadMode: "iqr",
+      rankingsCohort: "pooled",
       rankingsCollection: "all",
-      rankingsDomain: "all",
       rankingsOrgan: "all",
-      rankingsClass: "all",
       rankingsTopN: 12,
       compareMode: "median",
       compareIds: [],
@@ -2776,7 +2769,7 @@
         },
         {
           title: "Biggest spread increase",
-          rows: pickTop("iqr_change_pct_20_24_to_80_84", "desc"),
+          rows: pickTop("sd_change_pct_20_24_to_80_84", "desc"),
         },
         {
           title: "Largest sex divergence",
@@ -3272,10 +3265,6 @@
 
       refs.exploreTitle.textContent = entry.display_name;
       refs.exploreSubtitle.textContent = `${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}`;
-      if (!hasRenderedPlot(refs.explorePlot)) {
-        renderChartLoading(refs.explorePlot, `Loading ${entry.display_name}...`);
-      }
-
       const token = ++exploreRequestToken;
       try {
         const payload = await loadSeries(entry.biomarker_id);
@@ -3338,6 +3327,7 @@
           return;
         }
 
+        chartEl.innerHTML = "";
         Plotly.newPlot(chartEl, traces, layout, { responsive: true, displaylogo: false });
         state.lastChartId = "explore-plot";
         setExploreAnnotation(annotation);
@@ -3628,10 +3618,6 @@
       }
 
       renderDiseaseConditionList();
-      if (!hasRenderedPlot(refs.diseasePlot)) {
-        renderChartLoading(refs.diseasePlot, "Loading disease comparison...");
-      }
-
       try {
         const payload = await loadDiseaseCondition(state.diseaseCondition);
         const conditionMeta = payload?.condition || getDiseaseConditionMeta(state.diseaseCondition);
@@ -3679,6 +3665,7 @@
           return;
         }
 
+        refs.diseasePlot.innerHTML = "";
         Plotly.newPlot(
           refs.diseasePlot,
           traces,
@@ -3710,19 +3697,12 @@
       }
     }
 
-    function rankingValue(entry) {
-      const metrics = metricsForCurrentContext(entry);
+    function rankingValueFromMetrics(metrics) {
       if (state.rankingsMetric === "median_rise" || state.rankingsMetric === "median_fall") {
         return metrics.median_change_pct_20_24_to_80_84;
       }
       if (state.rankingsMetric === "spread_rise") {
-        if (state.rankingsSpreadMode === "std") {
-          return metrics.sd_change_pct_20_24_to_80_84;
-        }
-        if (state.rankingsSpreadMode === "cv") {
-          return metrics.cv_change_pct_20_24_to_80_84;
-        }
-        return metrics.iqr_change_pct_20_24_to_80_84;
+        return metrics.sd_change_pct_20_24_to_80_84;
       }
       if (state.rankingsMetric === "upper_tail_rise") {
         return metrics.upper_tail_change_pct;
@@ -3730,24 +3710,47 @@
       return metrics.sex_divergence_score;
     }
 
+    function rankingMetricsForCohort(entry, cohortKey) {
+      const byContext = entry?.public_metrics_by_context || {};
+      return byContext?.[cohortKey]?.[trimModeKey()] || {};
+    }
+
     function filteredRankingEntries() {
       let entries = state.manifest.slice();
       if (state.rankingsCollection !== "all") {
         entries = entries.filter((entry) => entry.featured_collection === state.rankingsCollection);
       }
-      if (state.rankingsDomain !== "all") {
-        entries = entries.filter((entry) => entry.aging_domain === state.rankingsDomain);
-      }
       if (state.rankingsOrgan !== "all") {
         entries = entries.filter((entry) => entry.primary_organ_system === state.rankingsOrgan);
       }
-      if (state.rankingsClass !== "all") {
-        entries = entries.filter((entry) => entry.measurement_class === state.rankingsClass);
-      }
 
       entries = entries
-        .map((entry) => ({ entry, value: rankingValue(entry) }))
-        .filter((row) => Number.isFinite(row.value));
+        .map((entry) => {
+          if (state.rankingsCohort === "both" && state.rankingsMetric !== "sex_divergence") {
+            const femaleValue = rankingValueFromMetrics(rankingMetricsForCohort(entry, "female"));
+            const maleValue = rankingValueFromMetrics(rankingMetricsForCohort(entry, "male"));
+            const candidates = [femaleValue, maleValue].filter((value) => Number.isFinite(value));
+            if (!candidates.length) {
+              return null;
+            }
+            const sortValue = state.rankingsMetric === "median_fall"
+              ? Math.min(...candidates)
+              : Math.max(...candidates);
+            return { entry, femaleValue, maleValue, value: sortValue };
+          }
+
+          const metrics = state.rankingsMetric === "sex_divergence"
+            ? metricsForCurrentContext(entry)
+            : state.rankingsCohort === "pooled"
+              ? metricsForCurrentContext(entry)
+              : rankingMetricsForCohort(entry, "pooled");
+          const value = rankingValueFromMetrics(metrics);
+          if (!Number.isFinite(value)) {
+            return null;
+          }
+          return { entry, value };
+        })
+        .filter(Boolean);
 
       const descending = state.rankingsMetric !== "median_fall";
       entries.sort((left, right) => descending ? right.value - left.value : left.value - right.value);
@@ -3767,36 +3770,58 @@
         : state.rankingsMetric === "median_fall"
           ? "Median change"
           : state.rankingsMetric === "spread_rise"
-            ? `${state.rankingsSpreadMode.toUpperCase()} change`
+            ? "Spread change"
             : state.rankingsMetric === "upper_tail_rise"
               ? "Upper-tail change"
               : "Sex divergence";
 
-      const x = rows.map((row) => row.value).reverse();
+      const isBothView = state.rankingsCohort === "both" && state.rankingsMetric !== "sex_divergence";
       const y = rows.map((row) => row.entry.display_name).reverse();
-      const colors = x.map((value) => {
-        if (state.rankingsMetric === "sex_divergence") {
-          return COLORS.violet;
-        }
-        return value >= 0 ? COLORS.rust : COLORS.blue;
-      });
+      const traces = isBothView
+        ? [
+            {
+              type: "bar",
+              orientation: "h",
+              name: "Female",
+              x: rows.map((row) => row.femaleValue).reverse(),
+              y,
+              marker: { color: COLORS.rust },
+              hovertemplate: "%{y}<br>Female: %{x:.1f}<extra></extra>",
+            },
+            {
+              type: "bar",
+              orientation: "h",
+              name: "Male",
+              x: rows.map((row) => row.maleValue).reverse(),
+              y,
+              marker: { color: COLORS.blue },
+              hovertemplate: "%{y}<br>Male: %{x:.1f}<extra></extra>",
+            },
+          ]
+        : [
+            {
+              type: "bar",
+              orientation: "h",
+              x: rows.map((row) => row.value).reverse(),
+              y,
+              marker: {
+                color: rows.map((row) => row.value).reverse().map((value) => {
+                  if (state.rankingsMetric === "sex_divergence") {
+                    return COLORS.violet;
+                  }
+                  return value >= 0 ? COLORS.rust : COLORS.blue;
+                }),
+              },
+              hovertemplate: "%{y}<br>%{x:.1f}<extra></extra>",
+            },
+          ];
 
+      refs.rankingsPlot.innerHTML = "";
       Plotly.newPlot(
         refs.rankingsPlot,
-        [
-          {
-            type: "bar",
-            orientation: "h",
-            x,
-            y,
-            marker: {
-              color: colors,
-            },
-            hovertemplate: "%{y}<br>%{x:.1f}<extra></extra>",
-          },
-        ],
+        traces,
         buildPlotLayout({
-          title: chartTitle(`${label} | ${state.cohort} | ${currentTrimLabel()}`),
+          title: chartTitle(`${label} | ${state.rankingsCohort === "both" && state.rankingsMetric !== "sex_divergence" ? "female + male" : "pooled"} | ${currentTrimLabel()}`),
           xaxis: {
             title: axisTitle(state.rankingsMetric === "sex_divergence" ? "Mean absolute normalized gap" : "% change vs age 20-24"),
             gridcolor: "rgba(23, 36, 50, 0.08)",
@@ -3805,6 +3830,7 @@
             automargin: true,
             title: axisTitle("Biomarker"),
           },
+          barmode: isBothView ? "group" : "relative",
           margin: { l: 220, r: 28, t: 118, b: 92 },
         }),
         { responsive: true, displaylogo: false }
@@ -3817,9 +3843,15 @@
             <header>
               <div>
                 <h4>${entry.display_name}</h4>
-                <p>${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}</p>
+                <p>${entry.featured_collection_title} | ${entry.primary_organ_system || "General aging"}</p>
               </div>
-              <div class="value">${state.rankingsMetric === "sex_divergence" ? formatUnsigned(value, 1) : formatSignedPercent(value, 0)}</div>
+              <div class="value">${
+                isBothView
+                  ? `F ${formatSignedPercent(femaleValue, 0)} | M ${formatSignedPercent(maleValue, 0)}`
+                  : state.rankingsMetric === "sex_divergence"
+                    ? formatUnsigned(value, 1)
+                    : formatSignedPercent(value, 0)
+              }</div>
             </header>
             <button class="open-link" data-open-id="${entry.biomarker_id}" type="button">Open in explorer</button>
           </article>
@@ -3900,9 +3932,6 @@
         return;
       }
 
-      if (!hasRenderedPlot(refs.comparePlot)) {
-        renderChartLoading(refs.comparePlot, "Loading compare set...");
-      }
       const token = ++compareRequestToken;
 
       try {
@@ -3930,6 +3959,7 @@
           return;
         }
 
+        refs.comparePlot.innerHTML = "";
         Plotly.newPlot(
           refs.comparePlot,
           traces,
@@ -4504,24 +4534,16 @@
         state.rankingsMetric = refs.rankingsMetric.value;
         renderRankings();
       });
-      refs.rankingsSpreadMode.addEventListener("change", () => {
-        state.rankingsSpreadMode = refs.rankingsSpreadMode.value;
+      refs.rankingsCohort.addEventListener("change", () => {
+        state.rankingsCohort = refs.rankingsCohort.value;
         renderRankings();
       });
       refs.rankingsCollection.addEventListener("change", () => {
         state.rankingsCollection = refs.rankingsCollection.value;
         renderRankings();
       });
-      refs.rankingsDomain.addEventListener("change", () => {
-        state.rankingsDomain = refs.rankingsDomain.value;
-        renderRankings();
-      });
       refs.rankingsOrgan.addEventListener("change", () => {
         state.rankingsOrgan = refs.rankingsOrgan.value;
-        renderRankings();
-      });
-      refs.rankingsClass.addEventListener("change", () => {
-        state.rankingsClass = refs.rankingsClass.value;
         renderRankings();
       });
       refs.rankingsTopN.addEventListener("change", () => {
@@ -4532,18 +4554,14 @@
       });
       refs.rankingsReset.addEventListener("click", () => {
         state.rankingsMetric = "median_rise";
-        state.rankingsSpreadMode = "iqr";
+        state.rankingsCohort = "pooled";
         state.rankingsCollection = "all";
-        state.rankingsDomain = "all";
         state.rankingsOrgan = "all";
-        state.rankingsClass = "all";
         state.rankingsTopN = 12;
         refs.rankingsMetric.value = state.rankingsMetric;
-        refs.rankingsSpreadMode.value = state.rankingsSpreadMode;
+        refs.rankingsCohort.value = state.rankingsCohort;
         refs.rankingsCollection.value = state.rankingsCollection;
-        refs.rankingsDomain.value = state.rankingsDomain;
         refs.rankingsOrgan.value = state.rankingsOrgan;
-        refs.rankingsClass.value = state.rankingsClass;
         refs.rankingsTopN.value = String(state.rankingsTopN);
         renderRankings();
       });
@@ -4592,11 +4610,9 @@
     function syncControls() {
       renderGlobalButtons();
       refs.rankingsMetric.value = state.rankingsMetric;
-      refs.rankingsSpreadMode.value = state.rankingsSpreadMode;
+      refs.rankingsCohort.value = state.rankingsCohort;
       refs.rankingsCollection.value = state.rankingsCollection;
-      refs.rankingsDomain.value = state.rankingsDomain;
       refs.rankingsOrgan.value = state.rankingsOrgan;
-      refs.rankingsClass.value = state.rankingsClass;
       refs.rankingsTopN.value = String(state.rankingsTopN);
       refs.compareMode.value = state.compareMode;
     }
@@ -4613,17 +4629,8 @@
         (value) => COLLECTION_COPY[value]?.title || value
       );
       populateFilterSelect(
-        refs.rankingsDomain,
-        [...new Set(state.manifest.map((entry) => entry.aging_domain).filter(Boolean))].sort()
-      );
-      populateFilterSelect(
         refs.rankingsOrgan,
         [...new Set(state.manifest.map((entry) => entry.primary_organ_system).filter(Boolean))].sort()
-      );
-      populateFilterSelect(
-        refs.rankingsClass,
-        [...new Set(state.manifest.map((entry) => entry.measurement_class).filter(Boolean))].sort(),
-        humanizeMeasurementClass
       );
 
       refs.compareOptions.innerHTML = state.manifest
@@ -4667,11 +4674,9 @@
       refs.exploreAnnotation = $("explore-annotation");
       refs.exploreTech = $("explore-tech");
       refs.rankingsMetric = $("rankings-metric");
-      refs.rankingsSpreadMode = $("rankings-spread-mode");
+      refs.rankingsCohort = $("rankings-cohort");
       refs.rankingsCollection = $("rankings-collection");
-      refs.rankingsDomain = $("rankings-domain");
       refs.rankingsOrgan = $("rankings-organ");
-      refs.rankingsClass = $("rankings-class");
       refs.rankingsTopN = $("rankings-top-n");
       refs.rankingsReset = $("rankings-reset");
       refs.rankingsPlot = $("rankings-plot");
