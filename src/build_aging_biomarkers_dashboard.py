@@ -18,7 +18,7 @@ from nhanes_common import ensure_dir
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "aging_biomarkers_dashboard_template.html"
 
-DEFAULT_TRIM_MODE = "trim_10_90"
+DEFAULT_TRIM_MODE = "trim_5_95"
 BASELINE_AGE_BIN = "20-24"
 ENDLINE_AGE_BIN = "80-84"
 
@@ -234,7 +234,8 @@ PUBLIC_DISEASES = {
 
 DISEASE_TRIMS: dict[str, tuple[float, float] | None] = {
     "all": None,
-    DEFAULT_TRIM_MODE: (0.10, 0.90),
+    "trim_5_95": (0.05, 0.95),
+    "trim_10_90": (0.10, 0.90),
 }
 
 DISEASE_LONG_COLUMNS = [
@@ -782,7 +783,15 @@ def _compute_public_metrics_from_points(
 
 
 def _compute_context_metrics(payload: dict) -> dict[str, dict[str, dict[str, float | int | None]]]:
-    sex_divergence_default = _compute_sex_divergence_score(payload, trim_mode=DEFAULT_TRIM_MODE)
+    available_trim_modes = ["all"]
+    available_trim_modes.extend(
+        mode for mode in ["trim_5_95", "trim_10_90"]
+        if mode in (payload.get("points_by_filter") or {})
+    )
+    sex_divergence_default = _compute_sex_divergence_score(
+        payload,
+        trim_mode=DEFAULT_TRIM_MODE if DEFAULT_TRIM_MODE in available_trim_modes else "trim_10_90",
+    )
     by_context: dict[str, dict[str, dict[str, float | int | None]]] = {}
 
     pooled_points_by_filter = payload.get("points_by_filter") or {}
@@ -792,7 +801,7 @@ def _compute_context_metrics(payload: dict) -> dict[str, dict[str, dict[str, flo
 
     for cohort in ["pooled", "female", "male"]:
         by_context[cohort] = {}
-        for trim_mode in ["all", DEFAULT_TRIM_MODE]:
+        for trim_mode in available_trim_modes:
             if cohort == "pooled":
                 points = pooled_points_by_filter.get(trim_mode) or []
                 sample_count = total_n
@@ -845,7 +854,11 @@ def build_public_manifest(
 
         collection_key = _infer_collection(pd.Series(row._asdict()))
         public_metrics_by_context = _compute_context_metrics(payload)
-        public_metrics = public_metrics_by_context["pooled"][DEFAULT_TRIM_MODE]
+        public_metrics = (
+            public_metrics_by_context["pooled"].get(DEFAULT_TRIM_MODE)
+            or public_metrics_by_context["pooled"].get("trim_10_90")
+            or next(iter(public_metrics_by_context["pooled"].values()))
+        )
         detail_series_path = f"data/{rel_path}"
         unit = _clean_text(meta.get("unit"))
         test_name = _clean_text(getattr(row, "test_name", source_name))

@@ -1693,6 +1693,7 @@
               <label class="control-label">Trim</label>
               <div class="segmented">
                 <button class="tone-btn" data-trim-btn data-value="raw" type="button">Raw</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_5_95" type="button">5-95 trimmed</button>
                 <button class="tone-btn" data-trim-btn data-value="trim_10_90" type="button">10-90 trimmed</button>
               </div>
               <label class="control-label">View</label>
@@ -1782,6 +1783,7 @@
               <label class="control-label">Trim</label>
               <div class="segmented">
                 <button class="tone-btn" data-trim-btn data-value="raw" type="button">Raw</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_5_95" type="button">5-95 trimmed</button>
                 <button class="tone-btn" data-trim-btn data-value="trim_10_90" type="button">10-90 trimmed</button>
               </div>
               <div id="disease-condition-note" class="rail-copy"></div>
@@ -2088,7 +2090,7 @@
                   </div>
                 </div>
                 <p id="bioage-result-copy" class="muted-copy">
-                  PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a compact way to compare one lab pattern with the reference population used to train the model.
+                  PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a biological age test that asks: based on your blood markers, what age has a mortality risk most similar to yours?
                 </p>
                 <div id="bioage-converted" class="bioage-converted"></div>
               </div>
@@ -2214,7 +2216,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1775396770";
+    const DATA_VERSION = "1775398422";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -2271,7 +2273,7 @@
       diseaseCondition: "",
       diseaseBiomarkerId: "",
       cohort: "both",
-      trim: "trim_10_90",
+      trim: "trim_5_95",
       view: "typical",
       spreadMetric: "std",
       rankingsMetric: "median_rise",
@@ -2310,11 +2312,23 @@
     }
 
     function trimModeKey() {
-      return state.trim === "raw" ? "all" : "trim_10_90";
+      if (state.trim === "raw") {
+        return "all";
+      }
+      if (state.trim === "trim_10_90") {
+        return "trim_10_90";
+      }
+      return "trim_5_95";
     }
 
     function currentTrimLabel() {
-      return state.trim === "raw" ? "Raw" : "10-90 trimmed";
+      if (state.trim === "raw") {
+        return "Raw";
+      }
+      if (state.trim === "trim_10_90") {
+        return "10-90 trimmed";
+      }
+      return "5-95 trimmed";
     }
 
     function cohortColor(sex) {
@@ -2619,7 +2633,7 @@
       if (cohort && ["both", "pooled", "female", "male"].includes(cohort)) {
         state.cohort = cohort;
       }
-      if (trim && ["raw", "trim_10_90"].includes(trim)) {
+      if (trim && ["raw", "trim_5_95", "trim_10_90"].includes(trim)) {
         state.trim = trim;
       }
       if (view && ["typical", "spread", "tail", "sex"].includes(view)) {
@@ -2718,13 +2732,13 @@
         .map(([key, copy]) => {
           const topEntries = collectionEntries(key)
             .sort((left, right) => (right.landing_score || 0) - (left.landing_score || 0))
-            .slice(0, 3);
+            .slice(0, 4);
           const chips = topEntries
             .map((entry) => `<button class="chip-btn" data-open-id="${entry.biomarker_id}" type="button">${entry.display_name}</button>`)
             .join("");
 
           return `
-            <article class="collection-card" data-accent="${copy.accent}">
+            <article class="collection-card" data-accent="${copy.accent}" data-open-collection="${key}">
               <div class="eyebrow">${copy.kicker}</div>
               <h3>${copy.title}</h3>
               <p>${copy.summary}</p>
@@ -2745,6 +2759,23 @@
         .sort((left, right) => left.display_name.localeCompare(right.display_name))
         .map((entry) => `<span class="test-chip">${entry.display_name}</span>`)
         .join("");
+    }
+
+    function openCollectionCompare(collectionKey) {
+      const ids = collectionEntries(collectionKey)
+        .sort((left, right) => (right.landing_score || 0) - (left.landing_score || 0))
+        .slice(0, 4)
+        .map((entry) => entry.biomarker_id);
+
+      if (!ids.length) {
+        return;
+      }
+
+      state.compareIds = ids;
+      setTab("compare");
+      renderCompareSelected();
+      renderComparePanel();
+      writeHash();
     }
 
     function rankingModuleEntries() {
@@ -3032,10 +3063,10 @@
         name,
         x: filtered.map((point) => point.age_mid),
         y: filtered.map((point) => point[field]),
-        text: filtered.map((point) => point.age_bin),
+        customdata: filtered.map((point) => [point.age_bin, point.n]),
         line: { color, width: 3, dash },
         marker: { size: 6, color },
-        hovertemplate: `%{text}<br>${name}: %{y:.2f}<extra></extra>`,
+        hovertemplate: `%{customdata[0]}<br>n=%{customdata[1]}<br>${name}: %{y:.2f}<extra></extra>`,
       };
     }
 
@@ -3216,6 +3247,7 @@
         .map((point) => ({
           age_mid: point.age_mid,
           age_bin: point.age_bin,
+          n: point.n,
           value: ((point.median / baseline.median) - 1) * 100,
         }));
     }
@@ -3237,10 +3269,10 @@
           name: "Female",
           x: femaleNorm.map((point) => point.age_mid),
           y: femaleNorm.map((point) => point.value),
-          text: femaleNorm.map((point) => point.age_bin),
+          customdata: femaleNorm.map((point) => [point.age_bin, point.n]),
           line: { color: COLORS.rose, width: 3 },
           marker: { size: 6, color: COLORS.rose },
-          hovertemplate: "%{text}<br>Female: %{y:.1f}%<extra></extra>",
+          hovertemplate: "%{customdata[0]}<br>n=%{customdata[1]}<br>Female: %{y:.1f}%<extra></extra>",
         },
         {
           type: "scatter",
@@ -3248,10 +3280,10 @@
           name: "Male",
           x: maleNorm.map((point) => point.age_mid),
           y: maleNorm.map((point) => point.value),
-          text: maleNorm.map((point) => point.age_bin),
+          customdata: maleNorm.map((point) => [point.age_bin, point.n]),
           line: { color: COLORS.blue, width: 3 },
           marker: { size: 6, color: COLORS.blue },
-          hovertemplate: "%{text}<br>Male: %{y:.1f}%<extra></extra>",
+          hovertemplate: "%{customdata[0]}<br>n=%{customdata[1]}<br>Male: %{y:.1f}%<extra></extra>",
         },
       ];
     }
@@ -3903,6 +3935,7 @@
           return {
             age_mid: point.age_mid,
             age_bin: point.age_bin,
+            n: point.n,
             value: ((value / baselineValue) - 1) * 100,
           };
         })
@@ -3918,10 +3951,10 @@
         name: entry.display_name,
         x: usable.map((point) => point.age_mid),
         y: usable.map((point) => point.value),
-        text: usable.map((point) => point.age_bin),
+        customdata: usable.map((point) => [point.age_bin, point.n]),
         line: { color, width: 3 },
         marker: { size: 6, color },
-        hovertemplate: "%{text}<br>%{y:.1f}%<extra></extra>",
+        hovertemplate: "%{customdata[0]}<br>n=%{customdata[1]}<br>%{y:.1f}%<extra></extra>",
       };
     }
 
@@ -4101,7 +4134,7 @@
       refs.bioageResultAge.textContent = "--";
       refs.bioageResultChrono.textContent = "--";
       refs.bioageResultGap.textContent = "--";
-      refs.bioageResultCopy.textContent = "PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a compact way to compare one lab pattern with the reference population used to train the model.";
+      refs.bioageResultCopy.textContent = "PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a biological age test that asks: based on your blood markers, what age has a mortality risk most similar to yours?";
       refs.bioageConverted.innerHTML = "";
       setBioAgeStage("idle", "Waiting for a complete blood panel.");
     }
@@ -4421,6 +4454,12 @@
         const openId = event.target.closest("[data-open-id]")?.dataset.openId;
         if (openId) {
           openMarker(openId);
+          return;
+        }
+
+        const collectionKey = event.target.closest("[data-open-collection]")?.dataset.openCollection;
+        if (collectionKey) {
+          openCollectionCompare(collectionKey);
           return;
         }
 
