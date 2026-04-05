@@ -262,6 +262,42 @@
       margin: 18px 0 18px;
     }
 
+    .public-disclaimer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      margin: 0 0 18px;
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(182, 88, 58, 0.18);
+      background:
+        linear-gradient(135deg, rgba(182, 88, 58, 0.08), rgba(245, 239, 227, 0.92)),
+        rgba(255, 252, 247, 0.96);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .public-disclaimer strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+      letter-spacing: 0.01em;
+    }
+
+    .public-disclaimer p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 0.96rem;
+      max-width: 76ch;
+    }
+
+    .public-disclaimer .pill {
+      align-self: center;
+      background: rgba(182, 88, 58, 0.12);
+      color: var(--rust);
+      border-color: rgba(182, 88, 58, 0.18);
+    }
+
     .tabbar,
     .toolbar-actions {
       display: flex;
@@ -1537,6 +1573,17 @@
         <button id="save-chart-btn" class="ghost-btn primary" type="button">Save chart PNG</button>
       </div>
     </div>
+
+    <section class="public-disclaimer reveal" aria-label="Public dashboard disclaimer">
+      <div>
+        <strong>Public research explorer only.</strong>
+        <p>
+          This site is for education and pattern exploration. It is not medical advice, not a diagnostic tool, and not a substitute for a clinician.
+          The charts are cross-sectional NHANES summaries, and the Blood Age tab is a published research equation rather than a clinically validated personal diagnosis.
+        </p>
+      </div>
+      <div class="pill">Not for diagnosis</div>
+    </section>
 
     <main>
       <section id="panel-start" class="panel active reveal">

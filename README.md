@@ -16,6 +16,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/templates/aging_biomarkers_dashboard_template.html` is the standalone editorial-science template used for the public-facing aging biomarkers explorer.
+- `dashboard/longevity-explorer.html` is the short GitHub Pages alias that redirects to the audience-facing aging biomarkers explorer.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
@@ -138,10 +139,11 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - Urinary dashboard is at `http://127.0.0.1:8765/dashboard/urinary.html` (or use the `Urinary Tests` tab button inside the blood dashboard)
   - Public aging biomarkers dashboard is at `http://127.0.0.1:8765/dashboard/aging_biomarkers_dashboard.html`
 - Online:
-  - Open the GitHub Pages site (if enabled in your repo settings):
-  - Blood: `https://<github-username>.github.io/<repo-name>/dashboard/index.html`
-  - Urinary: `https://<github-username>.github.io/<repo-name>/dashboard/urinary.html`
-  - Public aging biomarkers: `https://<github-username>.github.io/<repo-name>/dashboard/aging_biomarkers_dashboard.html`
+- Open the GitHub Pages site (if enabled in your repo settings):
+- Blood: `https://<github-username>.github.io/<repo-name>/dashboard/index.html`
+- Urinary: `https://<github-username>.github.io/<repo-name>/dashboard/urinary.html`
+- Public aging biomarkers: `https://<github-username>.github.io/<repo-name>/dashboard/aging_biomarkers_dashboard.html`
+- Public aging biomarkers short link: `https://<github-username>.github.io/<repo-name>/dashboard/longevity-explorer.html`
 
 ## Dashboard UI architecture
 - The blood and urinary dashboards share one HTML/CSS/JS shell from `src/templates/dashboard_template.html`.
@@ -229,6 +231,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - blood only in v1
   - focused on the curated aging biomarker subset and familiar clinical markers rather than the full blood dashboard inventory
   - main exploration uses the healthy cohort exclusions documented below; disease comparisons live in their own tab so they do not contaminate the healthy-aging views
+  - the public-facing page now includes a visible disclaimer that it is for education and research exploration, not diagnosis or medical advice
 
 ## Plot modes
 - In `Dashboard` analysis view, use:
