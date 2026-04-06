@@ -8,6 +8,31 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script>
+    window.PUBLIC_GA4_MEASUREMENT_ID = __GA4_MEASUREMENT_ID__;
+    window.dataLayer = window.dataLayer || [];
+
+    window.gtag = window.gtag || function gtag() {
+      window.dataLayer.push(arguments);
+    };
+
+    (function initAnalytics() {
+      const measurementId = window.PUBLIC_GA4_MEASUREMENT_ID;
+      if (!measurementId) {
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
+      document.head.appendChild(script);
+
+      window.gtag("js", new Date());
+      window.gtag("config", measurementId, {
+        send_page_view: true,
+      });
+    }());
+  </script>
   <style>
     :root {
       --paper: #f5efe3;
@@ -2598,6 +2623,15 @@
       refs.heroStatus.textContent = message;
     }
 
+    function trackEvent(eventName, params = {}) {
+      const measurementId = window.PUBLIC_GA4_MEASUREMENT_ID;
+      if (!measurementId || typeof window.gtag !== "function") {
+        return;
+      }
+
+      window.gtag("event", eventName, params);
+    }
+
     function writeHash() {
       if (state.hashLock) {
         return;
@@ -2702,9 +2736,13 @@
     }
 
     function setTab(tab) {
+      const previousTab = state.tab;
       state.tab = tab;
       renderTabs();
       renderPanels();
+      if (previousTab !== tab) {
+        trackEvent("tab_view", { tab_name: tab });
+      }
       writeHash();
     }
 
@@ -4455,6 +4493,12 @@
         refs.bioageResultCopy.textContent = interpretation.copy;
         renderBioAgeConverted(result);
         setBioAgeStage("ready", "Calculated locally from age and 9 blood markers.");
+        trackEvent("calculate_blood_age", {
+          sex: fields.sex,
+          chronological_age_years: Number(result.chronologicalAgeYears.toFixed(1)),
+          phenoage_years: Number(result.phenoAgeYears.toFixed(1)),
+          age_gap_years: Number(result.differenceYears.toFixed(1)),
+        });
       }, 1450);
     }
 
@@ -4476,6 +4520,8 @@
       if (!state.manifestById.has(id)) {
         return;
       }
+      const entry = state.manifestById.get(id);
+      const sourceTab = overrides.sourceTab || state.tab;
       state.exploreId = id;
       if (overrides.view && ["typical", "spread", "tail", "sex"].includes(overrides.view)) {
         state.view = overrides.view;
@@ -4486,6 +4532,12 @@
       renderGlobalButtons();
       renderExploreList();
       renderExplorePanel();
+      trackEvent("open_biomarker", {
+        biomarker_id: id,
+        biomarker_name: entry?.display_name || id,
+        source_tab: sourceTab,
+        view_mode: state.view,
+      });
       writeHash();
     }
 
@@ -4535,7 +4587,7 @@
       document.addEventListener("click", (event) => {
         const openId = event.target.closest("[data-open-id]")?.dataset.openId;
         if (openId) {
-          openMarker(openId);
+          openMarker(openId, { sourceTab: state.tab });
           return;
         }
 
@@ -4543,12 +4595,14 @@
         if (surpriseItem) {
           openMarker(surpriseItem.dataset.openSurpriseId, {
             view: surpriseItem.dataset.openSurpriseView,
+            sourceTab: "surprising",
           });
           return;
         }
 
         const collectionKey = event.target.closest("[data-open-collection]")?.dataset.openCollection;
         if (collectionKey) {
+          trackEvent("open_collection_compare", { collection_key: collectionKey });
           openCollectionCompare(collectionKey);
           return;
         }
@@ -4557,6 +4611,7 @@
         if (conditionKey) {
           state.diseaseCondition = conditionKey;
           state.diseaseBiomarkerId = "";
+          trackEvent("select_disease_condition", { condition_key: conditionKey });
           renderDiseasePanel();
           writeHash();
           return;
@@ -4565,6 +4620,10 @@
         const diseaseBiomarkerId = event.target.closest("[data-open-disease-id]")?.dataset.openDiseaseId;
         if (diseaseBiomarkerId) {
           state.diseaseBiomarkerId = diseaseBiomarkerId;
+          trackEvent("open_disease_biomarker", {
+            condition_key: state.diseaseCondition,
+            biomarker_id: diseaseBiomarkerId,
+          });
           renderDiseasePanel();
           writeHash();
           return;
@@ -4572,6 +4631,7 @@
 
         const addId = event.target.closest("[data-add-compare]")?.dataset.addCompare;
         if (addId) {
+          trackEvent("add_compare_marker", { biomarker_id: addId });
           addCompareMarker(addId);
           return;
         }
@@ -4585,6 +4645,7 @@
       refs.copyLinkBtn.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(window.location.href);
+          trackEvent("copy_view_link", { active_tab: state.tab });
           showToast("View link copied.");
         } catch (error) {
           showToast("Copy failed.");
@@ -4609,6 +4670,7 @@
           height: 900,
           scale: 2,
         });
+        trackEvent("save_chart_png", { active_tab: state.tab });
       });
 
       refs.exploreSearch.addEventListener("input", renderExploreList);
@@ -4620,6 +4682,7 @@
       document.querySelectorAll("[data-cohort-btn]").forEach((button) => {
         button.addEventListener("click", () => {
           state.cohort = button.dataset.value;
+          trackEvent("change_cohort", { cohort: state.cohort });
           renderGlobalButtons();
           renderExplorePanel();
           renderDiseasePanel();
@@ -4633,6 +4696,7 @@
       document.querySelectorAll("[data-trim-btn]").forEach((button) => {
         button.addEventListener("click", () => {
           state.trim = button.dataset.value;
+          trackEvent("change_trim", { trim_mode: state.trim });
           renderGlobalButtons();
           renderExplorePanel();
           renderDiseasePanel();
@@ -4646,6 +4710,7 @@
       document.querySelectorAll("[data-view-btn]").forEach((button) => {
         button.addEventListener("click", () => {
           state.view = button.dataset.value;
+          trackEvent("change_explorer_view", { view_mode: state.view });
           renderGlobalButtons();
           renderExplorePanel();
           writeHash();
@@ -4663,14 +4728,17 @@
 
       refs.rankingsMetric.addEventListener("change", () => {
         state.rankingsMetric = refs.rankingsMetric.value;
+        trackEvent("change_rankings_metric", { rankings_metric: state.rankingsMetric });
         renderRankings();
       });
       refs.rankingsCohort.addEventListener("change", () => {
         state.rankingsCohort = refs.rankingsCohort.value;
+        trackEvent("change_rankings_cohort", { rankings_cohort: state.rankingsCohort });
         renderRankings();
       });
       refs.rankingsCollection.addEventListener("change", () => {
         state.rankingsCollection = refs.rankingsCollection.value;
+        trackEvent("change_rankings_collection", { rankings_collection: state.rankingsCollection });
         renderRankings();
       });
       refs.rankingsTopN.addEventListener("change", () => {
@@ -4693,6 +4761,7 @@
 
       refs.compareMode.addEventListener("change", () => {
         state.compareMode = refs.compareMode.value;
+        trackEvent("change_compare_mode", { compare_mode: state.compareMode });
         renderComparePanel();
         writeHash();
       });

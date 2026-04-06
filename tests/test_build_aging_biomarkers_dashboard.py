@@ -149,9 +149,11 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         )
 
     def test_render_public_dashboard_html_contains_public_controls(self):
-        html = render_public_dashboard_html("aging_biomarkers_public")
+        html = render_public_dashboard_html("aging_biomarkers_public", ga4_measurement_id="G-TEST123")
 
         self.assertIn('const DATA_BASE = "aging_biomarkers_public";', html)
+        self.assertIn('window.PUBLIC_GA4_MEASUREMENT_ID = "G-TEST123";', html)
+        self.assertIn('https://www.googletagmanager.com/gtag/js?id=', html)
         self.assertIn('id="tab-start"', html)
         self.assertIn('id="tab-explore"', html)
         self.assertIn('id="tab-disease"', html)
@@ -409,6 +411,7 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
                 manifest=manifest,
                 disease_bundle=disease_bundle,
                 surprising_bundle=surprising_bundle,
+                ga4_measurement_id="G-TEST123",
             )
 
             manifest_path = root / "dashboard" / "aging_biomarkers_public" / "manifest.json"
@@ -430,6 +433,7 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
             self.assertEqual(summary["manifest_count"], 1)
             self.assertEqual(summary["disease_condition_count"], 1)
             self.assertEqual(summary["surprising_group_count"], 1)
+            self.assertEqual(summary["ga4_measurement_id"], "G-TEST123")
             self.assertIn("aging_biomarkers_public", summary["data_dir"])
             self.assertIn("Aging Biomarkers Dashboard", html)
 

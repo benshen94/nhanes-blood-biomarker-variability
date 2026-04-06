@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import time
 from pathlib import Path
 
@@ -1129,12 +1130,13 @@ def build_public_manifest(
     return manifest
 
 
-def render_public_dashboard_html(data_base: str) -> str:
+def render_public_dashboard_html(data_base: str, ga4_measurement_id: str = "") -> str:
     data_version = str(int(time.time()))
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     return (
         template.replace("__DATA_VERSION__", data_version)
         .replace("__PUBLIC_DATA_BASE__", data_base)
+        .replace("__GA4_MEASUREMENT_ID__", json.dumps(_clean_text(ga4_measurement_id), ensure_ascii=True))
         .replace("__COLLECTION_COPY__", json.dumps(COLLECTION_COPY, ensure_ascii=True))
         .replace("__DEFAULT_COMPARE_MARKERS__", json.dumps(DEFAULT_COMPARE_MARKERS, ensure_ascii=True))
         .replace("__DEFAULT_EXPLORE_MARKER__", json.dumps(DEFAULT_EXPLORE_MARKER, ensure_ascii=True))
@@ -1148,6 +1150,7 @@ def write_public_dashboard_bundle(
     manifest: list[dict],
     disease_bundle: dict[str, object] | None = None,
     surprising_bundle: dict[str, object] | None = None,
+    ga4_measurement_id: str = "",
 ) -> None:
     data_dir = out_html.parent / data_dir_name
     disease_dir = data_dir / "diseases"
@@ -1176,7 +1179,10 @@ def write_public_dashboard_bundle(
             json.dumps(payload, ensure_ascii=True, allow_nan=False, indent=2),
             encoding="utf-8",
         )
-    out_html.write_text(render_public_dashboard_html(data_dir_name), encoding="utf-8")
+    out_html.write_text(
+        render_public_dashboard_html(data_dir_name, ga4_measurement_id=ga4_measurement_id),
+        encoding="utf-8",
+    )
 
     summary = {
         "manifest_count": len(manifest),
@@ -1184,6 +1190,7 @@ def write_public_dashboard_bundle(
         "disease_condition_count": len(disease_bundle.get("conditions", [])),
         "surprising_group_count": len(surprising_bundle.get("groups", [])),
         "default_trim_mode": DEFAULT_TRIM_MODE,
+        "ga4_measurement_id": _clean_text(ga4_measurement_id),
         "data_dir": str(data_dir),
     }
     out_json.write_text(json.dumps(summary, ensure_ascii=True, indent=2, allow_nan=False), encoding="utf-8")

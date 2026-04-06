@@ -4010,6 +4010,7 @@ def main() -> None:
         manifest=public_manifest,
         disease_bundle=disease_bundle,
         surprising_bundle=surprising_bundle,
+        ga4_measurement_id=os.environ.get("AGING_PUBLIC_GA4_ID", ""),
     )
     write_dashboard_bundle(
         out_html=urine_out_html,

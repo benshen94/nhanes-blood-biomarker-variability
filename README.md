@@ -13,9 +13,11 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
 - `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds both the Q-Q and rank-based SR comparison payloads under `projects/sr_comparison/blood/`.
   - In rank mode, biomarker values are trimmed within each age bin before pooling and ranking, but the alive-only SR `X` values are not trimmed.
+  - Rank mode now supports `0%`, `3%`, `5%`, and `10%` biomarker tail trimming.
 - `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
 - `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
   - It also writes disease-default metadata for the guided Disease Explorer and a small `surprising.json` payload for the shareable `What’s Surprising?` tab.
+  - If `AGING_PUBLIC_GA4_ID` is set at build time, it injects Google Analytics 4 into the public dashboard HTML.
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/templates/aging_biomarkers_dashboard_template.html` is the standalone editorial-science template used for the public-facing aging biomarkers explorer.
 - `dashboard/longevity-explorer.html` is the short GitHub Pages alias that redirects to the audience-facing aging biomarkers explorer.
@@ -51,6 +53,7 @@ python3 src/build_analysis_dataset.py --raw data/raw --manifest data/processed/l
 python3 src/compute_cv_metrics.py --in data/processed/urine/biomarker_long.parquet --out data/processed/urine
 python3 src/build_sr_comparison.py --out-root projects/sr_comparison/blood
 python3 src/build_dashboard.py
+AGING_PUBLIC_GA4_ID=G-XXXXXXXXXX python3 src/build_dashboard.py
 python3 src/plot_km_kidney_liver.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --png-out output/km_kidney_liver_vs_full.png --csv-out output/km_kidney_liver_counts.csv --png-age-out output/km_kidney_liver_vs_full_by_age.png --csv-age-out output/km_kidney_liver_counts_by_age.csv --png-all-disease-panels-age-out output/km_all_diseases_vs_full_by_age_panels.png --csv-all-disease-age-out output/km_all_diseases_age_summary.csv --age-summary-csv-out output/km_kidney_liver_age_summary.csv --steepness-png-out output/steepness_longevity_disease.png --png-asthma-age-out output/km_asthma_vs_full_by_age.png --csv-asthma-age-out output/km_asthma_counts_by_age.csv --min-disease-n 100
 python3 src/cluster_km_shapes.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --out-dir output/km_shape_clustering --min-disease-n 100 --k-min 2 --k-max 8 --seed 42
 python3 src/fpca_km_shapes.py --participants data/processed/participant_health_flags.parquet --mortality-dir data/raw/mortality --out-dir output/fPCA --min-disease-n 100 --k-min 2 --k-max 8 --seed 42
@@ -523,6 +526,11 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 python3 src/build_sr_comparison.py --out-root projects/sr_comparison/blood
 python3 src/build_dashboard.py
 ```
+- To enable basic public traffic analytics on the audience-facing dashboard, rebuild with:
+```bash
+AGING_PUBLIC_GA4_ID=G-XXXXXXXXXX python3 src/build_dashboard.py
+```
+- The public dashboard sends GA4 pageviews plus custom events for tab switches, biomarker opens, disease-condition changes, compare-set additions, chart saves, and Blood Age calculations.
 - Serve locally for browser validation:
 ```bash
 python3 -m http.server 8765 --directory .
