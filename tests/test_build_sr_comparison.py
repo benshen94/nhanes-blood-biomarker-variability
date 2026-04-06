@@ -108,6 +108,25 @@ class TestBuildSrComparison(unittest.TestCase):
         self.assertEqual(len(rank_bins["25-29"]), 8)
         self.assertTrue(np.all((kept >= 1) & (kept <= 100)))
 
+    def test_build_rank_bin_distributions_can_skip_trim(self):
+        values_by_age_bin = {
+            "20-24": np.arange(10, dtype=float),
+            "25-29": np.arange(100, 110, dtype=float),
+        }
+
+        rank_bins = build_rank_bin_distributions(
+            values_by_age_bin,
+            trim_mode_key="trim_10_90",
+            seed_key="no-trim-test",
+            trim_each_bin=False,
+        )
+
+        kept = np.concatenate([rank_bins["20-24"], rank_bins["25-29"]])
+        self.assertEqual(len(kept), 20)
+        self.assertEqual(len(rank_bins["20-24"]), 10)
+        self.assertEqual(len(rank_bins["25-29"]), 10)
+        self.assertTrue(np.all((kept >= 1) & (kept <= 100)))
+
     def test_compute_rank_bin_rows_detects_shifted_age_localization(self):
         biomarker_values_by_age_bin = {
             age_bin: np.array([], dtype=float) for age_bin in AGE_BIN_LABELS

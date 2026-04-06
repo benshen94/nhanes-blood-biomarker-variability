@@ -294,17 +294,22 @@ def build_rank_bin_distributions(
     values_by_age_bin: dict[str, np.ndarray],
     trim_mode_key: str,
     seed_key: str,
+    trim_each_bin: bool = True,
 ) -> dict[str, np.ndarray]:
     trim_mode = sr_trim_mode(trim_mode_key)
 
     pooled_values: list[np.ndarray] = []
     pooled_age_bins: list[np.ndarray] = []
     for age_bin in AGE_BIN_LABELS:
-        values = trim_distribution(
-            values_by_age_bin.get(age_bin, np.array([], dtype=float)),
-            lo=float(trim_mode["lo"]),
-            hi=float(trim_mode["hi"]),
-        )
+        raw_values = values_by_age_bin.get(age_bin, np.array([], dtype=float))
+        if trim_each_bin:
+            values = trim_distribution(
+                raw_values,
+                lo=float(trim_mode["lo"]),
+                hi=float(trim_mode["hi"]),
+            )
+        else:
+            values = clean_sorted_values(raw_values)
         if values.size == 0:
             continue
         pooled_values.append(values)
@@ -646,6 +651,7 @@ def build_dashboard_payload(
             sr_distributions,
             trim_mode_key=trim_key,
             seed_key=f"sr:{trim_key}",
+            trim_each_bin=False,
         )
     sr_rank_reference = build_sr_rank_reference_payload(sr_rank_bins_by_trim)
 
@@ -859,7 +865,7 @@ def build_dashboard_payload(
             "sr_reference_tail_policy": "alive_only_no_tail_trimming",
             "min_bin_n": MIN_BIN_N,
             "qq_probabilities": rounded_list(QQ_PROBABILITIES),
-            "rank_tail_policy": "trim_each_age_bin_then_pool_for_percentile_ranking",
+            "rank_tail_policy": "trim_biomarker_each_age_bin_then_pool_for_percentile_ranking__sr_untrimmed_alive_only",
             "rank_tie_policy": "deterministic_seeded_random_tie_breaks",
         },
         "summary_by_biomarker": summary_by_biomarker,
@@ -952,7 +958,7 @@ def main() -> None:
         "trim_modes": rounded_trim_modes(),
         "rank_trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
         "sr_reference_tail_policy": "alive_only_no_tail_trimming",
-        "rank_tail_policy": "trim_each_age_bin_then_pool_for_percentile_ranking",
+        "rank_tail_policy": "trim_biomarker_each_age_bin_then_pool_for_percentile_ranking__sr_untrimmed_alive_only",
         "rank_tie_policy": "deterministic_seeded_random_tie_breaks",
         "min_bin_n": MIN_BIN_N,
         "biomarker_count": int(summary_df["biomarker_id"].nunique()),
