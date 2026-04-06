@@ -169,6 +169,7 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         self.assertIn('id="rankings-metric"', html)
         self.assertIn('id="compare-mode"', html)
         self.assertIn('id="bioage-form"', html)
+        self.assertIn('class="metric-help"', html)
         self.assertIn('id="bioage-birth-date"', html)
         self.assertIn('id="bioage-calc-btn"', html)
         self.assertIn("Calculate PhenoAge", html)

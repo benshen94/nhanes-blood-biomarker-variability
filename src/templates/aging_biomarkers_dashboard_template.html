@@ -725,12 +725,63 @@
       border: 1px solid rgba(23, 36, 50, 0.08);
     }
 
+    .summary-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
     .summary-card .label {
       font-size: 12px;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--ink-faint);
       font-weight: 700;
+    }
+
+    .metric-help {
+      position: relative;
+    }
+
+    .metric-help summary {
+      list-style: none;
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.12);
+      background: rgba(255, 252, 247, 0.92);
+      color: var(--ink-soft);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .metric-help summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .metric-help[open] summary {
+      color: var(--ink);
+      border-color: rgba(15, 103, 97, 0.3);
+    }
+
+    .metric-help-bubble {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 12;
+      width: min(260px, 70vw);
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(255, 252, 247, 0.98);
+      color: var(--ink-soft);
+      font-size: 12px;
+      line-height: 1.45;
+      box-shadow: var(--shadow-soft);
     }
 
     .summary-card strong {
@@ -3025,6 +3076,10 @@
       return payload?.raw_total_n_by_sex?.[state.cohort] || 0;
     }
 
+    function getSexSampleCount(payload, sex) {
+      return payload?.raw_total_n_by_sex?.[sex] || 0;
+    }
+
     function loadSeries(id) {
       if (state.seriesCache.has(id)) {
         return Promise.resolve(state.seriesCache.get(id));
@@ -3043,34 +3098,49 @@
 
     function renderSummaryStrip(entry, payload) {
       if (state.cohort === "both") {
-        const byContext = entry?.public_metrics_by_context || {};
-        const femaleMetrics = byContext?.female?.[trimModeKey()] || {};
-        const maleMetrics = byContext?.male?.[trimModeKey()] || {};
+        const femaleMetrics = computePointMetrics(
+          getSexSeriesPoints(payload, "female"),
+          getSexSampleCount(payload, "female"),
+          entry.public_metrics?.sex_divergence_score || null
+        );
+        const maleMetrics = computePointMetrics(
+          getSexSeriesPoints(payload, "male"),
+          getSexSampleCount(payload, "male"),
+          entry.public_metrics?.sex_divergence_score || null
+        );
         const spreadKey = state.spreadMetric === "cv"
           ? "cv_change_pct_20_24_to_80_84"
           : "sd_change_pct_20_24_to_80_84";
         const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
 
-        refs.exploreSummaryStrip.innerHTML = [
+        refs.exploreSummaryStrip.innerHTML = renderSummaryCards([
           {
             label: "Female median",
             value: formatSignedPercent(femaleMetrics.median_change_pct_20_24_to_80_84, 0),
             note: "20s -> 80s",
+            help: "Percent change in the female median from ages 20-24 to 80-84 for the current trim mode.",
           },
           {
             label: "Male median",
             value: formatSignedPercent(maleMetrics.median_change_pct_20_24_to_80_84, 0),
             note: "20s -> 80s",
+            help: "Percent change in the male median from ages 20-24 to 80-84 for the current trim mode.",
           },
           {
             label: `Female ${spreadLabel}`,
             value: formatSignedPercent(femaleMetrics[spreadKey], 0),
             note: currentTrimLabel(),
+            help: state.spreadMetric === "cv"
+              ? "Percent change in the female coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+              : "Percent change in the female standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
           },
           {
             label: `Male ${spreadLabel}`,
             value: formatSignedPercent(maleMetrics[spreadKey], 0),
             note: currentTrimLabel(),
+            help: state.spreadMetric === "cv"
+              ? "Percent change in the male coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+              : "Percent change in the male standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
           },
           {
             label: "Sex divergence",
@@ -3078,16 +3148,9 @@
               ? formatUnsigned(entry.public_metrics.sex_divergence_score, 1)
               : "n/a",
             note: "female vs male curve gap",
+            help: "Average gap between female and male median curves after each curve is normalized to its own 20-24 baseline.",
           },
-        ]
-          .map((item) => `
-            <div class="summary-card">
-              <div class="label">${item.label}</div>
-              <strong>${item.value}</strong>
-              <span>${item.note}</span>
-            </div>
-          `)
-          .join("");
+        ]);
         return;
       }
 
@@ -3098,36 +3161,55 @@
         : "sd_change_pct_20_24_to_80_84";
       const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
 
-      refs.exploreSummaryStrip.innerHTML = [
+      refs.exploreSummaryStrip.innerHTML = renderSummaryCards([
         {
           label: "20s -> 80s median",
           value: formatSignedPercent(metrics.median_change_pct_20_24_to_80_84, 0),
           note: currentTrimLabel(),
+          help: "Percent change in the median from ages 20-24 to 80-84 for the current cohort and trim mode.",
         },
         {
           label: spreadLabel,
           value: formatSignedPercent(metrics[spreadKey], 0),
           note: `${state.cohort} cohort`,
+          help: state.spreadMetric === "cv"
+            ? "Percent change in coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+            : "Percent change in standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
         },
         {
           label: "Upper-tail change",
           value: formatSignedPercent(metrics.upper_tail_change_pct, 0),
           note: "P90 - median",
+          help: "Percent change in the upper-tail distance, computed as P90 minus median, from ages 20-24 to 80-84.",
         },
         {
           label: "Sex divergence",
           value: Number.isFinite(metrics.sex_divergence_score) ? formatUnsigned(metrics.sex_divergence_score, 1) : "n/a",
           note: "avg gap in normalized female vs male medians",
+          help: "Average gap between female and male median curves after each curve is normalized to its own 20-24 baseline.",
         },
         {
           label: "Sample count",
           value: formatCount(metrics.sample_count),
           note: `${state.cohort} raw observations`,
+          help: "Total number of raw observations contributing to this biomarker and cohort across the full age range in the current public dataset.",
         },
-      ]
-        .map((item) => `
+      ]);
+    }
+
+    function renderSummaryCards(items) {
+      return items
+        .map((item, index) => `
           <div class="summary-card">
-            <div class="label">${item.label}</div>
+            <div class="summary-head">
+              <div class="label">${item.label}</div>
+              ${item.help ? `
+                <details class="metric-help">
+                  <summary aria-label="About ${item.label}">?</summary>
+                  <div class="metric-help-bubble">${item.help}</div>
+                </details>
+              ` : ""}
+            </div>
             <strong>${item.value}</strong>
             <span>${item.note}</span>
           </div>
