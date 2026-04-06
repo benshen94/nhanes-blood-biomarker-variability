@@ -1797,7 +1797,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1775459091';
+    const DATA_VERSION = '1775460979';
     const HAS_CLALIT = true;
     const HAS_SR_COMPARISON = true;
     const SPECIMEN_TITLE = 'Blood';
@@ -2106,6 +2106,7 @@
     function srTrimModeOptions(method) {
       if (method === 'rank') {
         return [
+          { value: 'all', label: '0% each tail' },
           { value: 'trim_3_97', label: '3% each tail' },
           { value: 'trim_5_95', label: '5% each tail' },
           { value: 'trim_10_90', label: '10% each tail' },

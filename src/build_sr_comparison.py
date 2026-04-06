@@ -51,7 +51,7 @@ SR_TRIM_MODES = [
     {"key": "trim_5_95", "label": "5% each tail", "tail_pct": 5, "lo": 0.05, "hi": 0.95},
     {"key": "trim_10_90", "label": "10% each tail", "tail_pct": 10, "lo": 0.10, "hi": 0.90},
 ]
-SR_RANK_TRIM_MODES = [mode for mode in SR_TRIM_MODES if str(mode["key"]) != "all"]
+SR_RANK_TRIM_MODES = list(SR_TRIM_MODES)
 DEFAULT_SR_TRIM_MODE = "trim_3_97"
 DEFAULT_SR_RANK_TRIM_MODE = "trim_3_97"
 RANK_TIE_BREAK_SEED = 20260405

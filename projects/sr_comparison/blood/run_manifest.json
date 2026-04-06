@@ -1,6 +1,6 @@
 {
-  "built_at_unix": 1775458945,
-  "duration_seconds": 265.98,
+  "built_at_unix": 1775460908,
+  "duration_seconds": 287.99,
   "long_path": "data/processed/biomarker_long.parquet",
   "out_root": "projects/sr_comparison/blood",
   "sr_script_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py",
@@ -60,6 +60,13 @@
     }
   ],
   "rank_trim_modes": [
+    {
+      "key": "all",
+      "label": "0% each tail",
+      "tail_pct": 0,
+      "lo": 0.0,
+      "hi": 1.0
+    },
     {
       "key": "trim_3_97",
       "label": "3% each tail",
