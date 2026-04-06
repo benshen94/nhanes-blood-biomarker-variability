@@ -1,0 +1,5073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aging Biomarkers Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script>
+    window.PUBLIC_GA4_MEASUREMENT_ID = "G-EG5VWPN3D8";
+    window.dataLayer = window.dataLayer || [];
+
+    window.gtag = window.gtag || function gtag() {
+      window.dataLayer.push(arguments);
+    };
+
+    (function initAnalytics() {
+      const measurementId = window.PUBLIC_GA4_MEASUREMENT_ID;
+      if (!measurementId) {
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
+      document.head.appendChild(script);
+
+      window.gtag("js", new Date());
+      window.gtag("config", measurementId, {
+        send_page_view: true,
+      });
+    }());
+  </script>
+  <style>
+    :root {
+      --paper: #f5efe3;
+      --paper-strong: #fcf8f1;
+      --paper-deep: #e7dcc8;
+      --ink: #172432;
+      --ink-soft: #4d5a67;
+      --ink-faint: #73808d;
+      --line: rgba(23, 36, 50, 0.12);
+      --line-strong: rgba(23, 36, 50, 0.22);
+      --teal: #0f6761;
+      --teal-soft: rgba(15, 103, 97, 0.12);
+      --rust: #b6583a;
+      --rust-soft: rgba(182, 88, 58, 0.14);
+      --blue: #537492;
+      --blue-soft: rgba(83, 116, 146, 0.12);
+      --rose: #935167;
+      --amber: #a47521;
+      --violet: #6c5f86;
+      --shadow-soft: 0 18px 48px rgba(23, 36, 50, 0.08);
+      --shadow-deep: 0 30px 80px rgba(23, 36, 50, 0.14);
+      --font-display: "Fraunces", Georgia, serif;
+      --font-sans: "Instrument Sans", "Avenir Next", "Segoe UI", sans-serif;
+      --radius-sm: 16px;
+      --radius-md: 26px;
+      --radius-lg: 40px;
+      --control-h: 46px;
+      --page-max: 1480px;
+      --transition-fast: 160ms cubic-bezier(0.25, 1, 0.5, 1);
+      --transition-base: 240ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(15, 103, 97, 0.16), transparent 28%),
+        radial-gradient(circle at 88% 14%, rgba(182, 88, 58, 0.14), transparent 24%),
+        linear-gradient(180deg, #f9f5ed 0%, var(--paper) 45%, #f2e8d9 100%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      background: none;
+      padding: 0;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    :focus-visible {
+      outline: 3px solid rgba(15, 103, 97, 0.45);
+      outline-offset: 2px;
+    }
+
+    .page-shell {
+      width: min(calc(100% - 32px), var(--page-max));
+      margin: 0 auto;
+      padding: 26px 0 48px;
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      padding: 34px 34px 30px;
+      overflow: hidden;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(135deg, rgba(252, 248, 241, 0.98) 0%, rgba(244, 237, 226, 0.97) 46%, rgba(233, 239, 234, 0.96) 100%);
+      box-shadow: var(--shadow-deep);
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .hero::before {
+      inset: auto auto -12% -7%;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(15, 103, 97, 0.18), transparent 66%);
+    }
+
+    .hero::after {
+      inset: -16% -8% auto auto;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(182, 88, 58, 0.16), transparent 64%);
+    }
+
+    .hero-copy,
+    .hero-stage {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(3.2rem, 8vw, 6.7rem);
+      line-height: 0.96;
+      letter-spacing: -0.05em;
+      max-width: 12.5ch;
+    }
+
+    .hero-sub {
+      max-width: 62ch;
+      margin: 0;
+      font-size: 1rem;
+      color: var(--ink-soft);
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.9);
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .hero-stage {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      justify-items: start;
+      padding-top: 0;
+    }
+
+    .hero-status {
+      justify-self: start;
+      color: var(--ink-faint);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 18px;
+    }
+
+    .public-disclaimer {
+      display: flex;
+      justify-content: flex-end;
+      margin: 0 0 18px;
+    }
+
+    .tabbar,
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .tab-btn,
+    .ghost-btn,
+    .tone-btn,
+    .chip-btn,
+    .mini-btn,
+    .list-btn {
+      transition:
+        transform var(--transition-fast),
+        border-color var(--transition-fast),
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        opacity var(--transition-fast);
+    }
+
+    .tab-btn {
+      min-height: 46px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.86);
+      color: var(--ink-soft);
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(23, 36, 50, 0.04);
+    }
+
+    .tab-btn:hover,
+    .ghost-btn:hover,
+    .tone-btn:hover,
+    .chip-btn:hover,
+    .mini-btn:hover,
+    .list-btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+    }
+
+    .tab-btn.active {
+      background: var(--ink);
+      color: var(--paper-strong);
+      border-color: var(--ink);
+      box-shadow: 0 16px 32px rgba(23, 36, 50, 0.16);
+    }
+
+    .ghost-btn,
+    .tone-btn,
+    .chip-btn,
+    .mini-btn,
+    .list-btn {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.9);
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .ghost-btn {
+      min-height: 42px;
+      padding: 0 15px;
+    }
+
+    .ghost-btn.primary {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: var(--paper-strong);
+    }
+
+    .ghost-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .tone-btn,
+    .chip-btn,
+    .mini-btn {
+      min-height: 40px;
+      padding: 0 14px;
+    }
+
+    .tone-btn.active,
+    .chip-btn.active,
+    .mini-btn.active,
+    .list-btn.active {
+      background: var(--ink);
+      color: var(--paper-strong);
+      border-color: var(--ink);
+    }
+
+    .list-btn {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 18px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .panel {
+      display: none;
+      animation: fade-in var(--transition-base);
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .slab {
+      padding: 24px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: var(--radius-md);
+      background: rgba(252, 248, 241, 0.88);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .section-kicker {
+      margin: 0 0 4px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .section-head p {
+      margin: 8px 0 0;
+      max-width: 60ch;
+      color: var(--ink-soft);
+    }
+
+    .editorial-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .lead-story {
+      display: grid;
+      gap: 18px;
+      min-height: 100%;
+      background:
+        linear-gradient(160deg, rgba(252, 248, 241, 0.95) 0%, rgba(246, 238, 226, 0.95) 54%, rgba(230, 239, 235, 0.92) 100%);
+    }
+
+    .lead-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .collection-card {
+      display: grid;
+      gap: 10px;
+      min-height: 184px;
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.82);
+    }
+
+    .collection-card[data-accent="teal"] {
+      background: linear-gradient(180deg, rgba(15, 103, 97, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="rust"] {
+      background: linear-gradient(180deg, rgba(182, 88, 58, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="amber"] {
+      background: linear-gradient(180deg, rgba(164, 117, 33, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="rose"] {
+      background: linear-gradient(180deg, rgba(147, 81, 103, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="violet"] {
+      background: linear-gradient(180deg, rgba(108, 95, 134, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card[data-accent="blue"] {
+      background: linear-gradient(180deg, rgba(83, 116, 146, 0.12) 0%, rgba(252, 248, 241, 0.88) 100%);
+    }
+
+    .collection-card .eyebrow {
+      color: var(--ink-soft);
+    }
+
+    .collection-card h3,
+    .reading-guide h3,
+    .ranking-modules h3,
+    .note-card h3,
+    .explore-rail h3,
+    .compare-rail h3,
+    .details-card h3 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.55rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .collection-card p,
+    .reading-guide p,
+    .ranking-modules p,
+    .note-card p,
+    .stage-note,
+    .muted-copy {
+      margin: 0;
+      color: var(--ink-soft);
+    }
+
+    .chip-cloud,
+    .marker-cloud,
+    .selected-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip-btn {
+      padding: 0 12px;
+    }
+
+    .selected-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.92);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+
+    .selected-pill button {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(23, 36, 50, 0.04);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .ranking-module-list,
+    .marker-list,
+    .ranking-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ranking-module {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.86);
+    }
+
+    .ranking-module header,
+    .ranking-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .ranking-label {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .ranking-row button {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-weight: 700;
+      text-align: left;
+      color: var(--ink);
+    }
+
+    .ranking-value {
+      flex: 0 0 auto;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+
+    .note-card {
+      display: grid;
+      gap: 12px;
+      padding: 22px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: var(--radius-md);
+      background: linear-gradient(180deg, rgba(252, 248, 241, 0.96) 0%, rgba(244, 237, 226, 0.92) 100%);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .reading-steps {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .reading-steps li {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .reading-steps strong {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: var(--paper-strong);
+      font-size: 13px;
+    }
+
+    .explore-grid,
+    .disease-grid,
+    .rankings-grid,
+    .compare-grid {
+      display: grid;
+      grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .explore-rail,
+    .disease-rail,
+    .compare-rail,
+    .rankings-rail,
+    .explore-stage,
+    .disease-stage,
+    .compare-stage,
+    .rankings-stage {
+      display: grid;
+      gap: 16px;
+    }
+
+    .rail-block,
+    .stage-block,
+    .details-card {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.88);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .rail-copy {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .control-label,
+    .select-label {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    input[type="search"],
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select {
+      width: 100%;
+      min-height: var(--control-h);
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(252, 248, 241, 0.92);
+      color: var(--ink);
+      box-shadow: inset 0 1px 2px rgba(23, 36, 50, 0.03);
+    }
+
+    select[multiple] {
+      min-height: 180px;
+    }
+
+    input::placeholder {
+      color: #8a918e;
+    }
+
+    .segmented {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .marker-list {
+      max-height: 430px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .marker-item {
+      display: grid;
+      gap: 4px;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(252, 248, 241, 0.88);
+      text-align: left;
+    }
+
+    .marker-item.active {
+      border-color: var(--ink);
+      background: rgba(23, 36, 50, 0.06);
+      box-shadow: 0 14px 28px rgba(23, 36, 50, 0.08);
+    }
+
+    .marker-item strong {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .marker-item span {
+      color: var(--ink-faint);
+      font-size: 12px;
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .summary-card {
+      display: grid;
+      gap: 6px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(252, 248, 241, 0.9);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+    }
+
+    .summary-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .summary-card .label {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .metric-help {
+      position: relative;
+    }
+
+    .metric-help summary {
+      list-style: none;
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.12);
+      background: rgba(255, 252, 247, 0.92);
+      color: var(--ink-soft);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .metric-help summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .metric-help[open] summary {
+      color: var(--ink);
+      border-color: rgba(15, 103, 97, 0.3);
+    }
+
+    .metric-help-bubble {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 12;
+      width: min(260px, 70vw);
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(255, 252, 247, 0.98);
+      color: var(--ink-soft);
+      font-size: 12px;
+      line-height: 1.45;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .summary-card strong {
+      font-family: var(--font-display);
+      font-size: 1.7rem;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      font-weight: 600;
+    }
+
+    .summary-card span {
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+
+    .chart-shell {
+      min-height: 560px;
+      padding: 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.92);
+      box-shadow: var(--shadow-soft);
+    }
+
+    #explore-plot,
+    #disease-plot,
+    #rankings-plot,
+    #compare-plot {
+      width: 100%;
+      height: 560px;
+      min-height: 520px;
+    }
+
+    .chart-note,
+    .empty-state,
+    .loading-state {
+      display: grid;
+      place-items: center;
+      min-height: 280px;
+      border-radius: 24px;
+      border: 1px dashed var(--line-strong);
+      color: var(--ink-soft);
+      text-align: center;
+      padding: 20px;
+      background: rgba(252, 248, 241, 0.7);
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .disclosure-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .facts {
+      display: grid;
+      gap: 10px;
+    }
+
+    .fact-row {
+      display: grid;
+      gap: 4px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(23, 36, 50, 0.08);
+    }
+
+    .fact-row:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .fact-row span {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      font-weight: 700;
+    }
+
+    .fact-row strong,
+    .fact-row div {
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .fold-card {
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      border-radius: 22px;
+      background: rgba(252, 248, 241, 0.92);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .fold-card summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      cursor: pointer;
+      list-style: none;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .fold-card summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .fold-card summary::after {
+      content: "+";
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.1);
+      background: rgba(255, 252, 247, 0.86);
+      color: var(--ink-soft);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .fold-card[open] summary::after {
+      content: "−";
+    }
+
+    .fold-card-body {
+      padding: 0 18px 18px;
+      color: var(--ink-soft);
+    }
+
+    .fold-card-body > p,
+    .fold-card-body > ul,
+    .fold-card-body > div {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .bubble-copy {
+      font-size: 0.96rem;
+      line-height: 1.55;
+      max-width: 62ch;
+    }
+
+    .big-bullets {
+      display: grid;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .tab-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .tab-summary-card {
+      display: grid;
+      gap: 6px;
+      width: 100%;
+      text-align: left;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.92);
+      box-shadow: var(--shadow-soft);
+      transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+    }
+
+    .tab-summary-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(15, 103, 97, 0.22);
+      box-shadow: var(--shadow-deep);
+    }
+
+    .tab-summary-card strong {
+      font-size: 0.98rem;
+      color: var(--ink);
+    }
+
+    .tab-summary-card span {
+      font-size: 0.93rem;
+      color: var(--ink-soft);
+    }
+
+    .test-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .test-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(255, 252, 247, 0.96);
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .big-bullet {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 20px 22px;
+      border-radius: 24px;
+      background: rgba(252, 248, 241, 0.92);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .big-bullet-mark {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      line-height: 1;
+      color: var(--teal);
+      letter-spacing: -0.05em;
+    }
+
+    .big-bullet p {
+      margin: 0;
+      font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    .rankings-list {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .ranking-card {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(252, 248, 241, 0.9);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+    }
+
+    .ranking-card header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .ranking-card h4 {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+
+    .ranking-card p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--ink-faint);
+    }
+
+    .ranking-card .value {
+      font-family: var(--font-display);
+      font-size: 1.45rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+    }
+
+    .ranking-card .open-link {
+      justify-self: start;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .compare-note {
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+
+    .bioage-grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .bioage-form-shell,
+    .bioage-stage,
+    .bioage-form,
+    .bioage-support-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .bioage-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .mini-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.1);
+      background: rgba(15, 103, 97, 0.08);
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .bioage-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .bioage-form-grid.single {
+      grid-template-columns: 1fr;
+    }
+
+    .bioage-input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 110px;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .input-hint {
+      display: block;
+      margin-top: 6px;
+      color: var(--ink-faint);
+      font-size: 12px;
+      line-height: 1.4;
+      letter-spacing: normal;
+      text-transform: none;
+      font-weight: 500;
+    }
+
+    .bioage-form-note {
+      min-height: 52px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(23, 36, 50, 0.04);
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .bioage-form-note.error {
+      border-color: rgba(182, 88, 58, 0.2);
+      background: rgba(182, 88, 58, 0.1);
+      color: #7d422d;
+    }
+
+    .bioage-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bioage-hero-card {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.05fr);
+      gap: 18px;
+      padding: 22px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: linear-gradient(135deg, rgba(252, 248, 241, 0.98) 0%, rgba(239, 246, 241, 0.94) 54%, rgba(245, 236, 228, 0.96) 100%);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .lab-stage {
+      position: relative;
+      min-height: 360px;
+      padding: 28px 26px 24px;
+      overflow: hidden;
+      border-radius: 28px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background:
+        radial-gradient(circle at 24% 18%, rgba(15, 103, 97, 0.14), transparent 32%),
+        radial-gradient(circle at 82% 18%, rgba(182, 88, 58, 0.16), transparent 30%),
+        linear-gradient(180deg, rgba(252, 248, 241, 0.98) 0%, rgba(232, 242, 239, 0.94) 100%);
+    }
+
+    .lab-stage::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      pointer-events: none;
+    }
+
+    .lab-stage::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 34px;
+      width: 220px;
+      height: 24px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(23, 36, 50, 0.16), rgba(23, 36, 50, 0.02) 70%);
+      filter: blur(1px);
+    }
+
+    .lab-orb {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.88);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .beaker {
+      position: relative;
+      width: 188px;
+      height: 238px;
+      margin: 44px auto 26px;
+      border-left: 4px solid rgba(23, 36, 50, 0.28);
+      border-right: 4px solid rgba(23, 36, 50, 0.28);
+      border-bottom: 4px solid rgba(23, 36, 50, 0.28);
+      border-radius: 0 0 30px 30px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.1) 100%);
+      clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+      box-shadow: inset 0 1px 24px rgba(255, 255, 255, 0.3);
+    }
+
+    .beaker::before {
+      content: "";
+      position: absolute;
+      top: -16px;
+      left: 28px;
+      right: 28px;
+      height: 18px;
+      border-left: 4px solid rgba(23, 36, 50, 0.28);
+      border-right: 4px solid rgba(23, 36, 50, 0.28);
+      border-top: 4px solid rgba(23, 36, 50, 0.28);
+      border-radius: 18px 18px 0 0;
+      background: rgba(252, 248, 241, 0.85);
+    }
+
+    .beaker-liquid {
+      position: absolute;
+      left: 16%;
+      right: 16%;
+      bottom: 10px;
+      height: 38%;
+      border-radius: 22px 22px 16px 16px;
+      background: linear-gradient(180deg, rgba(15, 103, 97, 0.94) 0%, rgba(83, 116, 146, 0.88) 100%);
+      box-shadow: inset 0 10px 18px rgba(255, 255, 255, 0.18);
+      transform-origin: center bottom;
+      transition: height 680ms cubic-bezier(0.16, 1, 0.3, 1), background 320ms ease;
+      animation: beaker-slosh 4.6s ease-in-out infinite;
+    }
+
+    .lab-stage.is-calculating .beaker-liquid {
+      height: 60%;
+      background: linear-gradient(180deg, rgba(182, 88, 58, 0.92) 0%, rgba(15, 103, 97, 0.92) 100%);
+    }
+
+    .lab-stage.is-ready .beaker-liquid {
+      height: 48%;
+    }
+
+    .bubble {
+      position: absolute;
+      bottom: 82px;
+      left: 50%;
+      width: 12px;
+      height: 12px;
+      margin-left: -6px;
+      border-radius: 999px;
+      background: rgba(252, 248, 241, 0.86);
+      opacity: 0;
+      transform: translateY(0) scale(0.7);
+    }
+
+    .bubble.b2 {
+      left: 44%;
+      width: 10px;
+      height: 10px;
+    }
+
+    .bubble.b3 {
+      left: 56%;
+      width: 14px;
+      height: 14px;
+    }
+
+    .lab-stage.is-calculating .bubble.b1 {
+      animation: bubble-rise 1.6s ease-out infinite;
+    }
+
+    .lab-stage.is-calculating .bubble.b2 {
+      animation: bubble-rise 1.8s ease-out 0.24s infinite;
+    }
+
+    .lab-stage.is-calculating .bubble.b3 {
+      animation: bubble-rise 1.5s ease-out 0.48s infinite;
+    }
+
+    .lab-reading {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 22px;
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .bioage-output {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .bioage-output h3 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 0.96;
+      letter-spacing: -0.05em;
+      max-width: 11ch;
+    }
+
+    .bioage-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .bioage-metric-card {
+      display: grid;
+      gap: 4px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.84);
+    }
+
+    .bioage-metric-card span,
+    .bioage-metric-card small {
+      color: var(--ink-faint);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .bioage-metric-card strong {
+      font-family: var(--font-display);
+      font-size: 1.9rem;
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .bioage-converted {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .bioage-converted .fact-row {
+      padding: 0;
+      border-bottom: 0;
+    }
+
+    .condition-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bioage-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--ink-soft);
+      display: grid;
+      gap: 8px;
+    }
+
+    .citation-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .citation-item {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      background: rgba(252, 248, 241, 0.84);
+    }
+
+    .citation-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .citation-item p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .citation-item a {
+      color: var(--teal);
+      font-weight: 700;
+    }
+
+    .about-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .about-copy {
+      display: grid;
+      gap: 14px;
+      padding: 26px;
+      border-radius: var(--radius-md);
+      background: rgba(252, 248, 241, 0.9);
+      border: 1px solid rgba(23, 36, 50, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .about-copy p,
+    .about-copy li {
+      color: var(--ink-soft);
+    }
+
+    .about-copy ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .about-side {
+      display: grid;
+      gap: 20px;
+    }
+
+    .about-side .details-card {
+      padding: 22px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      transform: translateY(18px);
+      opacity: 0;
+      pointer-events: none;
+      min-width: 220px;
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: rgba(23, 36, 50, 0.94);
+      color: var(--paper-strong);
+      font-size: 14px;
+      box-shadow: var(--shadow-deep);
+      transition: transform var(--transition-base), opacity var(--transition-base);
+      z-index: 40;
+    }
+
+    .toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 520ms cubic-bezier(0.16, 1, 0.3, 1), transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes bubble-rise {
+      0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.65);
+      }
+      20% {
+        opacity: 0.9;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-128px) scale(1.08);
+      }
+    }
+
+    @keyframes beaker-slosh {
+      0%,
+      100% {
+        transform: rotate(-1.2deg) scaleX(1);
+      }
+      50% {
+        transform: rotate(1.2deg) scaleX(1.03);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .hero,
+      .editorial-grid,
+      .bioage-hero-card,
+      .about-layout,
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-stage {
+        padding-top: 0;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .explore-grid,
+      .disease-grid,
+      .rankings-grid,
+      .compare-grid,
+      .bioage-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-shell {
+        min-height: 500px;
+      }
+
+      #explore-plot,
+      #disease-plot,
+      #rankings-plot,
+      #compare-plot {
+        height: 500px;
+        min-height: 460px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page-shell {
+        width: min(calc(100% - 20px), var(--page-max));
+        padding-top: 14px;
+      }
+
+      .hero {
+        padding: 22px 20px;
+      }
+
+      .hero h1 {
+        max-width: 8.2ch;
+      }
+
+      .lead-grid,
+      .summary-strip,
+      .bioage-metrics,
+      .bioage-form-grid,
+      .bioage-converted,
+      .rankings-list,
+      .hero-age-row {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      .tabbar,
+      .toolbar-actions,
+      .segmented,
+      .bioage-action-row {
+        width: 100%;
+      }
+
+      .tab-btn,
+      .ghost-btn,
+      .tone-btn,
+      .mini-btn {
+        flex: 1 1 calc(50% - 8px);
+        justify-content: center;
+      }
+
+      .chart-shell {
+        min-height: 440px;
+        padding: 12px;
+      }
+
+      #explore-plot,
+      #disease-plot,
+      #rankings-plot,
+      #compare-plot {
+        height: 420px;
+        min-height: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero reveal">
+      <div class="hero-copy">
+        <div class="eyebrow">Longevity Explorer</div>
+        <h1>How blood markers shift with age.</h1>
+        <p class="hero-sub">
+          Familiar biomarkers across adulthood, with disease contrasts and an open blood-age calculator.
+        </p>
+      </div>
+      <div class="hero-stage">
+        <div id="hero-status" class="hero-status">Loading curated blood markers...</div>
+      </div>
+    </header>
+
+    <div class="toolbar reveal">
+      <div class="tabbar" role="tablist" aria-label="Dashboard sections">
+        <button id="tab-start" class="tab-btn active" data-tab="start" type="button">Start Here</button>
+        <button id="tab-explore" class="tab-btn" data-tab="explore" type="button">Explore a Biomarker</button>
+        <button id="tab-disease" class="tab-btn" data-tab="disease" type="button">Disease Explorer</button>
+        <button id="tab-rankings" class="tab-btn" data-tab="rankings" type="button">What Changes Most?</button>
+        <button id="tab-surprising" class="tab-btn" data-tab="surprising" type="button">What’s Surprising?</button>
+        <button id="tab-compare" class="tab-btn" data-tab="compare" type="button">Compare Biomarkers</button>
+        <button id="tab-calculator" class="tab-btn" data-tab="calculator" type="button">Blood Age</button>
+        <button id="tab-about" class="tab-btn" data-tab="about" type="button">About the Data</button>
+      </div>
+      <div class="toolbar-actions">
+        <button id="copy-link-btn" class="ghost-btn" type="button">Copy view link</button>
+        <button id="save-chart-btn" class="ghost-btn primary" type="button">Save chart PNG</button>
+      </div>
+    </div>
+
+    <section class="public-disclaimer reveal" aria-label="Public dashboard disclaimer">
+      <details class="fold-card">
+        <summary>Public research explorer only.</summary>
+        <div class="fold-card-body">
+          <p class="bubble-copy">
+            For education and pattern exploration only. This is not medical advice, not a diagnostic tool, and not a substitute for a clinician.
+            The charts are cross-sectional NHANES summaries, and the Blood Age tab is a published research equation rather than a clinically validated personal diagnosis.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <main>
+      <section id="panel-start" class="panel active reveal">
+        <div class="editorial-grid">
+          <article class="note-card">
+            <div class="section-kicker">Choose your path</div>
+            <h3>What each tab lets you do</h3>
+            <div class="tab-summary-grid">
+              <button class="tab-summary-card" data-tab-jump="start" type="button">
+                <strong>Start Here</strong>
+                <span>See the featured collections and jump into the clearest aging signals fast.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="explore" type="button">
+                <strong>Explore a Biomarker</strong>
+                <span>Trace one test across age using typical level, spread, tails, or sex split.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="disease" type="button">
+                <strong>Disease Explorer</strong>
+                <span>Compare healthy participants with selected disease groups for one biomarker at a time.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="rankings" type="button">
+                <strong>What Changes Most?</strong>
+                <span>Rank biomarkers by how much they rise, fall, stretch their upper tail, or diverge by sex.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="surprising" type="button">
+                <strong>What’s Surprising?</strong>
+                <span>See the markers that fall with age, hide their shifts in the tails, or split strongly by sex.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="compare" type="button">
+                <strong>Compare Biomarkers</strong>
+                <span>Overlay up to four markers on the same normalized age scale.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="calculator" type="button">
+                <strong>Blood Age</strong>
+                <span>Try the open PhenoAge calculator and read the caveats in plain language.</span>
+              </button>
+            </div>
+          </article>
+
+          <article class="lead-story slab">
+            <div>
+              <div class="section-kicker">Featured collections</div>
+              <h2>Six windows into aging biology.</h2>
+            </div>
+            <div id="collection-grid" class="lead-grid"></div>
+          </article>
+
+          <article class="note-card ranking-modules">
+            <div class="section-kicker">Jump in</div>
+            <h3>Fast entry points</h3>
+            <p>Tap any marker to jump into the detailed explorer.</p>
+            <div id="ranking-modules" class="ranking-module-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="panel-explore" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Deep dive</div>
+            <h2 id="explore-title">Explore a biomarker</h2>
+            <p id="explore-subtitle">One marker at a time, with quieter controls and clearer age-pattern views.</p>
+          </div>
+        </div>
+
+        <div class="explore-grid">
+          <aside class="explore-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Choose a marker</div>
+              <h3>Curated blood biomarkers</h3>
+              <p class="rail-copy">Search by public name or filter down to one of the featured collections.</p>
+              <label class="control-label" for="explore-search">Search</label>
+              <input id="explore-search" type="search" placeholder="Albumin, HbA1c, CRP..." autocomplete="off" spellcheck="false" />
+              <label class="control-label" for="explore-collection">Collection</label>
+              <select id="explore-collection"></select>
+              <div id="explore-list" class="marker-list" aria-live="polite"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Global controls</div>
+              <h3>Read the same marker in different ways</h3>
+              <label class="control-label">Cohort</label>
+              <div class="segmented">
+                <button class="tone-btn" data-cohort-btn data-value="both" type="button">Both</button>
+                <button class="tone-btn" data-cohort-btn data-value="pooled" type="button">Pooled</button>
+                <button class="tone-btn" data-cohort-btn data-value="female" type="button">Female</button>
+                <button class="tone-btn" data-cohort-btn data-value="male" type="button">Male</button>
+              </div>
+              <label class="control-label">Trim</label>
+              <div class="segmented">
+                <button class="tone-btn" data-trim-btn data-value="raw" type="button">Raw</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_5_95" type="button">5-95 trimmed</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_10_90" type="button">10-90 trimmed</button>
+              </div>
+              <label class="control-label">View</label>
+              <div class="segmented">
+                <button class="tone-btn" data-view-btn data-value="typical" type="button">Typical level</button>
+                <button class="tone-btn" data-view-btn data-value="spread" type="button">Spread</button>
+                <button class="tone-btn" data-view-btn data-value="tail" type="button">Tail shape</button>
+                <button class="tone-btn" data-view-btn data-value="sex" type="button">Sex split</button>
+              </div>
+              <label class="control-label">Spread uses</label>
+              <div class="segmented">
+                <button class="mini-btn" data-spread-btn data-value="std" type="button">SD</button>
+                <button class="mini-btn" data-spread-btn data-value="cv" type="button">CV</button>
+              </div>
+              <details class="fold-card">
+                <summary>Sex colors</summary>
+                <div class="fold-card-body">
+                  <p class="bubble-copy">Female is shown in red. Male is shown in blue. In Both mode, the two trajectories are drawn separately.</p>
+                </div>
+              </details>
+            </div>
+          </aside>
+
+          <div class="explore-stage">
+            <div id="explore-summary-strip" class="summary-strip" aria-live="polite"></div>
+            <div class="chart-shell">
+              <div id="explore-plot"></div>
+            </div>
+            <div class="disclosure-grid">
+              <details class="fold-card">
+                <summary>How to read this chart</summary>
+                <div class="fold-card-body">
+                  <div id="explore-annotation" class="stage-note"></div>
+                </div>
+              </details>
+              <details class="fold-card">
+                <summary>Technical details</summary>
+                <div class="fold-card-body">
+                  <div id="explore-tech" class="facts"></div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-disease" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Condition comparisons</div>
+            <h2>Disease Explorer</h2>
+            <p>
+              The main explorer stays healthy-only. This tab intentionally brings selected disease cohorts back in so you can compare cross-sectional biomarker profiles against that healthy baseline.
+            </p>
+          </div>
+        </div>
+
+        <div class="disease-grid">
+          <aside class="disease-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Choose a condition</div>
+              <h3>Healthy baseline vs selected disease group</h3>
+              <p class="rail-copy">
+                Each disease cohort comes from the processed NHANES participant flags. People in the disease group can still have other comorbidities, so this is a broad population comparison rather than a clean case-control study.
+              </p>
+              <div id="disease-condition-list" class="condition-list"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Choose a test</div>
+              <h3>Start with familiar separators</h3>
+              <div id="disease-default-title" class="control-label"></div>
+              <p id="disease-default-summary" class="rail-copy"></p>
+              <div id="disease-default-chips" class="chip-cloud"></div>
+              <label class="control-label" for="disease-search">Search all biomarkers</label>
+              <input id="disease-search" type="search" placeholder="Creatinine, HbA1c, CRP..." autocomplete="off" spellcheck="false" />
+              <div id="disease-list" class="marker-list" aria-live="polite"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Comparison controls</div>
+              <h3>Use the same cohort and trim logic</h3>
+              <label class="control-label">Cohort</label>
+              <div class="segmented">
+                <button class="tone-btn" data-cohort-btn data-value="both" type="button">Both</button>
+                <button class="tone-btn" data-cohort-btn data-value="pooled" type="button">Pooled</button>
+                <button class="tone-btn" data-cohort-btn data-value="female" type="button">Female</button>
+                <button class="tone-btn" data-cohort-btn data-value="male" type="button">Male</button>
+              </div>
+              <label class="control-label">Trim</label>
+              <div class="segmented">
+                <button class="tone-btn" data-trim-btn data-value="raw" type="button">Raw</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_5_95" type="button">5-95 trimmed</button>
+                <button class="tone-btn" data-trim-btn data-value="trim_10_90" type="button">10-90 trimmed</button>
+              </div>
+              <div id="disease-condition-note" class="rail-copy"></div>
+            </div>
+          </aside>
+
+          <div class="disease-stage">
+            <div id="disease-summary-strip" class="summary-strip" aria-live="polite"></div>
+            <div class="chart-shell">
+              <div id="disease-plot"></div>
+            </div>
+            <div class="disclosure-grid">
+              <details class="fold-card">
+                <summary>How to read this comparison</summary>
+                <div class="fold-card-body">
+                  <div id="disease-annotation" class="stage-note"></div>
+                </div>
+              </details>
+              <details class="fold-card">
+                <summary>Condition details</summary>
+                <div class="fold-card-body">
+                  <div id="disease-tech" class="facts"></div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-rankings" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Overview rankings</div>
+            <h2>What changes most?</h2>
+            <p>Use pooled or female-plus-male rankings together with raw or trimmed summaries to see which markers move the most.</p>
+          </div>
+        </div>
+
+        <div class="rankings-grid">
+          <aside class="rankings-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Sort and filter</div>
+              <h3>Rank by one pattern at a time</h3>
+              <label class="control-label" for="rankings-metric">Ranking mode</label>
+              <select id="rankings-metric">
+                <option value="median_rise">Biggest median rise</option>
+                <option value="median_fall">Biggest median fall</option>
+                <option value="upper_tail_rise">Biggest upper-tail increase</option>
+                <option value="sex_divergence">Largest sex divergence</option>
+              </select>
+              <label class="control-label" for="rankings-cohort">Ranking cohort</label>
+              <select id="rankings-cohort">
+                <option value="pooled">Pooled</option>
+                <option value="both">Female + male</option>
+              </select>
+              <label class="control-label" for="rankings-collection">Collection</label>
+              <select id="rankings-collection"></select>
+              <label class="control-label" for="rankings-organ">Primary organ system</label>
+              <select id="rankings-organ"></select>
+              <label class="control-label" for="rankings-top-n">Top N</label>
+              <input id="rankings-top-n" type="number" min="5" max="30" step="1" value="12" />
+              <button id="rankings-reset" class="ghost-btn" type="button">Reset filters</button>
+            </div>
+          </aside>
+
+          <div class="rankings-stage">
+            <div class="chart-shell">
+              <div id="rankings-plot"></div>
+            </div>
+            <div id="rankings-list" class="rankings-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-surprising" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Counterintuitive patterns</div>
+            <h2>What’s surprising?</h2>
+            <p>These are the patterns people tend to remember and share: familiar markers that move the opposite way, hide their shifts in the tails, or split sharply by sex.</p>
+          </div>
+        </div>
+
+        <div id="surprising-groups" class="editorial-grid"></div>
+      </section>
+
+      <section id="panel-compare" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Relative trajectories</div>
+            <h2>Compare biomarkers on the same scale</h2>
+            <p>Every line is normalized to its own 20-24 baseline so you can compare unlike units without flattening the story.</p>
+          </div>
+        </div>
+
+        <div class="compare-grid">
+          <aside class="compare-rail">
+            <div class="rail-block">
+              <div class="section-kicker">Build a compare set</div>
+              <h3>Pick up to four markers</h3>
+              <label class="control-label" for="compare-search">Search</label>
+              <input id="compare-search" type="search" list="compare-options" placeholder="Creatinine, RDW, Vitamin D..." autocomplete="off" spellcheck="false" />
+              <datalist id="compare-options"></datalist>
+              <button id="compare-add" class="ghost-btn primary" type="button">Add marker</button>
+              <div id="compare-selected" class="selected-cloud"></div>
+              <div class="section-kicker">Quick picks</div>
+              <div id="compare-quick-picks" class="chip-cloud"></div>
+            </div>
+
+            <div class="rail-block">
+              <div class="section-kicker">Normalization mode</div>
+              <h3>Choose what you want to compare</h3>
+              <label class="control-label" for="compare-mode">Compare by</label>
+              <select id="compare-mode">
+                <option value="median">Typical level</option>
+                <option value="iqr">Spread (IQR)</option>
+                <option value="std">Spread (SD)</option>
+                <option value="cv">Spread (CV)</option>
+                <option value="upper_tail">Upper tail</option>
+                <option value="lower_tail">Lower tail</option>
+              </select>
+              <p id="compare-note" class="compare-note"></p>
+            </div>
+          </aside>
+
+          <div class="compare-stage">
+            <div class="chart-shell">
+              <div id="compare-plot"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-calculator" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Personal calculator</div>
+            <h2>Try the open blood-age model.</h2>
+            <p>
+              The published PhenoAge equation, running locally in your browser.
+            </p>
+          </div>
+        </div>
+
+        <div class="bioage-grid">
+          <aside class="bioage-form-shell">
+            <details class="fold-card">
+              <summary>What this model is</summary>
+              <div class="fold-card-body">
+                <p class="bubble-copy">
+                  PhenoAge is an open blood-based model from Morgan Levine and colleagues. It combines age plus nine routine biomarkers and reports the age in a U.S. reference population with a similar mortality-associated blood profile.
+                </p>
+              </div>
+            </details>
+
+            <article class="rail-block">
+              <div class="section-kicker">Enter your labs</div>
+              <h3>Use the values from one blood draw</h3>
+              <form id="bioage-form" class="bioage-form">
+                <div class="bioage-form-grid">
+                  <label class="control-label" for="bioage-birth-date">
+                    Birth date
+                    <input id="bioage-birth-date" type="date" />
+                    <span class="input-hint">Used to compute chronological age at the time of the blood draw.</span>
+                  </label>
+                  <label class="control-label" for="bioage-sample-date">
+                    Blood draw date
+                    <input id="bioage-sample-date" type="date" />
+                    <span class="input-hint">PhenoAge should use age on the lab date, not today.</span>
+                  </label>
+                </div>
+
+                <div class="bioage-form-grid">
+                  <label class="control-label" for="bioage-sex">
+                    Sex at birth
+                    <select id="bioage-sex">
+                      <option value="">Prefer not to say</option>
+                      <option value="female">Female</option>
+                      <option value="male">Male</option>
+                      <option value="intersex">Intersex / another variation</option>
+                    </select>
+                    <span class="input-hint">Recorded for context only. This published PhenoAge equation does not use sex.</span>
+                  </label>
+                </div>
+
+                <div class="bioage-form-grid">
+                  <label class="control-label" for="bioage-albumin-value">
+                    Albumin
+                    <div class="bioage-input-row">
+                      <input id="bioage-albumin-value" type="number" min="0" step="0.01" placeholder="4.3" />
+                      <select id="bioage-albumin-unit">
+                        <option value="g/dL">g/dL</option>
+                        <option value="g/L">g/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">Published unit inside the model: g/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-creatinine-value">
+                    Creatinine
+                    <div class="bioage-input-row">
+                      <input id="bioage-creatinine-value" type="number" min="0" step="0.01" placeholder="0.90" />
+                      <select id="bioage-creatinine-unit">
+                        <option value="mg/dL">mg/dL</option>
+                        <option value="umol/L">umol/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">Published unit inside the model: umol/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-glucose-value">
+                    Glucose
+                    <div class="bioage-input-row">
+                      <input id="bioage-glucose-value" type="number" min="0" step="0.1" placeholder="93" />
+                      <select id="bioage-glucose-unit">
+                        <option value="mg/dL">mg/dL</option>
+                        <option value="mmol/L">mmol/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">Published unit inside the model: mmol/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-crp-value">
+                    CRP or hs-CRP
+                    <div class="bioage-input-row">
+                      <input id="bioage-crp-value" type="number" min="0.001" step="0.001" placeholder="1.5" />
+                      <select id="bioage-crp-unit">
+                        <option value="mg/L">mg/L</option>
+                        <option value="mg/dL">mg/dL</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">The published model uses log(CRP) in mg/dL, so this value must be greater than 0.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-lymph-value">
+                    Lymphocyte percent
+                    <input id="bioage-lymph-value" type="number" min="0" step="0.1" placeholder="30.0" />
+                    <span class="input-hint">Use the reported percentage, not an absolute count.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-mcv-value">
+                    Mean cell volume
+                    <input id="bioage-mcv-value" type="number" min="0" step="0.1" placeholder="90.0" />
+                    <span class="input-hint">Enter fL.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-rdw-value">
+                    RDW
+                    <input id="bioage-rdw-value" type="number" min="0" step="0.1" placeholder="13.2" />
+                    <span class="input-hint">Enter the percent value from your CBC.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-alp-value">
+                    Alkaline phosphatase
+                    <input id="bioage-alp-value" type="number" min="0" step="0.1" placeholder="70" />
+                    <span class="input-hint">Enter U/L.</span>
+                  </label>
+
+                  <label class="control-label" for="bioage-wbc-value">
+                    White blood cell count
+                    <div class="bioage-input-row">
+                      <input id="bioage-wbc-value" type="number" min="0" step="0.01" placeholder="6.0" />
+                      <select id="bioage-wbc-unit">
+                        <option value="10^3/uL">10^3/uL</option>
+                        <option value="10^9/L">10^9/L</option>
+                      </select>
+                    </div>
+                    <span class="input-hint">These two WBC unit choices are numerically equivalent.</span>
+                  </label>
+                </div>
+
+                <div class="bioage-action-row">
+                  <button id="bioage-calc-btn" class="ghost-btn primary" type="submit">Calculate PhenoAge</button>
+                  <button id="bioage-reset-btn" class="ghost-btn" type="button">Reset form</button>
+                </div>
+              </form>
+
+              <div id="bioage-form-note" class="bioage-form-note">
+                This page does not store your lab values in the URL or upload them from the browser. Use one set of labs from the same draw whenever possible.
+              </div>
+            </article>
+          </aside>
+
+          <div class="bioage-stage">
+            <article class="bioage-hero-card">
+              <div id="bioage-lab-stage" class="lab-stage">
+                <div class="lab-orb">PhenoAge</div>
+                <div class="beaker">
+                  <div class="beaker-liquid"></div>
+                  <div class="bubble b1"></div>
+                  <div class="bubble b2"></div>
+                  <div class="bubble b3"></div>
+                </div>
+                <div id="bioage-result-status" class="lab-reading">Waiting for a complete blood panel.</div>
+              </div>
+
+              <div class="bioage-output">
+                <div class="section-kicker">Your estimate</div>
+                <h3 id="bioage-result-title">Enter your values to calculate PhenoAge.</h3>
+                <div class="bioage-metrics">
+                  <div class="bioage-metric-card">
+                    <span>PhenoAge</span>
+                    <strong id="bioage-result-age">--</strong>
+                    <small>years</small>
+                  </div>
+                  <div class="bioage-metric-card">
+                    <span>Calendar age</span>
+                    <strong id="bioage-result-chrono">--</strong>
+                    <small>at blood draw</small>
+                  </div>
+                  <div class="bioage-metric-card">
+                    <span>Difference</span>
+                    <strong id="bioage-result-gap">--</strong>
+                    <small>PhenoAge minus age</small>
+                  </div>
+                </div>
+                <p id="bioage-result-copy" class="muted-copy">
+                  PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a biological age test that asks: based on your blood markers, what age has a mortality risk most similar to yours?
+                </p>
+                <div id="bioage-converted" class="bioage-converted"></div>
+              </div>
+            </article>
+
+            <div class="disclosure-grid">
+              <details class="fold-card">
+                <summary>Caveats</summary>
+                <div class="fold-card-body">
+                  <ul class="bioage-list">
+                    <li>Calibrated on U.S. adults in NHANES, so it is a population-reference model rather than a direct internal aging measurement.</li>
+                    <li>Inflammation, infection, medications, dehydration, and lab methods can move the estimate.</li>
+                    <li>It should not be used as a diagnosis, screening decision, or substitute for medical advice.</li>
+                    <li>CRP still needs a positive numeric value because the equation uses log(CRP).</li>
+                  </ul>
+                </div>
+              </details>
+
+              <details class="fold-card">
+                <summary>Sources and credit</summary>
+                <div class="fold-card-body">
+                  <div class="citation-list">
+                    <div class="citation-item">
+                      <strong>Levine ME et al. (2018), AGING.</strong>
+                      <p>
+                        The paper and supplement describe the open phenotypic age blood model, its NHANES III calibration set, and the published coefficients used here.
+                        <a href="https://www.aging-us.com/article/101414/text" target="_blank" rel="noreferrer">Paper</a>
+                        |
+                        <a href="https://www.aging-us.com/article/101414/supplementary/SD1/0/aging-v10i4-101414-supplementary-material-SD1.pdf" target="_blank" rel="noreferrer">Supplement</a>
+                      </p>
+                    </div>
+                    <div class="citation-item">
+                      <strong>Liu Z et al. (2018), PLOS Medicine.</strong>
+                      <p>
+                        This later paper evaluated the measure against mortality and disease burden in later NHANES cohorts.
+                        <a href="https://doi.org/10.1371/journal.pmed.1002718" target="_blank" rel="noreferrer">DOI</a>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-about" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Methods in plain language</div>
+            <h2>What this explorer is and is not.</h2>
+          </div>
+        </div>
+
+        <div class="about-layout">
+          <article class="about-copy">
+            <p>
+              NHANES is a repeated cross-sectional U.S. survey run by the CDC's National Center for Health Statistics.
+              It uses public laboratory, demographics, and health-questionnaire files from the 1999-2000 through 2017-March 2020 pre-pandemic releases.
+            </p>
+            <div class="big-bullets">
+              <article class="big-bullet">
+                <div class="big-bullet-mark">01</div>
+                <p>Age bins run from 20-24 through 80-84. Ages 85 and older are excluded from the age-bin trend summaries.</p>
+              </article>
+              <article class="big-bullet">
+                <div class="big-bullet-mark">02</div>
+                <p>The healthy cohort excludes pregnancy, diagnosed diabetes, diagnosed cardiovascular disease, cancer history, kidney failure indicators, and liver disease history.</p>
+              </article>
+              <article class="big-bullet">
+                <div class="big-bullet-mark">03</div>
+                <p>The charts are cross-sectional. They compare different people at different ages, not the same people followed over time.</p>
+              </article>
+              <article class="big-bullet">
+                <div class="big-bullet-mark">04</div>
+                <p>Sex divergence shows whether female and male median curves move apart after each is normalized to its own 20-24 baseline.</p>
+              </article>
+            </div>
+          </article>
+
+          <div class="about-side">
+            <details class="fold-card">
+              <summary>Which NHANES data are included?</summary>
+              <div class="fold-card-body">
+                <p class="bubble-copy">
+                  The site uses public NHANES laboratory, demographics, and questionnaire files from the 1999-2000, 2001-2002, 2003-2004, 2005-2006, 2007-2008, 2009-2010, 2011-2012, 2013-2014, 2015-2016, and 2017-March 2020 pre-pandemic releases.
+                </p>
+              </div>
+            </details>
+
+            <details class="fold-card">
+              <summary>Full list of biomarkers in this explorer</summary>
+              <div class="fold-card-body">
+                <div id="about-test-list" class="test-chip-list"></div>
+              </div>
+            </details>
+
+            <details class="fold-card">
+              <summary>Technical notes</summary>
+              <div class="fold-card-body">
+                <div class="facts">
+                  <div class="fact-row">
+                    <span>Default public metric set</span>
+                    <div>Median change, IQR change, SD change, CV change, upper-tail change, lower-tail change, quantile-skewness change, and sex divergence score.</div>
+                  </div>
+                  <div class="fact-row">
+                    <span>Compare view</span>
+                    <div>Every selected line is expressed as percent change from the marker's own 20-24 baseline.</div>
+                  </div>
+                  <div class="fact-row">
+                    <span>Use responsibly</span>
+                    <div>This is a population-level pattern explorer. It is not a clinical reference interval calculator and it does not estimate personal risk.</div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const DATA_VERSION = "1775496987";
+    const DATA_BASE = "aging_biomarkers_public";
+    const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
+    const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
+    const DEFAULT_EXPLORE_MARKER = "Albumin";
+
+    const COLORS = {
+      ink: "#172432",
+      inkSoft: "#4d5a67",
+      teal: "#0f6761",
+      rust: "#b6583a",
+      blue: "#537492",
+      rose: "#935167",
+      amber: "#a47521",
+      violet: "#6c5f86",
+      fog: "#c6c1b5",
+      paper: "#f5efe3",
+      band: "rgba(15, 103, 97, 0.14)",
+    };
+
+    const BIOAGE_FACTORS = {
+      albumin: {
+        "g/dL": 10,
+        "g/L": 1,
+      },
+      creatinine: {
+        "mg/dL": 88.4017,
+        "umol/L": 1,
+      },
+      glucose: {
+        "mg/dL": 0.0555,
+        "mmol/L": 1,
+      },
+      crp: {
+        "mg/dL": 1,
+        "mg/L": 0.1,
+      },
+      wbc: {
+        "10^3/uL": 1,
+        "10^9/L": 1,
+      },
+    };
+
+    const state = {
+      manifest: [],
+      manifestById: new Map(),
+      manifestBySlug: new Map(),
+      seriesCache: new Map(),
+      diseaseIndex: [],
+      diseaseIndexByKey: new Map(),
+      diseaseCache: new Map(),
+      surprisingGroups: [],
+      tab: "start",
+      exploreId: "",
+      exploreCollection: "all",
+      diseaseCondition: "",
+      diseaseBiomarkerId: "",
+      cohort: "both",
+      trim: "trim_5_95",
+      view: "typical",
+      spreadMetric: "std",
+      rankingsMetric: "median_rise",
+      rankingsCohort: "pooled",
+      rankingsCollection: "all",
+      rankingsTopN: 12,
+      compareMode: "median",
+      compareIds: [],
+      lastChartId: "explore-plot",
+      hashLock: false,
+      lastToastTimer: null,
+    };
+
+    const refs = {};
+    let exploreRequestToken = 0;
+    let compareRequestToken = 0;
+    let bioAgeTimer = 0;
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function fetchJson(path) {
+      const join = path.includes("?") ? "&" : "?";
+      return fetch(`${path}${join}v=${DATA_VERSION}`).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load ${path}`);
+        }
+        return response.json();
+      });
+    }
+
+    function normalizeText(value) {
+      return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    }
+
+    function trimModeKey() {
+      if (state.trim === "raw") {
+        return "all";
+      }
+      if (state.trim === "trim_10_90") {
+        return "trim_10_90";
+      }
+      return "trim_5_95";
+    }
+
+    function currentTrimLabel() {
+      if (state.trim === "raw") {
+        return "Raw";
+      }
+      if (state.trim === "trim_10_90") {
+        return "10-90 trimmed";
+      }
+      return "5-95 trimmed";
+    }
+
+    function cohortColor(sex) {
+      return sex === "female" ? COLORS.rust : COLORS.blue;
+    }
+
+    function cohortFill(sex) {
+      return sex === "female" ? "rgba(182, 88, 58, 0.12)" : "rgba(83, 116, 146, 0.12)";
+    }
+
+    function cohortLabel(sex) {
+      return sex === "female" ? "Female" : "Male";
+    }
+
+    function humanizeMeasurementClass(value) {
+      return String(value || "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (match) => match.toUpperCase());
+    }
+
+    function formatSignedPercent(value, digits = 0) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
+    }
+
+    function formatUnsigned(value, digits = 1) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      return value.toFixed(digits);
+    }
+
+    function formatCount(value) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      return new Intl.NumberFormat("en-US").format(Math.round(value));
+    }
+
+    function mergePlotConfig(base, overrides) {
+      const merged = { ...base };
+      Object.entries(overrides || {}).forEach(([key, value]) => {
+        const baseValue = merged[key];
+        const canMerge = (
+          value
+          && typeof value === "object"
+          && !Array.isArray(value)
+          && baseValue
+          && typeof baseValue === "object"
+          && !Array.isArray(baseValue)
+        );
+
+        if (canMerge) {
+          merged[key] = mergePlotConfig(baseValue, value);
+          return;
+        }
+
+        merged[key] = value;
+      });
+      return merged;
+    }
+
+    function axisTitle(text) {
+      return {
+        text,
+        font: {
+          family: "\"Instrument Sans\", sans-serif",
+          size: 18,
+          color: COLORS.ink,
+        },
+        standoff: 14,
+      };
+    }
+
+    function chartTitle(text) {
+      return {
+        text,
+        x: 0,
+        xanchor: "left",
+        y: 0.98,
+        font: {
+          family: "\"Fraunces\", serif",
+          size: 18,
+          color: COLORS.ink,
+        },
+      };
+    }
+
+    function buildPlotLayout(overrides = {}) {
+      const baseLayout = {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        margin: { l: 76, r: 28, t: 118, b: 92 },
+        font: {
+          family: "\"Instrument Sans\", sans-serif",
+          color: COLORS.inkSoft,
+          size: 14,
+        },
+        xaxis: {
+          gridcolor: "rgba(23, 36, 50, 0.08)",
+          linecolor: "rgba(23, 36, 50, 0.16)",
+          zeroline: false,
+          tickfont: { color: COLORS.inkSoft, size: 14 },
+          automargin: true,
+          title: axisTitle("Age (years)"),
+        },
+        yaxis: {
+          gridcolor: "rgba(23, 36, 50, 0.08)",
+          linecolor: "rgba(23, 36, 50, 0.16)",
+          zeroline: false,
+          tickfont: { color: COLORS.inkSoft, size: 14 },
+          automargin: true,
+          title: axisTitle("Value"),
+        },
+        legend: {
+          orientation: "h",
+          yanchor: "top",
+          y: -0.22,
+          xanchor: "left",
+          x: 0,
+          bgcolor: "rgba(0,0,0,0)",
+          font: {
+            family: "\"Instrument Sans\", sans-serif",
+            size: 13,
+            color: COLORS.inkSoft,
+          },
+        },
+        hoverlabel: {
+          bgcolor: "#fff8ed",
+          bordercolor: "rgba(23, 36, 50, 0.12)",
+          font: { family: "\"Instrument Sans\", sans-serif", color: COLORS.ink, size: 12 },
+        },
+      };
+
+      return mergePlotConfig(baseLayout, overrides);
+    }
+
+    function collectionEntries(collectionKey) {
+      return state.manifest.filter((entry) => entry.featured_collection === collectionKey);
+    }
+
+    function getEntryById(id) {
+      return state.manifestById.get(id) || null;
+    }
+
+    function defaultMetrics(entry) {
+      return entry?.public_metrics || {};
+    }
+
+    function metricsForCurrentContext(entry) {
+      const byContext = entry?.public_metrics_by_context || {};
+      return byContext?.[state.cohort]?.[trimModeKey()] || entry?.public_metrics || {};
+    }
+
+    function pointLookup(points) {
+      const out = new Map();
+      (points || []).forEach((point) => {
+        if (!point?.age_bin) {
+          return;
+        }
+        out.set(point.age_bin, point);
+      });
+      return out;
+    }
+
+    function percentChange(start, end) {
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        return null;
+      }
+      if (Math.abs(start) < 1e-12) {
+        return null;
+      }
+      return ((end - start) / Math.abs(start)) * 100;
+    }
+
+    function computePointMetrics(points, sampleCount, sexDivergence) {
+      const lookup = pointLookup(points);
+      const start = lookup.get("20-24");
+      const end = lookup.get("80-84");
+      if (!start || !end) {
+        return {
+          sample_count: sampleCount || 0,
+          median_change_pct_20_24_to_80_84: null,
+          iqr_change_pct_20_24_to_80_84: null,
+          sd_change_pct_20_24_to_80_84: null,
+          cv_change_pct_20_24_to_80_84: null,
+          upper_tail_change_pct: null,
+          lower_tail_change_pct: null,
+          tail_asymmetry_change: null,
+          sex_divergence_score: sexDivergence,
+        };
+      }
+
+      const startUpper = Number.isFinite(start.p90) && Number.isFinite(start.median) ? start.p90 - start.median : null;
+      const endUpper = Number.isFinite(end.p90) && Number.isFinite(end.median) ? end.p90 - end.median : null;
+      const startLower = Number.isFinite(start.median) && Number.isFinite(start.p10) ? start.median - start.p10 : null;
+      const endLower = Number.isFinite(end.median) && Number.isFinite(end.p10) ? end.median - end.p10 : null;
+
+      return {
+        sample_count: sampleCount || 0,
+        median_change_pct_20_24_to_80_84: percentChange(start.median, end.median),
+        iqr_change_pct_20_24_to_80_84: percentChange(start.iqr, end.iqr),
+        sd_change_pct_20_24_to_80_84: percentChange(start.std, end.std),
+        cv_change_pct_20_24_to_80_84: percentChange(start.cv, end.cv),
+        upper_tail_change_pct: percentChange(startUpper, endUpper),
+        lower_tail_change_pct: percentChange(startLower, endLower),
+        tail_asymmetry_change: Number.isFinite(start.quantile_skewness) && Number.isFinite(end.quantile_skewness)
+          ? end.quantile_skewness - start.quantile_skewness
+          : null,
+        sex_divergence_score: sexDivergence,
+      };
+    }
+
+    function activeChartId() {
+      if (state.tab === "disease") {
+        return "disease-plot";
+      }
+      if (state.tab === "rankings") {
+        return "rankings-plot";
+      }
+      if (state.tab === "surprising") {
+        return null;
+      }
+      if (state.tab === "compare") {
+        return "compare-plot";
+      }
+      if (state.tab === "explore") {
+        return "explore-plot";
+      }
+      return null;
+    }
+
+    function showToast(message) {
+      if (!refs.toast) {
+        return;
+      }
+      refs.toast.textContent = message;
+      refs.toast.classList.add("visible");
+      window.clearTimeout(state.lastToastTimer);
+      state.lastToastTimer = window.setTimeout(() => {
+        refs.toast.classList.remove("visible");
+      }, 1800);
+    }
+
+    function setStatus(message) {
+      refs.heroStatus.textContent = message;
+    }
+
+    function trackEvent(eventName, params = {}) {
+      const measurementId = window.PUBLIC_GA4_MEASUREMENT_ID;
+      if (!measurementId || typeof window.gtag !== "function") {
+        return;
+      }
+
+      window.gtag("event", eventName, params);
+    }
+
+    function writeHash() {
+      if (state.hashLock) {
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set("tab", state.tab);
+      params.set("biomarker", state.exploreId);
+      params.set("diseaseCondition", state.diseaseCondition);
+      params.set("diseaseBiomarker", state.diseaseBiomarkerId);
+      params.set("cohort", state.cohort);
+      params.set("trim", state.trim);
+      params.set("view", state.view);
+      params.set("spread", state.spreadMetric);
+      params.set("compareMode", state.compareMode);
+      params.set("compare", state.compareIds.join(","));
+
+      state.hashLock = true;
+      window.location.hash = params.toString();
+      window.setTimeout(() => {
+        state.hashLock = false;
+      }, 0);
+    }
+
+    function applyHash() {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (!hash) {
+        return;
+      }
+
+      const params = new URLSearchParams(hash);
+      const tab = params.get("tab");
+      const biomarker = params.get("biomarker");
+      const diseaseCondition = params.get("diseaseCondition");
+      const diseaseBiomarker = params.get("diseaseBiomarker");
+      const cohort = params.get("cohort");
+      const trim = params.get("trim");
+      const view = params.get("view");
+      const spread = params.get("spread");
+      const compareMode = params.get("compareMode");
+      const compare = params.get("compare");
+
+      if (tab && ["start", "explore", "disease", "rankings", "surprising", "compare", "calculator", "about"].includes(tab)) {
+        state.tab = tab;
+      }
+      if (biomarker && state.manifestById.has(biomarker)) {
+        state.exploreId = biomarker;
+      }
+      if (diseaseCondition && state.diseaseIndexByKey.has(diseaseCondition)) {
+        state.diseaseCondition = diseaseCondition;
+      }
+      if (diseaseBiomarker && state.manifestById.has(diseaseBiomarker)) {
+        state.diseaseBiomarkerId = diseaseBiomarker;
+      }
+      if (cohort && ["both", "pooled", "female", "male"].includes(cohort)) {
+        state.cohort = cohort;
+      }
+      if (trim && ["raw", "trim_5_95", "trim_10_90"].includes(trim)) {
+        state.trim = trim;
+      }
+      if (view && ["typical", "spread", "tail", "sex"].includes(view)) {
+        state.view = view;
+      }
+      if (spread && ["std", "cv"].includes(spread)) {
+        state.spreadMetric = spread;
+      }
+      if (compareMode && ["median", "iqr", "std", "cv", "upper_tail", "lower_tail"].includes(compareMode)) {
+        state.compareMode = compareMode;
+      }
+      if (compare) {
+        state.compareIds = compare
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => state.manifestById.has(item))
+          .slice(0, 4);
+      }
+    }
+
+    function ensureDefaults() {
+      if (!window.location.hash) {
+        state.tab = "start";
+        state.cohort = "both";
+        state.trim = "trim_5_95";
+        state.view = "typical";
+      }
+
+      if (!state.exploreId) {
+        const defaultEntry = state.manifest.find((entry) => entry.display_name === DEFAULT_EXPLORE_MARKER);
+        state.exploreId = defaultEntry?.biomarker_id || state.manifest[0]?.biomarker_id || "";
+      }
+
+      if (!state.compareIds.length) {
+        state.compareIds = DEFAULT_COMPARE_MARKERS
+          .map((name) => state.manifest.find((entry) => entry.display_name === name))
+          .filter(Boolean)
+          .map((entry) => entry.biomarker_id)
+          .slice(0, 4);
+      }
+
+      if (!state.diseaseCondition) {
+        state.diseaseCondition = state.diseaseIndex.find((entry) => entry.key === "diabetes")?.key
+          || state.diseaseIndex[0]?.key
+          || "";
+      }
+
+      if (!state.diseaseBiomarkerId) {
+        state.diseaseBiomarkerId = "";
+      }
+    }
+
+    function setTab(tab) {
+      const previousTab = state.tab;
+      state.tab = tab;
+      renderTabs();
+      renderPanels();
+      if (previousTab !== tab) {
+        trackEvent("tab_view", { tab_name: tab });
+      }
+      writeHash();
+    }
+
+    function renderTabs() {
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === state.tab);
+      });
+    }
+
+    function renderPanels() {
+      document.querySelectorAll(".panel").forEach((panel) => {
+        panel.classList.toggle("active", panel.id === `panel-${state.tab}`);
+      });
+    }
+
+    function renderGlobalButtons() {
+      document.querySelectorAll("[data-cohort-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.cohort);
+      });
+      document.querySelectorAll("[data-trim-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.trim);
+      });
+      document.querySelectorAll("[data-view-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.view);
+      });
+      document.querySelectorAll("[data-spread-btn]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === state.spreadMetric);
+      });
+    }
+
+    function populateFilterSelect(selectEl, values, formatter = (value) => value) {
+      const currentValue = selectEl.value || "all";
+      const options = ["all", ...values];
+      selectEl.innerHTML = options
+        .map((value) => {
+          const label = value === "all" ? "All" : formatter(value);
+          return `<option value="${value}">${label}</option>`;
+        })
+        .join("");
+      if (options.includes(currentValue)) {
+        selectEl.value = currentValue;
+      }
+    }
+
+    function renderCollectionGrid() {
+      refs.collectionGrid.innerHTML = Object.entries(COLLECTION_COPY)
+        .map(([key, copy]) => {
+          const topEntries = collectionEntries(key)
+            .sort((left, right) => (right.landing_score || 0) - (left.landing_score || 0))
+            .slice(0, 4);
+          const chips = topEntries
+            .map((entry) => `<button class="chip-btn" data-open-id="${entry.biomarker_id}" type="button">${entry.display_name}</button>`)
+            .join("");
+
+          return `
+            <article class="collection-card" data-accent="${copy.accent}" data-open-collection="${key}">
+              <div class="eyebrow">${copy.kicker}</div>
+              <h3>${copy.title}</h3>
+              <p>${copy.summary}</p>
+              <div class="chip-cloud">${chips}</div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function renderAboutTestList() {
+      if (!refs.aboutTestList) {
+        return;
+      }
+
+      refs.aboutTestList.innerHTML = state.manifest
+        .slice()
+        .sort((left, right) => left.display_name.localeCompare(right.display_name))
+        .map((entry) => `<span class="test-chip">${entry.display_name}</span>`)
+        .join("");
+    }
+
+    function diseaseDefaultIds(conditionMeta, diseasePayload) {
+      const payloadIds = new Set((diseasePayload?.biomarkers || []).map((entry) => entry.biomarker_id));
+      return (conditionMeta?.default_biomarker_ids || []).filter((biomarkerId) => payloadIds.has(biomarkerId));
+    }
+
+    function firstDiseaseDefaultId(conditionMeta, diseasePayload) {
+      const ids = diseaseDefaultIds(conditionMeta, diseasePayload);
+      if (ids.length) {
+        return ids[0];
+      }
+      return diseasePayload?.biomarkers?.[0]?.biomarker_id || "";
+    }
+
+    function renderDiseaseDefaultChips(conditionMeta, diseasePayload) {
+      const ids = diseaseDefaultIds(conditionMeta, diseasePayload);
+      refs.diseaseDefaultTitle.textContent = conditionMeta?.default_title || "Start with familiar markers";
+      refs.diseaseDefaultSummary.textContent = conditionMeta?.default_summary || "";
+      refs.diseaseDefaultChips.innerHTML = ids
+        .map((biomarkerId) => {
+          const entry = state.manifestById.get(biomarkerId);
+          if (!entry) {
+            return "";
+          }
+          const active = biomarkerId === state.diseaseBiomarkerId ? "active" : "";
+          return `<button class="chip-btn ${active}" data-open-disease-id="${biomarkerId}" type="button">${entry.display_name}</button>`;
+        })
+        .join("");
+    }
+
+    function renderSurprisingPanel() {
+      refs.surprisingGroups.innerHTML = (state.surprisingGroups || [])
+        .map((group) => {
+          const items = (group.items || [])
+            .map((item) => `
+              <button class="marker-item" data-open-surprise-id="${item.biomarker_id}" data-open-surprise-view="${group.view}" type="button">
+                <strong>${item.display_name}</strong>
+                <span>${item.featured_collection_title || ""}</span>
+              </button>
+            `)
+            .join("");
+
+          return `
+            <article class="note-card">
+              <div class="section-kicker">${group.title}</div>
+              <h3>${group.summary}</h3>
+              <div class="marker-list">${items}</div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function openCollectionCompare(collectionKey) {
+      const ids = collectionEntries(collectionKey)
+        .sort((left, right) => (right.landing_score || 0) - (left.landing_score || 0))
+        .slice(0, 4)
+        .map((entry) => entry.biomarker_id);
+
+      if (!ids.length) {
+        return;
+      }
+
+      state.compareIds = ids;
+      setTab("compare");
+      renderCompareSelected();
+      renderComparePanel();
+      writeHash();
+    }
+
+    function rankingModuleEntries() {
+      const items = state.manifest.slice();
+      const defaultMetric = (entry) => entry.public_metrics || {};
+      const pickTop = (key, direction, limit = 4) => {
+        const filtered = items
+          .map((entry) => ({ entry, value: defaultMetric(entry)[key] }))
+          .filter((row) => Number.isFinite(row.value));
+        filtered.sort((left, right) => direction === "desc" ? right.value - left.value : left.value - right.value);
+        return filtered.slice(0, limit);
+      };
+
+      return [
+        {
+          title: "Biggest median rise",
+          rows: pickTop("median_change_pct_20_24_to_80_84", "desc"),
+        },
+        {
+          title: "Biggest median fall",
+          rows: pickTop("median_change_pct_20_24_to_80_84", "asc"),
+        },
+        {
+          title: "Biggest upper-tail increase",
+          rows: pickTop("upper_tail_change_pct", "desc"),
+        },
+        {
+          title: "Largest sex divergence",
+          rows: pickTop("sex_divergence_score", "desc"),
+        },
+      ];
+    }
+
+    function renderRankingModules() {
+      refs.rankingModules.innerHTML = rankingModuleEntries()
+        .map((module) => {
+          const rows = module.rows
+            .map(({ entry, value }) => `
+              <div class="ranking-row">
+                <button data-open-id="${entry.biomarker_id}" type="button">${entry.display_name}</button>
+                <div class="ranking-value">${module.title === "Largest sex divergence" ? formatUnsigned(value, 1) : formatSignedPercent(value, 0)}</div>
+              </div>
+            `)
+            .join("");
+          return `
+            <article class="ranking-module">
+              <header>
+                <div class="ranking-label">${module.title}</div>
+              </header>
+              ${rows}
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function exploreEntries() {
+      const search = normalizeText(refs.exploreSearch.value);
+      const collection = refs.exploreCollection.value || "all";
+
+      return state.manifest
+        .filter((entry) => {
+          if (collection !== "all" && entry.featured_collection !== collection) {
+            return false;
+          }
+          if (!search) {
+            return true;
+          }
+          const haystack = `${entry.display_name} ${entry.source_display_name} ${entry.aging_domain} ${entry.primary_organ_system}`;
+          return normalizeText(haystack).includes(search);
+        })
+        .sort((left, right) => {
+          if (left.is_priority_marker !== right.is_priority_marker) {
+            return right.is_priority_marker - left.is_priority_marker;
+          }
+          return left.display_name.localeCompare(right.display_name);
+        });
+    }
+
+    function renderExploreList() {
+      const entries = exploreEntries();
+      refs.exploreList.innerHTML = entries
+        .map((entry) => {
+          return `
+            <button class="marker-item ${entry.biomarker_id === state.exploreId ? "active" : ""}" data-open-id="${entry.biomarker_id}" type="button">
+              <strong>${entry.display_name}</strong>
+              <span>${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}</span>
+            </button>
+          `;
+        })
+        .join("");
+    }
+
+    function getSeriesPoints(payload) {
+      const mode = trimModeKey();
+      if (state.cohort === "pooled") {
+        return payload?.points_by_filter?.[mode] || [];
+      }
+      if (state.cohort === "both") {
+        return [];
+      }
+      return payload?.sex_points_by_filter?.[mode]?.[state.cohort] || [];
+    }
+
+    function getSexSeriesPoints(payload, sex) {
+      const mode = trimModeKey();
+      return payload?.sex_points_by_filter?.[mode]?.[sex] || [];
+    }
+
+    function getRawSample(payload) {
+      if (state.cohort === "pooled") {
+        return payload?.raw_sample || [];
+      }
+      if (state.cohort === "both") {
+        return [];
+      }
+      return payload?.raw_sample_by_sex?.[state.cohort] || [];
+    }
+
+    function getSampleCount(payload) {
+      if (state.cohort === "pooled") {
+        return payload?.raw_total_n || 0;
+      }
+      if (state.cohort === "both") {
+        const counts = payload?.raw_total_n_by_sex || {};
+        return (counts.female || 0) + (counts.male || 0);
+      }
+      return payload?.raw_total_n_by_sex?.[state.cohort] || 0;
+    }
+
+    function getSexSampleCount(payload, sex) {
+      return payload?.raw_total_n_by_sex?.[sex] || 0;
+    }
+
+    function loadSeries(id) {
+      if (state.seriesCache.has(id)) {
+        return Promise.resolve(state.seriesCache.get(id));
+      }
+
+      const entry = getEntryById(id);
+      if (!entry) {
+        return Promise.reject(new Error("Unknown biomarker"));
+      }
+
+      return fetchJson(entry.detail_series_path).then((payload) => {
+        state.seriesCache.set(id, payload);
+        return payload;
+      });
+    }
+
+    function renderSummaryStrip(entry, payload) {
+      if (state.cohort === "both") {
+        const femaleMetrics = computePointMetrics(
+          getSexSeriesPoints(payload, "female"),
+          getSexSampleCount(payload, "female"),
+          entry.public_metrics?.sex_divergence_score || null
+        );
+        const maleMetrics = computePointMetrics(
+          getSexSeriesPoints(payload, "male"),
+          getSexSampleCount(payload, "male"),
+          entry.public_metrics?.sex_divergence_score || null
+        );
+        const spreadKey = state.spreadMetric === "cv"
+          ? "cv_change_pct_20_24_to_80_84"
+          : "sd_change_pct_20_24_to_80_84";
+        const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
+
+        refs.exploreSummaryStrip.innerHTML = renderSummaryCards([
+          {
+            label: "Female median",
+            value: formatSignedPercent(femaleMetrics.median_change_pct_20_24_to_80_84, 0),
+            note: "20s -> 80s",
+            help: "Percent change in the female median from ages 20-24 to 80-84 for the current trim mode.",
+          },
+          {
+            label: "Male median",
+            value: formatSignedPercent(maleMetrics.median_change_pct_20_24_to_80_84, 0),
+            note: "20s -> 80s",
+            help: "Percent change in the male median from ages 20-24 to 80-84 for the current trim mode.",
+          },
+          {
+            label: `Female ${spreadLabel}`,
+            value: formatSignedPercent(femaleMetrics[spreadKey], 0),
+            note: currentTrimLabel(),
+            help: state.spreadMetric === "cv"
+              ? "Percent change in the female coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+              : "Percent change in the female standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
+          },
+          {
+            label: `Male ${spreadLabel}`,
+            value: formatSignedPercent(maleMetrics[spreadKey], 0),
+            note: currentTrimLabel(),
+            help: state.spreadMetric === "cv"
+              ? "Percent change in the male coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+              : "Percent change in the male standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
+          },
+          {
+            label: "Sex divergence",
+            value: Number.isFinite(entry.public_metrics?.sex_divergence_score)
+              ? formatUnsigned(entry.public_metrics.sex_divergence_score, 1)
+              : "n/a",
+            note: "female vs male curve gap",
+            help: "Average gap between female and male median curves after each curve is normalized to its own 20-24 baseline.",
+          },
+        ]);
+        return;
+      }
+
+      const points = getSeriesPoints(payload);
+      const metrics = computePointMetrics(points, getSampleCount(payload), entry.public_metrics?.sex_divergence_score || null);
+      const spreadKey = state.spreadMetric === "cv"
+        ? "cv_change_pct_20_24_to_80_84"
+        : "sd_change_pct_20_24_to_80_84";
+      const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
+
+      refs.exploreSummaryStrip.innerHTML = renderSummaryCards([
+        {
+          label: "20s -> 80s median",
+          value: formatSignedPercent(metrics.median_change_pct_20_24_to_80_84, 0),
+          note: currentTrimLabel(),
+          help: "Percent change in the median from ages 20-24 to 80-84 for the current cohort and trim mode.",
+        },
+        {
+          label: spreadLabel,
+          value: formatSignedPercent(metrics[spreadKey], 0),
+          note: `${state.cohort} cohort`,
+          help: state.spreadMetric === "cv"
+            ? "Percent change in coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+            : "Percent change in standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
+        },
+        {
+          label: "Upper-tail change",
+          value: formatSignedPercent(metrics.upper_tail_change_pct, 0),
+          note: "P90 - median",
+          help: "Percent change in the upper-tail distance, computed as P90 minus median, from ages 20-24 to 80-84.",
+        },
+        {
+          label: "Sex divergence",
+          value: Number.isFinite(metrics.sex_divergence_score) ? formatUnsigned(metrics.sex_divergence_score, 1) : "n/a",
+          note: "avg gap in normalized female vs male medians",
+          help: "Average gap between female and male median curves after each curve is normalized to its own 20-24 baseline.",
+        },
+        {
+          label: "Sample count",
+          value: formatCount(metrics.sample_count),
+          note: `${state.cohort} raw observations`,
+          help: "Total number of raw observations contributing to this biomarker and cohort across the full age range in the current public dataset.",
+        },
+      ]);
+    }
+
+    function renderSummaryCards(items) {
+      return items
+        .map((item, index) => `
+          <div class="summary-card">
+            <div class="summary-head">
+              <div class="label">${item.label}</div>
+              ${item.help ? `
+                <details class="metric-help">
+                  <summary aria-label="About ${item.label}">?</summary>
+                  <div class="metric-help-bubble">${item.help}</div>
+                </details>
+              ` : ""}
+            </div>
+            <strong>${item.value}</strong>
+            <span>${item.note}</span>
+          </div>
+        `)
+        .join("");
+    }
+
+    function renderExploreTech(entry, payload) {
+      const facts = [
+        ["Collection", entry.featured_collection_title],
+        ["Aging domain", entry.aging_domain || "General aging"],
+        ["Primary organ system", entry.primary_organ_system || "Not labeled"],
+        ["Measurement class", humanizeMeasurementClass(entry.measurement_class) || "Unspecified"],
+        ["Clock relevance", entry.clock_relevance || "Not tagged in the curated catalog"],
+        ["Public label", entry.chart_display_name],
+        ["NHANES source label", entry.source_display_name || "n/a"],
+        ["Variable name", entry.source_variable_name || "n/a"],
+        ["Trim mode", currentTrimLabel()],
+      ];
+
+      refs.exploreTech.innerHTML = facts
+        .map(([label, value]) => `
+          <div class="fact-row">
+            <span>${label}</span>
+            <div>${value}</div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function setExploreAnnotation(message) {
+      refs.exploreAnnotation.textContent = message;
+    }
+
+    function renderChartEmpty(el, message) {
+      el.innerHTML = `<div class="empty-state">${message}</div>`;
+    }
+
+    function renderChartLoading(el, message) {
+      el.innerHTML = `<div class="loading-state">${message}</div>`;
+    }
+
+    function hasRenderedPlot(el) {
+      return Boolean(el?.data?.length);
+    }
+
+    function lineTraceFromPoints(points, field, name, color, dash = "solid") {
+      const filtered = (points || []).filter((point) => Number.isFinite(point[field]));
+      return {
+        type: "scatter",
+        mode: "lines+markers",
+        name,
+        x: filtered.map((point) => point.age_mid),
+        y: filtered.map((point) => point[field]),
+        customdata: filtered.map((point) => [point.age_bin, point.n]),
+        line: { color, width: 3, dash },
+        marker: { size: 6, color },
+        hovertemplate: `%{customdata[0]}<br>n=%{customdata[1]}<br>${name}: %{y:.2f}<extra></extra>`,
+      };
+    }
+
+    function buildTypicalTraces(payload) {
+      if (state.cohort === "both") {
+        const traces = [];
+        ["female", "male"].forEach((sex) => {
+          const points = getSexSeriesPoints(payload, sex);
+          if (!points.length) {
+            return;
+          }
+
+          const bandPoints = points.filter((point) => Number.isFinite(point.q25) && Number.isFinite(point.q75));
+          if (bandPoints.length) {
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: bandPoints.map((point) => point.age_mid),
+              y: bandPoints.map((point) => point.q75),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              showlegend: false,
+            });
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: bandPoints.map((point) => point.age_mid),
+              y: bandPoints.map((point) => point.q25),
+              fill: "tonexty",
+              fillcolor: cohortFill(sex),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              showlegend: false,
+            });
+          }
+
+          traces.push(lineTraceFromPoints(points, "median", `${cohortLabel(sex)} median`, cohortColor(sex)));
+        });
+        return traces;
+      }
+
+      const points = getSeriesPoints(payload);
+      if (!points.length) {
+        return [];
+      }
+
+      const bandPoints = points.filter((point) => Number.isFinite(point.q25) && Number.isFinite(point.q75));
+      const traces = [];
+      if (bandPoints.length) {
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q75),
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          showlegend: false,
+        });
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q25),
+          fill: "tonexty",
+          fillcolor: COLORS.band,
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          showlegend: false,
+        });
+      }
+
+      traces.push(lineTraceFromPoints(points, "median", `${state.cohort} median`, COLORS.teal));
+
+      return traces;
+    }
+
+    function buildSpreadTraces(payload) {
+      if (state.cohort === "both") {
+        const traces = [];
+        const field = state.spreadMetric;
+        ["female", "male"].forEach((sex) => {
+          const points = getSexSeriesPoints(payload, sex);
+          if (!points.length) {
+            return;
+          }
+          traces.push(lineTraceFromPoints(points, field, `${cohortLabel(sex)} ${field.toUpperCase()}`, cohortColor(sex)));
+        });
+        return traces;
+      }
+
+      const points = getSeriesPoints(payload);
+      if (!points.length) {
+        return [];
+      }
+
+      const field = state.spreadMetric;
+      const label = state.spreadMetric === "cv" ? "CV" : "SD";
+      return [lineTraceFromPoints(points, field, `${state.cohort} ${label}`, COLORS.teal)];
+    }
+
+    function buildTailTraces(payload) {
+      if (state.cohort === "both") {
+        const traces = [];
+        ["female", "male"].forEach((sex) => {
+          const points = getSexSeriesPoints(payload, sex);
+          if (!points.length) {
+            return;
+          }
+
+          const tailPoints = points.filter((point) => Number.isFinite(point.p10) && Number.isFinite(point.p90));
+          if (tailPoints.length) {
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: tailPoints.map((point) => point.age_mid),
+              y: tailPoints.map((point) => point.p90),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              showlegend: false,
+            });
+            traces.push({
+              type: "scatter",
+              mode: "lines",
+              x: tailPoints.map((point) => point.age_mid),
+              y: tailPoints.map((point) => point.p10),
+              fill: "tonexty",
+              fillcolor: cohortFill(sex),
+              line: { color: "rgba(0,0,0,0)" },
+              hoverinfo: "skip",
+              showlegend: false,
+            });
+          }
+
+          traces.push(lineTraceFromPoints(points, "median", `${cohortLabel(sex)} median`, cohortColor(sex)));
+        });
+        return traces;
+      }
+
+      const points = getSeriesPoints(payload);
+      if (!points.length) {
+        return [];
+      }
+
+      const traces = [
+        lineTraceFromPoints(points, "p10", "P10", COLORS.blue),
+        lineTraceFromPoints(points, "median", "Median", COLORS.teal),
+        lineTraceFromPoints(points, "p90", "P90", COLORS.rust),
+      ];
+
+      const rawSample = getRawSample(payload).filter((point) => Number.isFinite(point.age_years) && Number.isFinite(point.value));
+      if (rawSample.length) {
+        traces.push({
+          type: "scatter",
+          mode: "markers",
+          name: "Raw sample",
+          x: rawSample.map((point) => point.age_years),
+          y: rawSample.map((point) => point.value),
+          marker: {
+            size: 5,
+            color: "rgba(23, 36, 50, 0.18)",
+          },
+          hovertemplate: "Age %{x:.0f}<br>Value %{y:.2f}<extra></extra>",
+        });
+      }
+
+      return traces;
+    }
+
+    function buildNormalizedMedian(points) {
+      const lookup = pointLookup(points);
+      const baseline = lookup.get("20-24");
+      if (!baseline || !Number.isFinite(baseline.median) || Math.abs(baseline.median) < 1e-12) {
+        return [];
+      }
+
+      return points
+        .filter((point) => Number.isFinite(point.median))
+        .map((point) => ({
+          age_mid: point.age_mid,
+          age_bin: point.age_bin,
+          n: point.n,
+          value: ((point.median / baseline.median) - 1) * 100,
+        }));
+    }
+
+    function buildSexSplitTraces(payload) {
+      const mode = trimModeKey();
+      const femalePoints = payload?.sex_points_by_filter?.[mode]?.female || [];
+      const malePoints = payload?.sex_points_by_filter?.[mode]?.male || [];
+      const femaleNorm = buildNormalizedMedian(femalePoints);
+      const maleNorm = buildNormalizedMedian(malePoints);
+      if (!femaleNorm.length || !maleNorm.length) {
+        return [];
+      }
+
+      return [
+        {
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Female",
+          x: femaleNorm.map((point) => point.age_mid),
+          y: femaleNorm.map((point) => point.value),
+          customdata: femaleNorm.map((point) => [point.age_bin, point.n]),
+          line: { color: COLORS.rose, width: 3 },
+          marker: { size: 6, color: COLORS.rose },
+          hovertemplate: "%{customdata[0]}<br>n=%{customdata[1]}<br>Female: %{y:.1f}%<extra></extra>",
+        },
+        {
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Male",
+          x: maleNorm.map((point) => point.age_mid),
+          y: maleNorm.map((point) => point.value),
+          customdata: maleNorm.map((point) => [point.age_bin, point.n]),
+          line: { color: COLORS.blue, width: 3 },
+          marker: { size: 6, color: COLORS.blue },
+          hovertemplate: "%{customdata[0]}<br>n=%{customdata[1]}<br>Male: %{y:.1f}%<extra></extra>",
+        },
+      ];
+    }
+
+    async function renderExplorePanel() {
+      const entry = getEntryById(state.exploreId);
+      if (!entry) {
+        renderChartEmpty(refs.explorePlot, "Choose a biomarker to begin.");
+        return;
+      }
+
+      refs.exploreTitle.textContent = entry.display_name;
+      refs.exploreSubtitle.textContent = `${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}`;
+      const token = ++exploreRequestToken;
+      try {
+        const payload = await loadSeries(entry.biomarker_id);
+        if (token !== exploreRequestToken) {
+          return;
+        }
+
+        renderSummaryStrip(entry, payload);
+        renderExploreTech(entry, payload);
+
+        const chartEl = refs.explorePlot;
+        let traces = [];
+        let layout = buildPlotLayout();
+        let annotation = "";
+
+        if (state.view === "typical") {
+          traces = buildTypicalTraces(payload);
+          annotation = state.cohort === "both"
+            ? "Female is shown in red and male in blue. Each line tracks the age-bin median, and each translucent band marks that sex-specific interquartile range."
+            : "The thick line tracks the age-bin median. The shaded band marks the interquartile range.";
+          layout = buildPlotLayout({
+            title: chartTitle(entry.display_name),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle(entry.unit || "Biomarker value") },
+          });
+        } else if (state.view === "spread") {
+          traces = buildSpreadTraces(payload);
+          const label = state.spreadMetric === "cv" ? "coefficient of variation" : "standard deviation";
+          annotation = state.cohort === "both"
+            ? `Female is shown in red and male in blue. This view asks whether the ${label} widens or narrows differently by sex.`
+            : `This view asks whether the ${label} widens or narrows with age.`;
+          layout = buildPlotLayout({
+            title: chartTitle(entry.display_name),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle(state.spreadMetric === "cv" ? "Coefficient of variation" : "Standard deviation") },
+          });
+        } else if (state.view === "tail") {
+          traces = buildTailTraces(payload);
+          annotation = state.cohort === "both"
+            ? "Female is shown in red and male in blue. Each shaded band spans P10 to P90, with the median line overlaid for each sex."
+            : "P10, median, and P90 show whether the tails stretch faster than the center. The point cloud is a capped raw sample.";
+          layout = buildPlotLayout({
+            title: chartTitle(entry.display_name),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle(entry.unit || "Biomarker value") },
+          });
+        } else {
+          traces = buildSexSplitTraces(payload);
+          annotation = "Female and male medians are each normalized to their own 20-24 baseline to highlight divergence in trajectory shape, not just baseline separation.";
+          layout = buildPlotLayout({
+            title: chartTitle(`${entry.display_name}: female vs male`),
+            xaxis: { title: axisTitle("Age (years)") },
+            yaxis: { title: axisTitle("% change from each sex-specific 20-24 baseline") },
+          });
+        }
+
+        if (!traces.length) {
+          renderChartEmpty(chartEl, "This biomarker does not have enough data for the current view.");
+          setExploreAnnotation(annotation || "No analyzable age-bin summary is available for this context.");
+          return;
+        }
+
+        chartEl.innerHTML = "";
+        Plotly.newPlot(chartEl, traces, layout, { responsive: true, displaylogo: false });
+        state.lastChartId = "explore-plot";
+        setExploreAnnotation(annotation);
+      } catch (error) {
+        renderChartEmpty(refs.explorePlot, "This biomarker could not be loaded.");
+        setExploreAnnotation(error.message);
+      }
+    }
+
+    function getDiseaseConditionMeta(key) {
+      return state.diseaseIndexByKey.get(key) || null;
+    }
+
+    function loadDiseaseCondition(key) {
+      if (state.diseaseCache.has(key)) {
+        return Promise.resolve(state.diseaseCache.get(key));
+      }
+
+      const condition = getDiseaseConditionMeta(key);
+      if (!condition?.detail_path) {
+        return Promise.reject(new Error("Unknown disease condition"));
+      }
+
+      return fetchJson(`${DATA_BASE}/${condition.detail_path}`).then((payload) => {
+        state.diseaseCache.set(key, payload);
+        return payload;
+      });
+    }
+
+    function renderDiseaseConditionList() {
+      refs.diseaseConditionList.innerHTML = state.diseaseIndex
+        .map((condition) => `
+          <button class="marker-item ${condition.key === state.diseaseCondition ? "active" : ""}" data-select-condition="${condition.key}" type="button">
+            <strong>${condition.title}</strong>
+            <span>${condition.kicker} | ${formatCount(condition.participant_count)} participants</span>
+          </button>
+        `)
+        .join("");
+    }
+
+    function diseaseEntries(diseasePayload) {
+      const search = normalizeText(refs.diseaseSearch.value);
+      const biomarkers = diseasePayload?.biomarkers || [];
+      return biomarkers
+        .filter((entry) => {
+          if (!search) {
+            return true;
+          }
+          const haystack = `${entry.display_name} ${entry.aging_domain || ""} ${entry.featured_collection_title || ""}`;
+          return normalizeText(haystack).includes(search);
+        })
+        .sort((left, right) => {
+          const leftPriority = getEntryById(left.biomarker_id)?.is_priority_marker ? 1 : 0;
+          const rightPriority = getEntryById(right.biomarker_id)?.is_priority_marker ? 1 : 0;
+          if (leftPriority !== rightPriority) {
+            return rightPriority - leftPriority;
+          }
+          return left.display_name.localeCompare(right.display_name);
+        });
+    }
+
+    function renderDiseaseBiomarkerList(diseasePayload) {
+      const entries = diseaseEntries(diseasePayload);
+      refs.diseaseList.innerHTML = entries
+        .map((entry) => `
+          <button class="marker-item ${entry.biomarker_id === state.diseaseBiomarkerId ? "active" : ""}" data-open-disease-id="${entry.biomarker_id}" type="button">
+            <strong>${entry.display_name}</strong>
+            <span>${entry.featured_collection_title} | ${entry.aging_domain || "General aging"}</span>
+          </button>
+        `)
+        .join("");
+    }
+
+    function getDiseaseGroupPoints(record, groupKey) {
+      const mode = trimModeKey();
+      const group = record?.groups?.[groupKey] || {};
+      if (state.cohort === "pooled") {
+        return group?.points_by_filter?.[mode] || [];
+      }
+      if (state.cohort === "both") {
+        return [];
+      }
+      return group?.sex_points_by_filter?.[mode]?.[state.cohort] || [];
+    }
+
+    function getDiseaseGroupPointsForSex(record, groupKey, sex) {
+      const mode = trimModeKey();
+      const group = record?.groups?.[groupKey] || {};
+      return group?.sex_points_by_filter?.[mode]?.[sex] || [];
+    }
+
+    function getDiseaseGroupCount(record, groupKey) {
+      const group = record?.groups?.[groupKey] || {};
+      if (state.cohort === "pooled") {
+        return group?.raw_total_n || 0;
+      }
+      if (state.cohort === "both") {
+        const counts = group?.raw_total_n_by_sex || {};
+        return (counts.female || 0) + (counts.male || 0);
+      }
+      return group?.raw_total_n_by_sex?.[state.cohort] || 0;
+    }
+
+    function medianGapAtAgeBin(record, ageBin) {
+      const healthyLookup = pointLookup(getDiseaseGroupPoints(record, "healthy"));
+      const conditionLookup = pointLookup(getDiseaseGroupPoints(record, "condition"));
+      const healthyPoint = healthyLookup.get(ageBin);
+      const conditionPoint = conditionLookup.get(ageBin);
+      if (!Number.isFinite(healthyPoint?.median) || !Number.isFinite(conditionPoint?.median)) {
+        return null;
+      }
+      return conditionPoint.median - healthyPoint.median;
+    }
+
+    function formatSignedValue(value, unit = "", digits = 1) {
+      if (!Number.isFinite(value)) {
+        return "n/a";
+      }
+      const number = `${value >= 0 ? "+" : ""}${value.toFixed(digits)}`;
+      return unit ? `${number} ${unit}` : number;
+    }
+
+    function buildDiseaseBandTraces(points, label, lineColor, fillColor) {
+      if (!points.length) {
+        return [];
+      }
+
+      const traces = [];
+      const bandPoints = points.filter((point) => Number.isFinite(point.q25) && Number.isFinite(point.q75));
+      if (bandPoints.length) {
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q75),
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          showlegend: false,
+        });
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: bandPoints.map((point) => point.age_mid),
+          y: bandPoints.map((point) => point.q25),
+          fill: "tonexty",
+          fillcolor: fillColor,
+          line: { color: "rgba(0,0,0,0)" },
+          hoverinfo: "skip",
+          showlegend: false,
+        });
+      }
+
+      traces.push(lineTraceFromPoints(points, "median", `${label} median`, lineColor));
+      return traces;
+    }
+
+    function renderDiseaseSummaryStrip(conditionMeta, record) {
+      if (state.cohort === "both") {
+        refs.diseaseSummaryStrip.innerHTML = [
+          {
+            label: "Healthy female n",
+            value: formatCount(record?.groups?.healthy?.raw_total_n_by_sex?.female || 0),
+            note: "female healthy observations",
+          },
+          {
+            label: "Healthy male n",
+            value: formatCount(record?.groups?.healthy?.raw_total_n_by_sex?.male || 0),
+            note: "male healthy observations",
+          },
+          {
+            label: `${conditionMeta.title} female n`,
+            value: formatCount(record?.groups?.condition?.raw_total_n_by_sex?.female || 0),
+            note: "female condition observations",
+          },
+          {
+            label: `${conditionMeta.title} male n`,
+            value: formatCount(record?.groups?.condition?.raw_total_n_by_sex?.male || 0),
+            note: "male condition observations",
+          },
+          {
+            label: "View mode",
+            value: "Both",
+            note: "female red, male blue",
+          },
+        ]
+          .map((item) => `
+            <div class="summary-card">
+              <div class="label">${item.label}</div>
+              <strong>${item.value}</strong>
+              <span>${item.note}</span>
+            </div>
+          `)
+          .join("");
+        return;
+      }
+
+      refs.diseaseSummaryStrip.innerHTML = [
+        {
+          label: "Healthy sample count",
+          value: formatCount(getDiseaseGroupCount(record, "healthy")),
+          note: `${state.cohort} healthy observations`,
+        },
+        {
+          label: `${conditionMeta.title} sample count`,
+          value: formatCount(getDiseaseGroupCount(record, "condition")),
+          note: `${state.cohort} condition observations`,
+        },
+        {
+          label: "40s median gap",
+          value: formatSignedValue(medianGapAtAgeBin(record, "40-44"), record.unit),
+          note: `${conditionMeta.title} minus healthy`,
+        },
+        {
+          label: "60s median gap",
+          value: formatSignedValue(medianGapAtAgeBin(record, "60-64"), record.unit),
+          note: `${conditionMeta.title} minus healthy`,
+        },
+        {
+          label: "80s median gap",
+          value: formatSignedValue(medianGapAtAgeBin(record, "80-84"), record.unit),
+          note: `${conditionMeta.title} minus healthy`,
+        },
+      ]
+        .map((item) => `
+          <div class="summary-card">
+            <div class="label">${item.label}</div>
+            <strong>${item.value}</strong>
+            <span>${item.note}</span>
+          </div>
+        `)
+        .join("");
+    }
+
+    function renderDiseaseTech(conditionMeta, record) {
+      const facts = [
+        ["Condition", conditionMeta.title],
+        ["Definition", conditionMeta.source || "Condition definition not provided"],
+        ["Biomarker", record.chart_display_name],
+        ["Collection", record.featured_collection_title],
+        ["Aging domain", record.aging_domain || "General aging"],
+        ["Cohort", state.cohort],
+        ["Trim mode", currentTrimLabel()],
+        ["Important caveat", "The disease cohort can include other comorbidities. This is a broad cross-sectional comparison, not an isolated causal effect."],
+      ];
+
+      refs.diseaseTech.innerHTML = facts
+        .map(([label, value]) => `
+          <div class="fact-row">
+            <span>${label}</span>
+            <div>${value}</div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function buildDiseaseBothSexTraces(record, conditionMeta) {
+      const traces = [];
+
+      ["female", "male"].forEach((sex) => {
+        const healthyPoints = getDiseaseGroupPointsForSex(record, "healthy", sex);
+        const conditionPoints = getDiseaseGroupPointsForSex(record, "condition", sex);
+        if (!healthyPoints.length || !conditionPoints.length) {
+          return;
+        }
+
+        const color = cohortColor(sex);
+        const label = cohortLabel(sex);
+        traces.push(lineTraceFromPoints(healthyPoints, "median", `Healthy ${label}`, color, "dot"));
+        traces.push(lineTraceFromPoints(conditionPoints, "median", `${conditionMeta.title} ${label}`, color));
+      });
+
+      return traces;
+    }
+
+    function setDiseaseAnnotation(message) {
+      refs.diseaseAnnotation.textContent = message;
+    }
+
+    async function renderDiseasePanel() {
+      if (!state.diseaseCondition) {
+        renderChartEmpty(refs.diseasePlot, "Choose a disease condition to begin.");
+        refs.diseaseSummaryStrip.innerHTML = "";
+        refs.diseaseList.innerHTML = "";
+        refs.diseaseDefaultTitle.textContent = "";
+        refs.diseaseDefaultSummary.textContent = "";
+        refs.diseaseDefaultChips.innerHTML = "";
+        refs.diseaseConditionNote.textContent = "";
+        refs.diseaseTech.innerHTML = "";
+        setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
+        return;
+      }
+
+      renderDiseaseConditionList();
+      try {
+        const payload = await loadDiseaseCondition(state.diseaseCondition);
+        const conditionMeta = payload?.condition || getDiseaseConditionMeta(state.diseaseCondition);
+        const biomarkerLookup = new Map((payload?.biomarkers || []).map((entry) => [entry.biomarker_id, entry]));
+        if (!biomarkerLookup.has(state.diseaseBiomarkerId)) {
+          state.diseaseBiomarkerId = firstDiseaseDefaultId(conditionMeta, payload);
+        }
+
+        renderDiseaseDefaultChips(conditionMeta, payload);
+        renderDiseaseBiomarkerList(payload);
+
+        const record = biomarkerLookup.get(state.diseaseBiomarkerId);
+        if (!record || !conditionMeta) {
+          renderChartEmpty(refs.diseasePlot, "Choose a biomarker to compare against the selected disease cohort.");
+          refs.diseaseSummaryStrip.innerHTML = "";
+          refs.diseaseDefaultTitle.textContent = "";
+          refs.diseaseDefaultSummary.textContent = "";
+          refs.diseaseDefaultChips.innerHTML = "";
+          refs.diseaseTech.innerHTML = "";
+          refs.diseaseConditionNote.textContent = "";
+          setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
+          return;
+        }
+
+        const healthyPoints = getDiseaseGroupPoints(record, "healthy");
+        const conditionPoints = getDiseaseGroupPoints(record, "condition");
+        refs.diseaseConditionNote.textContent = `${conditionMeta.kicker} | ${conditionMeta.source}`;
+
+        if (state.cohort !== "both" && (!healthyPoints.length || !conditionPoints.length)) {
+          renderChartEmpty(refs.diseasePlot, "This biomarker does not have enough data for the current cohort and disease condition.");
+          refs.diseaseSummaryStrip.innerHTML = "";
+          renderDiseaseTech(conditionMeta, record);
+          setDiseaseAnnotation("Some disease-by-age cells are sparse. Try pooled view or switch to the trimmed mode for a cleaner comparison.");
+          return;
+        }
+
+        const traces = state.cohort === "both"
+          ? buildDiseaseBothSexTraces(record, conditionMeta)
+          : [
+              ...buildDiseaseBandTraces(healthyPoints, "Healthy baseline", COLORS.teal, "rgba(15, 103, 97, 0.12)"),
+              ...buildDiseaseBandTraces(conditionPoints, conditionMeta.title, COLORS.rust, "rgba(182, 88, 58, 0.14)"),
+            ];
+
+        if (!traces.length) {
+          renderChartEmpty(refs.diseasePlot, "This biomarker does not have enough female and male data for the current condition.");
+          refs.diseaseSummaryStrip.innerHTML = "";
+          renderDiseaseTech(conditionMeta, record);
+          setDiseaseAnnotation("Try pooled view if one sex has sparse data in the selected condition.");
+          return;
+        }
+
+        refs.diseasePlot.innerHTML = "";
+        Plotly.newPlot(
+          refs.diseasePlot,
+          traces,
+          buildPlotLayout({
+            title: chartTitle(`${record.display_name}: healthy vs ${conditionMeta.title.toLowerCase()}`),
+            xaxis: {
+              title: axisTitle("Age (years)"),
+            },
+            yaxis: {
+              title: axisTitle(record.unit || "Biomarker value"),
+            },
+          }),
+          { responsive: true, displaylogo: false }
+        );
+        state.lastChartId = "disease-plot";
+        renderDiseaseSummaryStrip(conditionMeta, record);
+        renderDiseaseTech(conditionMeta, record);
+        setDiseaseAnnotation(
+          state.cohort === "both"
+            ? `${conditionMeta.summary} Female curves are red and male curves are blue. Dotted lines are the healthy baseline; solid lines are the selected disease cohort.`
+            : `${conditionMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort in the same age bins.`
+        );
+      } catch (error) {
+        renderChartEmpty(refs.diseasePlot, "The disease explorer could not be loaded.");
+        refs.diseaseSummaryStrip.innerHTML = "";
+        refs.diseaseDefaultTitle.textContent = "";
+        refs.diseaseDefaultSummary.textContent = "";
+        refs.diseaseDefaultChips.innerHTML = "";
+        refs.diseaseTech.innerHTML = "";
+        refs.diseaseConditionNote.textContent = "";
+        setDiseaseAnnotation(error.message);
+      }
+    }
+
+    function rankingValueFromMetrics(metrics) {
+      if (state.rankingsMetric === "median_rise" || state.rankingsMetric === "median_fall") {
+        return metrics.median_change_pct_20_24_to_80_84;
+      }
+      if (state.rankingsMetric === "upper_tail_rise") {
+        return metrics.upper_tail_change_pct;
+      }
+      return metrics.sex_divergence_score;
+    }
+
+    function rankingMetricsForCohort(entry, cohortKey) {
+      const byContext = entry?.public_metrics_by_context || {};
+      return byContext?.[cohortKey]?.[trimModeKey()] || {};
+    }
+
+    function filteredRankingEntries() {
+      let entries = state.manifest.slice();
+      if (state.rankingsCollection !== "all") {
+        entries = entries.filter((entry) => entry.featured_collection === state.rankingsCollection);
+      }
+
+      entries = entries
+        .map((entry) => {
+          if (state.rankingsCohort === "both" && state.rankingsMetric !== "sex_divergence") {
+            const femaleValue = rankingValueFromMetrics(rankingMetricsForCohort(entry, "female"));
+            const maleValue = rankingValueFromMetrics(rankingMetricsForCohort(entry, "male"));
+            const candidates = [femaleValue, maleValue].filter((value) => Number.isFinite(value));
+            if (!candidates.length) {
+              return null;
+            }
+            const sortValue = state.rankingsMetric === "median_fall"
+              ? Math.min(...candidates)
+              : Math.max(...candidates);
+            return { entry, femaleValue, maleValue, value: sortValue };
+          }
+
+          const metrics = rankingMetricsForCohort(entry, "pooled");
+          const value = rankingValueFromMetrics(metrics);
+          if (!Number.isFinite(value)) {
+            return null;
+          }
+          return { entry, value };
+        })
+        .filter(Boolean);
+
+      const descending = state.rankingsMetric !== "median_fall";
+      entries.sort((left, right) => descending ? right.value - left.value : left.value - right.value);
+      return entries.slice(0, state.rankingsTopN);
+    }
+
+    function renderRankings() {
+      const rows = filteredRankingEntries();
+      if (!rows.length) {
+        renderChartEmpty(refs.rankingsPlot, "No biomarkers match the current ranking filters.");
+        refs.rankingsList.innerHTML = "";
+        return;
+      }
+
+      const label = state.rankingsMetric === "median_rise"
+        ? "Median change"
+        : state.rankingsMetric === "median_fall"
+          ? "Median change"
+          : state.rankingsMetric === "upper_tail_rise"
+              ? "Upper-tail change"
+              : "Sex divergence";
+
+      const isBothView = state.rankingsCohort === "both" && state.rankingsMetric !== "sex_divergence";
+      const y = rows.map((row) => row.entry.display_name).reverse();
+      const traces = isBothView
+        ? [
+            {
+              type: "bar",
+              orientation: "h",
+              name: "Female",
+              x: rows.map((row) => row.femaleValue).reverse(),
+              y,
+              marker: { color: COLORS.rust },
+              hovertemplate: "%{y}<br>Female: %{x:.1f}<extra></extra>",
+            },
+            {
+              type: "bar",
+              orientation: "h",
+              name: "Male",
+              x: rows.map((row) => row.maleValue).reverse(),
+              y,
+              marker: { color: COLORS.blue },
+              hovertemplate: "%{y}<br>Male: %{x:.1f}<extra></extra>",
+            },
+          ]
+        : [
+            {
+              type: "bar",
+              orientation: "h",
+              x: rows.map((row) => row.value).reverse(),
+              y,
+              marker: {
+                color: rows.map((row) => row.value).reverse().map((value) => {
+                  if (state.rankingsMetric === "sex_divergence") {
+                    return COLORS.violet;
+                  }
+                  return value >= 0 ? COLORS.rust : COLORS.blue;
+                }),
+              },
+              hovertemplate: "%{y}<br>%{x:.1f}<extra></extra>",
+            },
+          ];
+
+      refs.rankingsPlot.innerHTML = "";
+      Plotly.newPlot(
+        refs.rankingsPlot,
+        traces,
+        buildPlotLayout({
+          title: chartTitle(`${label} | ${state.rankingsCohort === "both" && state.rankingsMetric !== "sex_divergence" ? "female + male" : "pooled"} | ${currentTrimLabel()}`),
+          xaxis: {
+            title: axisTitle(state.rankingsMetric === "sex_divergence" ? "Mean absolute normalized gap" : "% change vs age 20-24"),
+            gridcolor: "rgba(23, 36, 50, 0.08)",
+          },
+          yaxis: {
+            automargin: true,
+            title: axisTitle("Biomarker"),
+          },
+          barmode: isBothView ? "group" : "relative",
+          margin: { l: 220, r: 28, t: 118, b: 92 },
+        }),
+        { responsive: true, displaylogo: false }
+      );
+      state.lastChartId = "rankings-plot";
+
+      refs.rankingsList.innerHTML = rows
+        .map(({ entry, value }) => `
+          <article class="ranking-card">
+            <header>
+              <div>
+                <h4>${entry.display_name}</h4>
+                <p>${entry.featured_collection_title} | ${entry.primary_organ_system || "General aging"}</p>
+              </div>
+              <div class="value">${
+                isBothView
+                  ? `F ${formatSignedPercent(femaleValue, 0)} | M ${formatSignedPercent(maleValue, 0)}`
+                  : state.rankingsMetric === "sex_divergence"
+                    ? formatUnsigned(value, 1)
+                    : formatSignedPercent(value, 0)
+              }</div>
+            </header>
+            <button class="open-link" data-open-id="${entry.biomarker_id}" type="button">Open in explorer</button>
+          </article>
+        `)
+        .join("");
+    }
+
+    function compareAccessor(point) {
+      if (state.compareMode === "median") {
+        return point.median;
+      }
+      if (state.compareMode === "iqr") {
+        return point.iqr;
+      }
+      if (state.compareMode === "std") {
+        return point.std;
+      }
+      if (state.compareMode === "cv") {
+        return point.cv;
+      }
+      if (state.compareMode === "upper_tail") {
+        if (!Number.isFinite(point.p90) || !Number.isFinite(point.median)) {
+          return null;
+        }
+        return point.p90 - point.median;
+      }
+      if (!Number.isFinite(point.median) || !Number.isFinite(point.p10)) {
+        return null;
+      }
+      return point.median - point.p10;
+    }
+
+    function buildCompareSeries(entry, payload, color) {
+      const points = state.cohort === "both"
+        ? (payload?.points_by_filter?.[trimModeKey()] || [])
+        : getSeriesPoints(payload);
+      const baselinePoint = points.find((point) => point.age_bin === "20-24");
+      const baselineValue = baselinePoint ? compareAccessor(baselinePoint) : null;
+      if (!Number.isFinite(baselineValue) || Math.abs(baselineValue) < 1e-12) {
+        return null;
+      }
+
+      const usable = points
+        .map((point) => {
+          const value = compareAccessor(point);
+          if (!Number.isFinite(value)) {
+            return null;
+          }
+          return {
+            age_mid: point.age_mid,
+            age_bin: point.age_bin,
+            n: point.n,
+            value: ((value / baselineValue) - 1) * 100,
+          };
+        })
+        .filter(Boolean);
+
+      if (!usable.length) {
+        return null;
+      }
+
+      return {
+        type: "scatter",
+        mode: "lines+markers",
+        name: entry.display_name,
+        x: usable.map((point) => point.age_mid),
+        y: usable.map((point) => point.value),
+        customdata: usable.map((point) => [point.age_bin, point.n]),
+        line: { color, width: 3 },
+        marker: { size: 6, color },
+        hovertemplate: "%{customdata[0]}<br>n=%{customdata[1]}<br>%{y:.1f}%<extra></extra>",
+      };
+    }
+
+    async function renderComparePanel() {
+      if (!state.compareIds.length) {
+        renderChartEmpty(refs.comparePlot, "Add up to four biomarkers to compare them on a shared normalized scale.");
+        refs.compareNote.textContent = "";
+        return;
+      }
+
+      const token = ++compareRequestToken;
+
+      try {
+        const entries = state.compareIds.map((id) => getEntryById(id)).filter(Boolean);
+        const payloads = await Promise.all(entries.map((entry) => loadSeries(entry.biomarker_id)));
+        if (token !== compareRequestToken) {
+          return;
+        }
+
+        const palette = [COLORS.teal, COLORS.rust, COLORS.blue, COLORS.rose];
+        const skipped = [];
+        const traces = entries
+          .map((entry, index) => {
+            const trace = buildCompareSeries(entry, payloads[index], palette[index % palette.length]);
+            if (!trace) {
+              skipped.push(entry.display_name);
+            }
+            return trace;
+          })
+          .filter(Boolean);
+
+        if (!traces.length) {
+          renderChartEmpty(refs.comparePlot, "The selected biomarkers do not have enough baseline data for this compare mode.");
+          refs.compareNote.textContent = "";
+          return;
+        }
+
+        refs.comparePlot.innerHTML = "";
+        Plotly.newPlot(
+          refs.comparePlot,
+          traces,
+          buildPlotLayout({
+            title: chartTitle(`Relative change vs age 20-24 | ${state.cohort} | ${currentTrimLabel()}`),
+            xaxis: {
+              title: axisTitle("Age (years)"),
+            },
+            yaxis: {
+              title: axisTitle("% change from each marker's 20-24 baseline"),
+            },
+          }),
+          { responsive: true, displaylogo: false }
+        );
+        state.lastChartId = "compare-plot";
+        refs.compareNote.textContent = skipped.length
+          ? `Skipped for this mode: ${skipped.join(", ")}.`
+          : state.cohort === "both"
+            ? "Compare uses the pooled trajectory when Both is selected."
+            : "All selected biomarkers were normalized to their own 20-24 baseline.";
+      } catch (error) {
+        renderChartEmpty(refs.comparePlot, "The compare view could not be rendered.");
+        refs.compareNote.textContent = error.message;
+      }
+    }
+
+    function renderCompareSelected() {
+      refs.compareSelected.innerHTML = state.compareIds
+        .map((id) => {
+          const entry = getEntryById(id);
+          if (!entry) {
+            return "";
+          }
+          return `
+            <div class="selected-pill">
+              <span>${entry.display_name}</span>
+              <button type="button" data-remove-compare="${entry.biomarker_id}" aria-label="Remove ${entry.display_name}">x</button>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function renderCompareQuickPicks() {
+      refs.compareQuickPicks.innerHTML = state.manifest
+        .filter((entry) => entry.is_priority_marker)
+        .slice(0, 10)
+        .map((entry) => `<button class="chip-btn" data-add-compare="${entry.biomarker_id}" type="button">${entry.display_name}</button>`)
+        .join("");
+    }
+
+    function addCompareMarkerByName(name) {
+      const target = state.manifest.find((entry) => entry.display_name.toLowerCase() === String(name || "").trim().toLowerCase());
+      if (!target) {
+        showToast("Marker not found in the public set.");
+        return;
+      }
+      addCompareMarker(target.biomarker_id);
+    }
+
+    function addCompareMarker(id) {
+      if (state.compareIds.includes(id)) {
+        showToast("That marker is already in the compare set.");
+        return;
+      }
+      if (state.compareIds.length >= 4) {
+        showToast("You can compare up to four markers at once.");
+        return;
+      }
+      state.compareIds = [...state.compareIds, id];
+      renderCompareSelected();
+      renderComparePanel();
+      writeHash();
+    }
+
+    function removeCompareMarker(id) {
+      state.compareIds = state.compareIds.filter((item) => item !== id);
+      renderCompareSelected();
+      renderComparePanel();
+      writeHash();
+    }
+
+    function isoToday() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseIsoDate(value) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) {
+        return null;
+      }
+      const [year, month, day] = value.split("-").map(Number);
+      return new Date(Date.UTC(year, month - 1, day));
+    }
+
+    function formatYears(value) {
+      if (!Number.isFinite(value)) {
+        return "--";
+      }
+      return value.toFixed(1);
+    }
+
+    function formatNumber(value, digits = 1) {
+      if (!Number.isFinite(value)) {
+        return "--";
+      }
+      return value.toFixed(digits);
+    }
+
+    function formatSignedYears(value) {
+      if (!Number.isFinite(value)) {
+        return "--";
+      }
+      return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
+    }
+
+    function setBioAgeFormNote(message, isError = false) {
+      refs.bioageFormNote.textContent = message;
+      refs.bioageFormNote.classList.toggle("error", Boolean(isError));
+    }
+
+    function setBioAgeStage(mode, message) {
+      refs.bioageLabStage.classList.remove("is-calculating", "is-ready");
+      if (mode === "calculating") {
+        refs.bioageLabStage.classList.add("is-calculating");
+      }
+      if (mode === "ready") {
+        refs.bioageLabStage.classList.add("is-ready");
+      }
+      refs.bioageResultStatus.textContent = message;
+    }
+
+    function resetBioAgeOutput() {
+      window.clearTimeout(bioAgeTimer);
+      refs.bioageResultTitle.textContent = "Enter your values to calculate PhenoAge.";
+      refs.bioageResultAge.textContent = "--";
+      refs.bioageResultChrono.textContent = "--";
+      refs.bioageResultGap.textContent = "--";
+      refs.bioageResultCopy.textContent = "PhenoAge is a mortality-oriented blood summary, not a hidden organ-by-organ clock. Think of it as a biological age test that asks: based on your blood markers, what age has a mortality risk most similar to yours?";
+      refs.bioageConverted.innerHTML = "";
+      setBioAgeStage("idle", "Waiting for a complete blood panel.");
+    }
+
+    function yearsBetweenDates(birthValue, sampleValue) {
+      const birthDate = parseIsoDate(birthValue);
+      const sampleDate = parseIsoDate(sampleValue);
+      if (!birthDate || !sampleDate) {
+        return null;
+      }
+      if (sampleDate <= birthDate) {
+        return null;
+      }
+      const diffDays = (sampleDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays / 365.2425;
+    }
+
+    function readRequiredNumber(inputEl, label, minimum = 0, inclusive = true) {
+      const raw = String(inputEl.value || "").trim();
+      if (!raw) {
+        return { error: `${label} is required.` };
+      }
+
+      const value = Number.parseFloat(raw);
+      if (!Number.isFinite(value)) {
+        return { error: `${label} must be numeric.` };
+      }
+
+      if (inclusive && value < minimum) {
+        return { error: `${label} must be at least ${minimum}.` };
+      }
+      if (!inclusive && value <= minimum) {
+        return { error: `${label} must be greater than ${minimum}.` };
+      }
+
+      return { value };
+    }
+
+    function convertBioAgeValue(kind, value, unit) {
+      const factor = BIOAGE_FACTORS?.[kind]?.[unit];
+      if (!Number.isFinite(factor)) {
+        throw new Error(`Unsupported ${kind} unit: ${unit}`);
+      }
+      return value * factor;
+    }
+
+    function calculatePhenoAgeModel(fields) {
+      const ageYears = yearsBetweenDates(fields.birthDate, fields.sampleDate);
+      if (!Number.isFinite(ageYears)) {
+        throw new Error("Birth date must be earlier than the blood draw date.");
+      }
+
+      const albuminGL = convertBioAgeValue("albumin", fields.albumin, fields.albuminUnit);
+      const creatinineUmolL = convertBioAgeValue("creatinine", fields.creatinine, fields.creatinineUnit);
+      const glucoseMmolL = convertBioAgeValue("glucose", fields.glucose, fields.glucoseUnit);
+      const crpMgDl = convertBioAgeValue("crp", fields.crp, fields.crpUnit);
+      const wbcKPerUl = convertBioAgeValue("wbc", fields.wbc, fields.wbcUnit);
+
+      if (crpMgDl <= 0) {
+        throw new Error("CRP must be greater than 0 because the published equation uses log(CRP).");
+      }
+
+      const xb = -19.90667
+        + (-0.03359355 * albuminGL)
+        + (0.009506491 * creatinineUmolL)
+        + (0.1953192 * glucoseMmolL)
+        + (0.09536762 * Math.log(crpMgDl))
+        + (-0.01199984 * fields.lymphocyte)
+        + (0.02676401 * fields.mcv)
+        + (0.3306156 * fields.rdw)
+        + (0.001868778 * fields.alp)
+        + (0.05542406 * wbcKPerUl)
+        + (0.08035356 * ageYears);
+
+      const mortalityScore = 1 - Math.exp((-1.51714 * Math.exp(xb)) / 0.007692696);
+      if (!Number.isFinite(mortalityScore) || mortalityScore <= 0 || mortalityScore >= 1) {
+        throw new Error("The calculation produced an invalid result. Double-check the units and values.");
+      }
+
+      const phenoAge = (Math.log(-0.0055305 * Math.log(1 - mortalityScore)) / 0.090165) + 141.50225;
+      return {
+        chronologicalAgeYears: ageYears,
+        phenoAgeYears: phenoAge,
+        differenceYears: phenoAge - ageYears,
+        converted: {
+          albuminGL,
+          creatinineUmolL,
+          glucoseMmolL,
+          crpMgDl,
+          wbcKPerUl,
+        },
+        sex: fields.sex,
+      };
+    }
+
+    function bioAgeInterpretation(result) {
+      const gap = result.differenceYears;
+      const gapAbs = Math.abs(gap).toFixed(1);
+      const agePhrase = `${result.phenoAgeYears.toFixed(1)} years`;
+
+      if (gap <= -2) {
+        return {
+          title: `${agePhrase}, younger than your calendar age in this model.`,
+          copy: `In the published PhenoAge model, your lab pattern matched the average mortality-associated profile of someone about ${agePhrase} in the NHANES reference population. That is ${gapAbs} years lower than your calendar age at the time of the blood draw. This is still only a one-time blood snapshot, not a diagnosis or guarantee.`,
+        };
+      }
+
+      if (gap >= 2) {
+        return {
+          title: `${agePhrase}, older than your calendar age in this model.`,
+          copy: `In the published PhenoAge model, your lab pattern matched the average mortality-associated profile of someone about ${agePhrase} in the NHANES reference population. That is ${gapAbs} years higher than your calendar age at the time of the blood draw. Acute illness, inflammation, medications, and lab context can move this estimate, so interpret it cautiously.`,
+        };
+      }
+
+      return {
+        title: `${agePhrase}, broadly close to your calendar age.`,
+        copy: `In the published PhenoAge model, your blood panel looked similar to the average mortality-associated profile of someone about ${agePhrase} in the NHANES reference population. That puts you close to your calendar age on this one blood draw. Researchers usually interpret this as a compact summary of risk-related blood chemistry, not as a diagnosis.`,
+      };
+    }
+
+    function renderBioAgeConverted(result) {
+      const facts = [
+        ["Converted albumin", `${formatNumber(result.converted.albuminGL, 1)} g/L`],
+        ["Converted creatinine", `${formatNumber(result.converted.creatinineUmolL, 1)} umol/L`],
+        ["Converted glucose", `${formatNumber(result.converted.glucoseMmolL, 2)} mmol/L`],
+        ["Converted CRP", `${formatNumber(result.converted.crpMgDl, 3)} mg/dL`],
+        ["Converted WBC", `${formatNumber(result.converted.wbcKPerUl, 2)} x10^3/uL`],
+      ];
+
+      refs.bioageConverted.innerHTML = facts
+        .map(([label, value]) => `
+          <div class="fact-row">
+            <span>${label}</span>
+            <div>${value}</div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function readBioAgeForm() {
+      const albumin = readRequiredNumber(refs.bioageAlbuminValue, "Albumin");
+      if (albumin.error) {
+        return albumin;
+      }
+
+      const creatinine = readRequiredNumber(refs.bioageCreatinineValue, "Creatinine");
+      if (creatinine.error) {
+        return creatinine;
+      }
+
+      const glucose = readRequiredNumber(refs.bioageGlucoseValue, "Glucose");
+      if (glucose.error) {
+        return glucose;
+      }
+
+      const crp = readRequiredNumber(refs.bioageCrpValue, "CRP", 0, false);
+      if (crp.error) {
+        return crp;
+      }
+
+      const lymphocyte = readRequiredNumber(refs.bioageLymphValue, "Lymphocyte percent");
+      if (lymphocyte.error) {
+        return lymphocyte;
+      }
+
+      const mcv = readRequiredNumber(refs.bioageMcvValue, "Mean cell volume");
+      if (mcv.error) {
+        return mcv;
+      }
+
+      const rdw = readRequiredNumber(refs.bioageRdwValue, "RDW");
+      if (rdw.error) {
+        return rdw;
+      }
+
+      const alp = readRequiredNumber(refs.bioageAlpValue, "Alkaline phosphatase");
+      if (alp.error) {
+        return alp;
+      }
+
+      const wbc = readRequiredNumber(refs.bioageWbcValue, "White blood cell count");
+      if (wbc.error) {
+        return wbc;
+      }
+
+      if (!refs.bioageBirthDate.value || !refs.bioageSampleDate.value) {
+        return { error: "Birth date and blood draw date are both required." };
+      }
+
+      return {
+        birthDate: refs.bioageBirthDate.value,
+        sampleDate: refs.bioageSampleDate.value,
+        sex: refs.bioageSex.value,
+        albumin: albumin.value,
+        albuminUnit: refs.bioageAlbuminUnit.value,
+        creatinine: creatinine.value,
+        creatinineUnit: refs.bioageCreatinineUnit.value,
+        glucose: glucose.value,
+        glucoseUnit: refs.bioageGlucoseUnit.value,
+        crp: crp.value,
+        crpUnit: refs.bioageCrpUnit.value,
+        lymphocyte: lymphocyte.value,
+        mcv: mcv.value,
+        rdw: rdw.value,
+        alp: alp.value,
+        wbc: wbc.value,
+        wbcUnit: refs.bioageWbcUnit.value,
+      };
+    }
+
+    function runBioAgeCalculation(event) {
+      event.preventDefault();
+      window.clearTimeout(bioAgeTimer);
+
+      const fields = readBioAgeForm();
+      if (fields.error) {
+        setBioAgeFormNote(fields.error, true);
+        setBioAgeStage("idle", "Waiting for valid inputs.");
+        return;
+      }
+
+      let result = null;
+      try {
+        result = calculatePhenoAgeModel(fields);
+      } catch (error) {
+        setBioAgeFormNote(error.message, true);
+        setBioAgeStage("idle", "Waiting for valid inputs.");
+        return;
+      }
+
+      setBioAgeFormNote("Calculating locally in your browser. Nothing from this form is sent to the server.");
+      setBioAgeStage("calculating", "Mixing the nine-marker panel...");
+      refs.bioageResultTitle.textContent = "Running the published PhenoAge equation...";
+      refs.bioageResultCopy.textContent = "The model first converts your lab values to the published units, then estimates the corresponding age in the NHANES reference population.";
+      refs.bioageResultAge.textContent = "...";
+      refs.bioageResultChrono.textContent = formatYears(result.chronologicalAgeYears);
+      refs.bioageResultGap.textContent = "...";
+      refs.bioageConverted.innerHTML = "";
+
+      bioAgeTimer = window.setTimeout(() => {
+        const interpretation = bioAgeInterpretation(result);
+        refs.bioageResultTitle.textContent = interpretation.title;
+        refs.bioageResultAge.textContent = formatYears(result.phenoAgeYears);
+        refs.bioageResultChrono.textContent = formatYears(result.chronologicalAgeYears);
+        refs.bioageResultGap.textContent = formatSignedYears(result.differenceYears);
+        refs.bioageResultCopy.textContent = interpretation.copy;
+        renderBioAgeConverted(result);
+        setBioAgeStage("ready", "Calculated locally from age and 9 blood markers.");
+        trackEvent("calculate_blood_age", {
+          sex: fields.sex,
+          chronological_age_years: Number(result.chronologicalAgeYears.toFixed(1)),
+          phenoage_years: Number(result.phenoAgeYears.toFixed(1)),
+          age_gap_years: Number(result.differenceYears.toFixed(1)),
+        });
+      }, 1450);
+    }
+
+    function resetBioAgeForm() {
+      window.clearTimeout(bioAgeTimer);
+      refs.bioageForm.reset();
+      refs.bioageSampleDate.value = isoToday();
+      setBioAgeFormNote("This page does not store your lab values in the URL or upload them from the browser. Use one set of labs from the same draw whenever possible.");
+      resetBioAgeOutput();
+    }
+
+    function primeBioAgeForm() {
+      refs.bioageSampleDate.value = isoToday();
+      setBioAgeFormNote("This page does not store your lab values in the URL or upload them from the browser. Use one set of labs from the same draw whenever possible.");
+      resetBioAgeOutput();
+    }
+
+    function openMarker(id, overrides = {}) {
+      if (!state.manifestById.has(id)) {
+        return;
+      }
+      const entry = state.manifestById.get(id);
+      const sourceTab = overrides.sourceTab || state.tab;
+      state.exploreId = id;
+      if (overrides.cohort && ["both", "pooled", "female", "male"].includes(overrides.cohort)) {
+        state.cohort = overrides.cohort;
+      }
+      if (overrides.trim && ["raw", "trim_5_95", "trim_10_90"].includes(overrides.trim)) {
+        state.trim = overrides.trim;
+      }
+      if (overrides.view && ["typical", "spread", "tail", "sex"].includes(overrides.view)) {
+        state.view = overrides.view;
+      }
+      state.tab = "explore";
+      renderTabs();
+      renderPanels();
+      renderGlobalButtons();
+      renderExploreList();
+      renderExplorePanel();
+      trackEvent("open_biomarker", {
+        biomarker_id: id,
+        biomarker_name: entry?.display_name || id,
+        source_tab: sourceTab,
+        view_mode: state.view,
+      });
+      writeHash();
+    }
+
+    function bindEvents() {
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setTab(button.dataset.tab);
+          if (button.dataset.tab === "disease") {
+            renderDiseasePanel();
+          }
+          if (button.dataset.tab === "compare") {
+            renderComparePanel();
+          }
+          if (button.dataset.tab === "rankings") {
+            renderRankings();
+          }
+          if (button.dataset.tab === "surprising") {
+            renderSurprisingPanel();
+          }
+          if (button.dataset.tab === "explore") {
+            renderExplorePanel();
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-tab-jump]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setTab(button.dataset.tabJump);
+          if (button.dataset.tabJump === "disease") {
+            renderDiseasePanel();
+          }
+          if (button.dataset.tabJump === "compare") {
+            renderComparePanel();
+          }
+          if (button.dataset.tabJump === "rankings") {
+            renderRankings();
+          }
+          if (button.dataset.tabJump === "surprising") {
+            renderSurprisingPanel();
+          }
+          if (button.dataset.tabJump === "explore") {
+            renderExplorePanel();
+          }
+        });
+      });
+
+      document.addEventListener("click", (event) => {
+        const openButton = event.target.closest("[data-open-id]");
+        const openId = openButton?.dataset.openId;
+        if (openId) {
+          const inCollectionCard = Boolean(event.target.closest("[data-open-collection]"));
+          openMarker(openId, inCollectionCard
+            ? {
+                sourceTab: "start",
+                cohort: "both",
+                trim: "trim_5_95",
+                view: "typical",
+              }
+            : { sourceTab: state.tab });
+          return;
+        }
+
+        const surpriseItem = event.target.closest("[data-open-surprise-id]");
+        if (surpriseItem) {
+          openMarker(surpriseItem.dataset.openSurpriseId, {
+            view: surpriseItem.dataset.openSurpriseView,
+            sourceTab: "surprising",
+          });
+          return;
+        }
+
+        const collectionKey = event.target.closest("[data-open-collection]")?.dataset.openCollection;
+        if (collectionKey) {
+          trackEvent("open_collection_compare", { collection_key: collectionKey });
+          openCollectionCompare(collectionKey);
+          return;
+        }
+
+        const conditionKey = event.target.closest("[data-select-condition]")?.dataset.selectCondition;
+        if (conditionKey) {
+          state.diseaseCondition = conditionKey;
+          state.diseaseBiomarkerId = "";
+          trackEvent("select_disease_condition", { condition_key: conditionKey });
+          renderDiseasePanel();
+          writeHash();
+          return;
+        }
+
+        const diseaseBiomarkerId = event.target.closest("[data-open-disease-id]")?.dataset.openDiseaseId;
+        if (diseaseBiomarkerId) {
+          state.diseaseBiomarkerId = diseaseBiomarkerId;
+          trackEvent("open_disease_biomarker", {
+            condition_key: state.diseaseCondition,
+            biomarker_id: diseaseBiomarkerId,
+          });
+          renderDiseasePanel();
+          writeHash();
+          return;
+        }
+
+        const addId = event.target.closest("[data-add-compare]")?.dataset.addCompare;
+        if (addId) {
+          trackEvent("add_compare_marker", { biomarker_id: addId });
+          addCompareMarker(addId);
+          return;
+        }
+
+        const removeId = event.target.closest("[data-remove-compare]")?.dataset.removeCompare;
+        if (removeId) {
+          removeCompareMarker(removeId);
+        }
+      });
+
+      refs.copyLinkBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          trackEvent("copy_view_link", { active_tab: state.tab });
+          showToast("View link copied.");
+        } catch (error) {
+          showToast("Copy failed.");
+        }
+      });
+
+      refs.saveChartBtn.addEventListener("click", () => {
+        const chartId = activeChartId();
+        if (!chartId) {
+          showToast("There is no active chart on this tab.");
+          return;
+        }
+        const chartEl = $(chartId);
+        if (!chartEl || !chartEl.data) {
+          showToast("There is no active chart to export.");
+          return;
+        }
+        Plotly.downloadImage(chartEl, {
+          format: "png",
+          filename: `aging-biomarkers-${state.tab}`,
+          width: 1440,
+          height: 900,
+          scale: 2,
+        });
+        trackEvent("save_chart_png", { active_tab: state.tab });
+      });
+
+      refs.exploreSearch.addEventListener("input", renderExploreList);
+      refs.exploreCollection.addEventListener("change", renderExploreList);
+      refs.diseaseSearch.addEventListener("input", () => {
+        renderDiseasePanel();
+      });
+
+      document.querySelectorAll("[data-cohort-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.cohort = button.dataset.value;
+          trackEvent("change_cohort", { cohort: state.cohort });
+          renderGlobalButtons();
+          renderExplorePanel();
+          renderDiseasePanel();
+          renderRankings();
+          renderSurprisingPanel();
+          renderComparePanel();
+          writeHash();
+        });
+      });
+
+      document.querySelectorAll("[data-trim-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.trim = button.dataset.value;
+          trackEvent("change_trim", { trim_mode: state.trim });
+          renderGlobalButtons();
+          renderExplorePanel();
+          renderDiseasePanel();
+          renderRankings();
+          renderSurprisingPanel();
+          renderComparePanel();
+          writeHash();
+        });
+      });
+
+      document.querySelectorAll("[data-view-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.view = button.dataset.value;
+          trackEvent("change_explorer_view", { view_mode: state.view });
+          renderGlobalButtons();
+          renderExplorePanel();
+          writeHash();
+        });
+      });
+
+      document.querySelectorAll("[data-spread-btn]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.spreadMetric = button.dataset.value;
+          renderGlobalButtons();
+          renderExplorePanel();
+          writeHash();
+        });
+      });
+
+      refs.rankingsMetric.addEventListener("change", () => {
+        state.rankingsMetric = refs.rankingsMetric.value;
+        trackEvent("change_rankings_metric", { rankings_metric: state.rankingsMetric });
+        renderRankings();
+      });
+      refs.rankingsCohort.addEventListener("change", () => {
+        state.rankingsCohort = refs.rankingsCohort.value;
+        trackEvent("change_rankings_cohort", { rankings_cohort: state.rankingsCohort });
+        renderRankings();
+      });
+      refs.rankingsCollection.addEventListener("change", () => {
+        state.rankingsCollection = refs.rankingsCollection.value;
+        trackEvent("change_rankings_collection", { rankings_collection: state.rankingsCollection });
+        renderRankings();
+      });
+      refs.rankingsTopN.addEventListener("change", () => {
+        const next = Number.parseInt(refs.rankingsTopN.value, 10);
+        state.rankingsTopN = Number.isFinite(next) ? Math.max(5, Math.min(30, next)) : 12;
+        refs.rankingsTopN.value = String(state.rankingsTopN);
+        renderRankings();
+      });
+      refs.rankingsReset.addEventListener("click", () => {
+        state.rankingsMetric = "median_rise";
+        state.rankingsCohort = "pooled";
+        state.rankingsCollection = "all";
+        state.rankingsTopN = 12;
+        refs.rankingsMetric.value = state.rankingsMetric;
+        refs.rankingsCohort.value = state.rankingsCohort;
+        refs.rankingsCollection.value = state.rankingsCollection;
+        refs.rankingsTopN.value = String(state.rankingsTopN);
+        renderRankings();
+      });
+
+      refs.compareMode.addEventListener("change", () => {
+        state.compareMode = refs.compareMode.value;
+        trackEvent("change_compare_mode", { compare_mode: state.compareMode });
+        renderComparePanel();
+        writeHash();
+      });
+
+      refs.compareAdd.addEventListener("click", () => {
+        addCompareMarkerByName(refs.compareSearch.value);
+        refs.compareSearch.value = "";
+      });
+
+      refs.compareSearch.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        addCompareMarkerByName(refs.compareSearch.value);
+        refs.compareSearch.value = "";
+      });
+
+      refs.bioageForm.addEventListener("submit", runBioAgeCalculation);
+      refs.bioageResetBtn.addEventListener("click", resetBioAgeForm);
+
+      window.addEventListener("hashchange", () => {
+        if (state.hashLock) {
+          return;
+        }
+        applyHash();
+        ensureDefaults();
+        syncControls();
+        renderTabs();
+        renderPanels();
+        renderExploreList();
+        renderExplorePanel();
+        renderDiseasePanel();
+        renderRankings();
+        renderSurprisingPanel();
+        renderCompareSelected();
+        renderComparePanel();
+      });
+    }
+
+    function syncControls() {
+      renderGlobalButtons();
+      refs.rankingsMetric.value = state.rankingsMetric;
+      refs.rankingsCohort.value = state.rankingsCohort;
+      refs.rankingsCollection.value = state.rankingsCollection;
+      refs.rankingsTopN.value = String(state.rankingsTopN);
+      refs.compareMode.value = state.compareMode;
+    }
+
+    function primeStaticControls() {
+      populateFilterSelect(
+        refs.exploreCollection,
+        Object.keys(COLLECTION_COPY),
+        (value) => COLLECTION_COPY[value]?.title || value
+      );
+      populateFilterSelect(
+        refs.rankingsCollection,
+        Object.keys(COLLECTION_COPY),
+        (value) => COLLECTION_COPY[value]?.title || value
+      );
+
+      refs.compareOptions.innerHTML = state.manifest
+        .map((entry) => `<option value="${entry.display_name}"></option>`)
+        .join("");
+    }
+
+    function observeReveal() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.18 });
+
+      document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+    }
+
+    async function init() {
+      refs.heroStatus = $("hero-status");
+      refs.collectionGrid = $("collection-grid");
+      refs.rankingModules = $("ranking-modules");
+      refs.exploreSearch = $("explore-search");
+      refs.exploreCollection = $("explore-collection");
+      refs.exploreList = $("explore-list");
+      refs.exploreTitle = $("explore-title");
+      refs.exploreSubtitle = $("explore-subtitle");
+      refs.diseaseConditionList = $("disease-condition-list");
+      refs.diseaseDefaultTitle = $("disease-default-title");
+      refs.diseaseDefaultSummary = $("disease-default-summary");
+      refs.diseaseDefaultChips = $("disease-default-chips");
+      refs.diseaseSearch = $("disease-search");
+      refs.diseaseList = $("disease-list");
+      refs.diseaseConditionNote = $("disease-condition-note");
+      refs.diseaseSummaryStrip = $("disease-summary-strip");
+      refs.diseasePlot = $("disease-plot");
+      refs.diseaseAnnotation = $("disease-annotation");
+      refs.diseaseTech = $("disease-tech");
+      refs.exploreSummaryStrip = $("explore-summary-strip");
+      refs.explorePlot = $("explore-plot");
+      refs.exploreAnnotation = $("explore-annotation");
+      refs.exploreTech = $("explore-tech");
+      refs.rankingsMetric = $("rankings-metric");
+      refs.rankingsCohort = $("rankings-cohort");
+      refs.rankingsCollection = $("rankings-collection");
+      refs.rankingsTopN = $("rankings-top-n");
+      refs.rankingsReset = $("rankings-reset");
+      refs.rankingsPlot = $("rankings-plot");
+      refs.rankingsList = $("rankings-list");
+      refs.surprisingGroups = $("surprising-groups");
+      refs.compareSearch = $("compare-search");
+      refs.compareOptions = $("compare-options");
+      refs.compareAdd = $("compare-add");
+      refs.compareSelected = $("compare-selected");
+      refs.compareQuickPicks = $("compare-quick-picks");
+      refs.compareMode = $("compare-mode");
+      refs.comparePlot = $("compare-plot");
+      refs.compareNote = $("compare-note");
+      refs.aboutTestList = $("about-test-list");
+      refs.bioageForm = $("bioage-form");
+      refs.bioageBirthDate = $("bioage-birth-date");
+      refs.bioageSampleDate = $("bioage-sample-date");
+      refs.bioageSex = $("bioage-sex");
+      refs.bioageAlbuminValue = $("bioage-albumin-value");
+      refs.bioageAlbuminUnit = $("bioage-albumin-unit");
+      refs.bioageCreatinineValue = $("bioage-creatinine-value");
+      refs.bioageCreatinineUnit = $("bioage-creatinine-unit");
+      refs.bioageGlucoseValue = $("bioage-glucose-value");
+      refs.bioageGlucoseUnit = $("bioage-glucose-unit");
+      refs.bioageCrpValue = $("bioage-crp-value");
+      refs.bioageCrpUnit = $("bioage-crp-unit");
+      refs.bioageLymphValue = $("bioage-lymph-value");
+      refs.bioageMcvValue = $("bioage-mcv-value");
+      refs.bioageRdwValue = $("bioage-rdw-value");
+      refs.bioageAlpValue = $("bioage-alp-value");
+      refs.bioageWbcValue = $("bioage-wbc-value");
+      refs.bioageWbcUnit = $("bioage-wbc-unit");
+      refs.bioageCalcBtn = $("bioage-calc-btn");
+      refs.bioageResetBtn = $("bioage-reset-btn");
+      refs.bioageFormNote = $("bioage-form-note");
+      refs.bioageLabStage = $("bioage-lab-stage");
+      refs.bioageResultStatus = $("bioage-result-status");
+      refs.bioageResultTitle = $("bioage-result-title");
+      refs.bioageResultAge = $("bioage-result-age");
+      refs.bioageResultChrono = $("bioage-result-chrono");
+      refs.bioageResultGap = $("bioage-result-gap");
+      refs.bioageResultCopy = $("bioage-result-copy");
+      refs.bioageConverted = $("bioage-converted");
+      refs.copyLinkBtn = $("copy-link-btn");
+      refs.saveChartBtn = $("save-chart-btn");
+      refs.toast = $("toast");
+
+      try {
+        setStatus("Loading curated blood markers...");
+        const [manifest, diseaseIndex, surprising] = await Promise.all([
+          fetchJson(`${DATA_BASE}/manifest.json`),
+          fetchJson(`${DATA_BASE}/disease_index.json`),
+          fetchJson(`${DATA_BASE}/surprising.json`),
+        ]);
+        state.manifest = manifest;
+        state.manifestById = new Map(manifest.map((entry) => [entry.biomarker_id, entry]));
+        state.manifestBySlug = new Map(manifest.map((entry) => [entry.slug, entry]));
+        state.diseaseIndex = diseaseIndex;
+        state.diseaseIndexByKey = new Map(diseaseIndex.map((entry) => [entry.key, entry]));
+        state.surprisingGroups = surprising?.groups || [];
+        applyHash();
+        ensureDefaults();
+        primeStaticControls();
+        renderCollectionGrid();
+        renderRankingModules();
+        renderSurprisingPanel();
+        renderAboutTestList();
+        renderExploreList();
+        renderDiseaseConditionList();
+        renderCompareQuickPicks();
+        renderCompareSelected();
+        primeBioAgeForm();
+        bindEvents();
+        syncControls();
+        renderTabs();
+        renderPanels();
+        await renderExplorePanel();
+        await renderDiseasePanel();
+        renderRankings();
+        await renderComparePanel();
+        setStatus(`${manifest.length} curated blood biomarkers loaded, plus ${diseaseIndex.length} disease comparison cohorts.`);
+        writeHash();
+        observeReveal();
+      } catch (error) {
+        setStatus("Failed to load the public dashboard bundle.");
+        document.querySelector("main").innerHTML = `
+          <div class="about-copy">
+            <h2>Dashboard failed to load</h2>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

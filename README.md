@@ -22,6 +22,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/templates/aging_biomarkers_dashboard_template.html` is the standalone editorial-science template used for the public-facing aging biomarkers explorer.
 - `dashboard/longevity-explorer.html` is the short GitHub Pages alias that redirects to the audience-facing aging biomarkers explorer.
+- `scripts/export_public_dashboard_site.py` exports only the audience-facing static site files into `output/public_dashboard_site/` for use in a separate public GitHub Pages repo.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.
