@@ -14,6 +14,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds both the Q-Q and rank-based SR comparison payloads under `projects/sr_comparison/blood/`.
 - `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
 - `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
+  - It also writes disease-default metadata for the guided Disease Explorer and a small `surprising.json` payload for the shareable `What’s Surprising?` tab.
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/templates/aging_biomarkers_dashboard_template.html` is the standalone editorial-science template used for the public-facing aging biomarkers explorer.
 - `dashboard/longevity-explorer.html` is the short GitHub Pages alias that redirects to the audience-facing aging biomarkers explorer.
@@ -155,6 +156,12 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `dashboard/aging_biomarkers_dashboard.html`
   - `dashboard/dashboard_data_aging_biomarkers.json`
   - `dashboard/aging_biomarkers_public/manifest.json`
+  - `dashboard/aging_biomarkers_public/disease_index.json`
+  - `dashboard/aging_biomarkers_public/surprising.json`
+- The public dashboard now includes:
+  - a guided Disease Explorer with disease-specific starter biomarker chips
+  - a `What’s Surprising?` tab for shareable counterintuitive aging patterns
+  - `5-95 trimmed` as the default public trim mode
 - The redesign keeps the existing static single-page model and DOM IDs used by the inline dashboard logic, while modernizing:
   - hero/header hierarchy
   - specimen and analysis navigation
@@ -522,7 +529,7 @@ python3 -m http.server 8765 --directory .
 - Playwright/manual validation checklist used for the current redesign:
   - blood tabs: `#dashboard`, `#compare`, `#filter-tests`, `#scatter`, `#hist`, `#waterfall`, `#sr-comparison`, `#info`
   - urinary spot-checks with preserved hash navigation (for example `urinary.html#compare` and switch back to `index.html#compare`)
-  - public dashboard tabs: `aging_biomarkers_dashboard.html#tab=start`, `explore`, `disease`, `rankings`, `compare`, `calculator`, and `about` states via hash restore
+  - public dashboard tabs: `aging_biomarkers_dashboard.html#tab=start`, `explore`, `disease`, `rankings`, `surprising`, `compare`, `calculator`, and `about` states via hash restore
   - representative interactions:
     - dashboard mode, cohort, and trim changes
     - compare statistic, sort, cohort, and top-N changes
@@ -531,7 +538,7 @@ python3 -m http.server 8765 --directory .
     - waterfall biomarker search/selection, cohort, and minimum-n changes
     - SR comparison method switch, trim changes, age-bin slider, ranking sort changes, biomarker row switching, and urine fallback from `#sr-comparison` to `#dashboard`
     - filter-tests clause editing and execution
-    - public dashboard biomarker search, disease-condition switching, pooled/female/male switching, raw vs `10-90 trimmed`, compare-set add/remove, Blood Age calculation, and chart export
+    - public dashboard biomarker search, disease-condition switching, disease starter chips, pooled/female/male switching, raw vs `5-95 trimmed` vs `10-90 trimmed`, surprise-card jumps, compare-set add/remove, Blood Age calculation, and chart export
   - keyboard focus visibility across specimen links, top tabs, and form controls
   - mobile-width spot checks for stacked navigation and control layouts
 - Example screenshots from the current pass were written to `output/playwright/`.

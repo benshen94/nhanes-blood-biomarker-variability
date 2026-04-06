@@ -9,7 +9,17 @@
     "detail_path": "diseases/diabetes.json",
     "participant_count": 6673,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with familiar metabolic markers",
+    "default_summary": "These biomarkers are the clearest familiar starting points for how diabetes separates from the healthy NHANES baseline across adulthood.",
+    "default_biomarker_ids": [
+      "c-peptide",
+      "c-reactive protein",
+      "alt",
+      "plasma glucose",
+      "triglyceride",
+      "glycohemoglobin"
+    ]
   },
   {
     "key": "hypertension",
@@ -21,7 +31,17 @@
     "detail_path": "diseases/hypertension.json",
     "participant_count": 19101,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with vascular and kidney-linked markers",
+    "default_summary": "These defaults emphasize familiar inflammatory, kidney, and cardiovascular markers that often pull away from the healthy baseline.",
+    "default_biomarker_ids": [
+      "c-reactive protein",
+      "nt-probnp",
+      "high-sensitivity c-reactive protein hs-crp",
+      "cystatin c",
+      "triglyceride",
+      "creatinine"
+    ]
   },
   {
     "key": "cvd",
@@ -33,7 +53,17 @@
     "detail_path": "diseases/cvd.json",
     "participant_count": 6338,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with cardiac strain markers",
+    "default_summary": "These markers give the quickest read on how cardiovascular disease shifts familiar blood patterns away from the healthy baseline.",
+    "default_biomarker_ids": [
+      "nt-probnp",
+      "c-reactive protein",
+      "high-sensitivity c-reactive protein hs-crp",
+      "cardiac hs-troponin t",
+      "fibrinogen",
+      "homocysteine"
+    ]
   },
   {
     "key": "kidney",
@@ -45,7 +75,17 @@
     "detail_path": "diseases/kidney.json",
     "participant_count": 1611,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with kidney reserve markers",
+    "default_summary": "These defaults stay close to the familiar renal chemistry panel and show the clearest kidney-related separation from healthy aging.",
+    "default_biomarker_ids": [
+      "cystatin c",
+      "blood urea nitrogen",
+      "creatinine",
+      "albumin",
+      "potassium",
+      "bicarbonate"
+    ]
   },
   {
     "key": "liver",
@@ -57,7 +97,17 @@
     "detail_path": "diseases/liver.json",
     "participant_count": 2065,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with liver-linked chemistry",
+    "default_summary": "These markers emphasize familiar liver and metabolic chemistry for a cleaner first read of the condition contrast.",
+    "default_biomarker_ids": [
+      "ggt",
+      "alt",
+      "total bilirubin",
+      "ast",
+      "triglyceride",
+      "albumin"
+    ]
   },
   {
     "key": "cancer",
@@ -69,7 +119,17 @@
     "detail_path": "diseases/cancer.json",
     "participant_count": 5166,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with broad systemic markers",
+    "default_summary": "Because this group is heterogeneous, the defaults focus on familiar inflammation, reserve, and blood markers rather than one narrow mechanism.",
+    "default_biomarker_ids": [
+      "high-sensitivity c-reactive protein hs-crp",
+      "c-reactive protein",
+      "nt-probnp",
+      "fibrinogen",
+      "albumin",
+      "hemoglobin"
+    ]
   },
   {
     "key": "asthma",
@@ -81,7 +141,17 @@
     "detail_path": "diseases/asthma.json",
     "participant_count": 7293,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with airway and inflammation markers",
+    "default_summary": "These defaults prioritize familiar immune and inflammatory markers that are easier to interpret in a respiratory-disease contrast.",
+    "default_biomarker_ids": [
+      "high-sensitivity c-reactive protein hs-crp",
+      "c-reactive protein",
+      "eosinophils percent",
+      "fibrinogen",
+      "segmented neutrophils num",
+      "white blood cell count si"
+    ]
   },
   {
     "key": "thyroid_problem",
@@ -93,7 +163,17 @@
     "detail_path": "diseases/thyroid_problem.json",
     "participant_count": 4508,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with endocrine and lipid markers",
+    "default_summary": "These defaults keep the first view anchored in familiar thyroid-adjacent and metabolic biomarkers.",
+    "default_biomarker_ids": [
+      "sex hormone binding globulin",
+      "thyroid stimulating hormone",
+      "25-hydroxyvitamin d2 + d3",
+      "triglyceride",
+      "ldl-cholesterol",
+      "cd4 counts"
+    ]
   },
   {
     "key": "stroke",
@@ -105,6 +185,16 @@
     "detail_path": "diseases/stroke.json",
     "participant_count": 2197,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with vascular stress markers",
+    "default_summary": "These defaults focus on familiar cardiovascular and inflammatory markers that tend to show the sharpest stroke-related differences.",
+    "default_biomarker_ids": [
+      "nt-probnp",
+      "high-sensitivity c-reactive protein hs-crp",
+      "c-reactive protein",
+      "cardiac hs-troponin t",
+      "fibrinogen",
+      "homocysteine"
+    ]
   }
 ]

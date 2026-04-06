@@ -9,7 +9,17 @@
     "detail_path": "diseases/asthma.json",
     "participant_count": 7293,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with airway and inflammation markers",
+    "default_summary": "These defaults prioritize familiar immune and inflammatory markers that are easier to interpret in a respiratory-disease contrast.",
+    "default_biomarker_ids": [
+      "high-sensitivity c-reactive protein hs-crp",
+      "c-reactive protein",
+      "eosinophils percent",
+      "fibrinogen",
+      "segmented neutrophils num",
+      "white blood cell count si"
+    ]
   },
   "biomarkers": [
     {

@@ -171,6 +171,8 @@ PUBLIC_DISEASES = {
         "title": "Diabetes",
         "kicker": "Diagnosed diabetes",
         "summary": "Self-reported doctor diagnosis in NHANES. This comparison intentionally reintroduces participants excluded from the healthy-aging baseline.",
+        "default_title": "Start with familiar metabolic markers",
+        "default_summary": "These biomarkers are the clearest familiar starting points for how diabetes separates from the healthy NHANES baseline across adulthood.",
         "accent": "rust",
         "source": "DIQ010 == 1",
     },
@@ -178,6 +180,8 @@ PUBLIC_DISEASES = {
         "title": "Hypertension",
         "kicker": "High blood pressure",
         "summary": "People reporting high blood pressure often show different kidney, inflammatory, and vascular biomarker patterns across adulthood.",
+        "default_title": "Start with vascular and kidney-linked markers",
+        "default_summary": "These defaults emphasize familiar inflammatory, kidney, and cardiovascular markers that often pull away from the healthy baseline.",
         "accent": "amber",
         "source": "BPQ020 == 1",
     },
@@ -185,6 +189,8 @@ PUBLIC_DISEASES = {
         "title": "Cardiovascular disease",
         "kicker": "Heart and vascular disease history",
         "summary": "This NHANES flag combines reported congestive heart failure, coronary heart disease, angina, heart attack, and stroke diagnoses.",
+        "default_title": "Start with cardiac strain markers",
+        "default_summary": "These markers give the quickest read on how cardiovascular disease shifts familiar blood patterns away from the healthy baseline.",
         "accent": "blue",
         "source": "MCQ160B/C/D/E/F == 1",
     },
@@ -192,6 +198,8 @@ PUBLIC_DISEASES = {
         "title": "Kidney disease",
         "kicker": "Weak or failing kidneys",
         "summary": "The disease group comes from the NHANES kidney-history question and can reveal how renal markers separate from the healthy baseline.",
+        "default_title": "Start with kidney reserve markers",
+        "default_summary": "These defaults stay close to the familiar renal chemistry panel and show the clearest kidney-related separation from healthy aging.",
         "accent": "teal",
         "source": "KIQ022 == 1",
     },
@@ -199,6 +207,8 @@ PUBLIC_DISEASES = {
         "title": "Liver disease",
         "kicker": "Liver condition history",
         "summary": "This comparison groups participants who reported liver disease on the standard NHANES medical history items.",
+        "default_title": "Start with liver-linked chemistry",
+        "default_summary": "These markers emphasize familiar liver and metabolic chemistry for a cleaner first read of the condition contrast.",
         "accent": "amber",
         "source": "MCQ160L or MCQ500/MCQ510A-F == 1",
     },
@@ -206,6 +216,8 @@ PUBLIC_DISEASES = {
         "title": "Cancer history",
         "kicker": "Any reported malignancy",
         "summary": "This uses the broad cancer-history question, so the disease group is heterogeneous by design.",
+        "default_title": "Start with broad systemic markers",
+        "default_summary": "Because this group is heterogeneous, the defaults focus on familiar inflammation, reserve, and blood markers rather than one narrow mechanism.",
         "accent": "rose",
         "source": "MCQ220 == 1",
     },
@@ -213,6 +225,8 @@ PUBLIC_DISEASES = {
         "title": "Asthma",
         "kicker": "Respiratory disease",
         "summary": "Asthma is tracked in the processed participant file even though it is not part of the healthy-aging exclusion rule.",
+        "default_title": "Start with airway and inflammation markers",
+        "default_summary": "These defaults prioritize familiar immune and inflammatory markers that are easier to interpret in a respiratory-disease contrast.",
         "accent": "violet",
         "source": "MCQ010 == 1",
     },
@@ -220,6 +234,8 @@ PUBLIC_DISEASES = {
         "title": "Thyroid problem",
         "kicker": "Reported thyroid disorder",
         "summary": "This group captures participants who reported a thyroid problem in NHANES. It is useful for comparing endocrine markers against the healthy baseline.",
+        "default_title": "Start with endocrine and lipid markers",
+        "default_summary": "These defaults keep the first view anchored in familiar thyroid-adjacent and metabolic biomarkers.",
         "accent": "violet",
         "source": "MCQ160M == 1",
     },
@@ -227,9 +243,23 @@ PUBLIC_DISEASES = {
         "title": "Stroke",
         "kicker": "Reported stroke history",
         "summary": "Stroke is shown as its own narrower disease comparison for biomarkers tied to vascular strain and inflammation.",
+        "default_title": "Start with vascular stress markers",
+        "default_summary": "These defaults focus on familiar cardiovascular and inflammatory markers that tend to show the sharpest stroke-related differences.",
         "accent": "blue",
         "source": "MCQ160F == 1",
     },
+}
+
+DISEASE_STARTER_SETS = {
+    "diabetes": ["HbA1c", "Glucose", "C-peptide", "Triglycerides", "CRP", "ALT"],
+    "hypertension": ["NT-proBNP", "CRP", "hs-CRP", "Creatinine", "Cystatin C", "Triglycerides"],
+    "cvd": ["NT-proBNP", "High-sensitivity troponin", "Homocysteine", "CRP", "hs-CRP", "Fibrinogen"],
+    "kidney": ["Creatinine", "Cystatin C", "Blood urea nitrogen", "Albumin", "Bicarbonate / CO2", "Potassium"],
+    "liver": ["ALT", "AST", "GGT", "Albumin", "Total bilirubin", "Triglycerides"],
+    "cancer": ["CRP", "hs-CRP", "Albumin", "Hemoglobin", "NT-proBNP", "Fibrinogen"],
+    "asthma": ["Eosinophils", "White blood cell count", "CRP", "hs-CRP", "Fibrinogen", "Neutrophils"],
+    "thyroid_problem": ["TSH", "Free T3", "SHBG", "Triglycerides", "LDL-C", "25-OH vitamin D"],
+    "stroke": ["NT-proBNP", "High-sensitivity troponin", "Homocysteine", "CRP", "hs-CRP", "Fibrinogen"],
 }
 
 DISEASE_TRIMS: dict[str, tuple[float, float] | None] = {
@@ -246,6 +276,24 @@ DISEASE_LONG_COLUMNS = [
     "biomarker_id",
     "value",
 ]
+
+SURPRISING_GROUP_COPY = {
+    "falls_with_age": {
+        "title": "Markers that fall with age",
+        "summary": "Some well-known biomarkers do not rise with age at all. They drift downward instead.",
+        "view": "typical",
+    },
+    "stable_center_wild_distribution": {
+        "title": "Markers whose center stays fairly steady while the distribution shifts",
+        "summary": "These markers are interesting because the middle barely moves, but variability or the upper tail changes a lot.",
+        "view": "tail",
+    },
+    "sex_divergence": {
+        "title": "Markers with strong sex divergence",
+        "summary": "These are the clearest cases where female and male age-trajectories pull apart after normalizing each sex to its own young-adult baseline.",
+        "view": "sex",
+    },
+}
 
 
 def _clean_text(value: object) -> str:
@@ -290,6 +338,12 @@ def _pct_change(start: object, end: object) -> float | None:
     return ((end_value - start_value) / abs(start_value)) * 100.0
 
 
+def _mean(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return float(sum(values) / len(values))
+
+
 def _point_lookup(points: list[dict]) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for point in points or []:
@@ -298,6 +352,35 @@ def _point_lookup(points: list[dict]) -> dict[str, dict]:
             continue
         out[age_bin] = point
     return out
+
+
+def _points_for_mode(group: dict, trim_mode: str) -> list[dict]:
+    points_by_filter = group.get("points_by_filter") or {}
+    if trim_mode in points_by_filter:
+        return points_by_filter.get(trim_mode) or []
+    if trim_mode == DEFAULT_TRIM_MODE:
+        return points_by_filter.get("trim_10_90") or []
+    return []
+
+
+def _mean_relative_median_gap(healthy_points: list[dict], condition_points: list[dict]) -> float | None:
+    healthy_lookup = _point_lookup(healthy_points)
+    condition_lookup = _point_lookup(condition_points)
+    shared_age_bins = sorted(set(healthy_lookup) & set(condition_lookup))
+    if not shared_age_bins:
+        return None
+
+    gaps: list[float] = []
+    for age_bin in shared_age_bins:
+        healthy_median = _number_or_none(healthy_lookup[age_bin].get("median"))
+        condition_median = _number_or_none(condition_lookup[age_bin].get("median"))
+        if healthy_median is None or condition_median is None:
+            continue
+        if abs(healthy_median) < 1e-12:
+            continue
+        gaps.append(abs((condition_median - healthy_median) / healthy_median) * 100.0)
+
+    return _mean(gaps)
 
 
 def _quantile_skewness_from_stats(q25: pd.Series, median: pd.Series, q75: pd.Series) -> pd.Series:
@@ -649,6 +732,11 @@ def build_disease_explorer_bundle(
                 }
             )
 
+        default_biomarker_ids = _select_disease_default_biomarker_ids(
+            condition_key=condition_key,
+            condition_records=condition_records,
+        )
+
         condition_detail_path = f"diseases/{condition_key}.json"
         condition_index.append(
             {
@@ -656,6 +744,9 @@ def build_disease_explorer_bundle(
                 "title": meta["title"],
                 "kicker": meta["kicker"],
                 "summary": meta["summary"],
+                "default_title": meta["default_title"],
+                "default_summary": meta["default_summary"],
+                "default_biomarker_ids": default_biomarker_ids,
                 "accent": meta["accent"],
                 "source": meta["source"],
                 "detail_path": condition_detail_path,
@@ -677,6 +768,61 @@ def _collection_rank(collection_key: str) -> int:
         return COLLECTION_ORDER.index(collection_key)
     except ValueError:
         return len(COLLECTION_ORDER)
+
+
+def _select_disease_default_biomarker_ids(
+    condition_key: str,
+    condition_records: list[dict],
+    limit: int = 6,
+) -> list[str]:
+    if not condition_records:
+        return []
+
+    records_by_name = {str(record["display_name"]): record for record in condition_records}
+    familiar_names = DISEASE_STARTER_SETS.get(condition_key, [])
+
+    ranked: list[tuple[float, str]] = []
+    for display_name in familiar_names:
+        record = records_by_name.get(display_name)
+        if record is None:
+            continue
+
+        healthy_points = _points_for_mode(record["groups"]["healthy"], DEFAULT_TRIM_MODE)
+        condition_points = _points_for_mode(record["groups"]["condition"], DEFAULT_TRIM_MODE)
+        separation = _mean_relative_median_gap(healthy_points, condition_points)
+        if separation is None:
+            continue
+        ranked.append((separation, str(record["biomarker_id"])))
+
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    selected_ids = [biomarker_id for _, biomarker_id in ranked[:limit]]
+    if len(selected_ids) >= limit:
+        return selected_ids
+
+    existing_ids = set(selected_ids)
+    fallback_rows: list[tuple[float, str]] = []
+    for record in condition_records:
+        biomarker_id = str(record["biomarker_id"])
+        if biomarker_id in existing_ids:
+            continue
+
+        healthy_points = _points_for_mode(record["groups"]["healthy"], DEFAULT_TRIM_MODE)
+        condition_points = _points_for_mode(record["groups"]["condition"], DEFAULT_TRIM_MODE)
+        separation = _mean_relative_median_gap(healthy_points, condition_points)
+        if separation is None:
+            continue
+        fallback_rows.append((separation, biomarker_id))
+
+    fallback_rows.sort(key=lambda item: (-item[0], item[1]))
+    for _, biomarker_id in fallback_rows:
+        if biomarker_id in existing_ids:
+            continue
+        selected_ids.append(biomarker_id)
+        existing_ids.add(biomarker_id)
+        if len(selected_ids) >= limit:
+            break
+
+    return selected_ids
 
 
 def _humanize_token(token: str) -> str:
@@ -819,6 +965,84 @@ def _compute_context_metrics(payload: dict) -> dict[str, dict[str, dict[str, flo
     return by_context
 
 
+def _metrics_for_entry(entry: dict, cohort: str = "pooled", trim_mode: str = DEFAULT_TRIM_MODE) -> dict[str, float | int | None]:
+    by_context = entry.get("public_metrics_by_context") or {}
+    cohort_metrics = by_context.get(cohort) or {}
+    return (
+        cohort_metrics.get(trim_mode)
+        or cohort_metrics.get("trim_10_90")
+        or cohort_metrics.get("all")
+        or entry.get("public_metrics")
+        or {}
+    )
+
+
+def build_surprising_groups(public_manifest: list[dict], limit: int = 8) -> dict[str, object]:
+    falls_with_age: list[tuple[float, dict]] = []
+    stable_center_wild_distribution: list[tuple[float, dict]] = []
+    sex_divergence: list[tuple[float, dict]] = []
+
+    for entry in public_manifest:
+        metrics = _metrics_for_entry(entry, cohort="pooled", trim_mode=DEFAULT_TRIM_MODE)
+        median_change = _number_or_none(metrics.get("median_change_pct_20_24_to_80_84"))
+        cv_change = _number_or_none(metrics.get("cv_change_pct_20_24_to_80_84"))
+        upper_tail_change = _number_or_none(metrics.get("upper_tail_change_pct"))
+        sex_divergence_score = _number_or_none(metrics.get("sex_divergence_score"))
+
+        if median_change is not None:
+            falls_with_age.append((median_change, entry))
+
+        if median_change is not None and abs(median_change) <= 20.0:
+            score_candidates = [0.0]
+            if cv_change is not None:
+                score_candidates.append(abs(cv_change))
+            if upper_tail_change is not None:
+                score_candidates.append(abs(upper_tail_change))
+            surprise_score = max(score_candidates)
+            if surprise_score > 0:
+                stable_center_wild_distribution.append((surprise_score, entry))
+
+        if sex_divergence_score is not None:
+            sex_divergence.append((sex_divergence_score, entry))
+
+    falls_with_age.sort(key=lambda item: (item[0], item[1]["display_name"]))
+    stable_center_wild_distribution.sort(key=lambda item: (-item[0], item[1]["display_name"]))
+    sex_divergence.sort(key=lambda item: (-item[0], item[1]["display_name"]))
+
+    return {
+        "groups": [
+            {
+                "key": "falls_with_age",
+                **SURPRISING_GROUP_COPY["falls_with_age"],
+                "items": [_surprising_item(entry) for _, entry in falls_with_age[:limit]],
+            },
+            {
+                "key": "stable_center_wild_distribution",
+                **SURPRISING_GROUP_COPY["stable_center_wild_distribution"],
+                "items": [_surprising_item(entry) for _, entry in stable_center_wild_distribution[:limit]],
+            },
+            {
+                "key": "sex_divergence",
+                **SURPRISING_GROUP_COPY["sex_divergence"],
+                "items": [_surprising_item(entry) for _, entry in sex_divergence[:limit]],
+            },
+        ]
+    }
+
+
+def _surprising_item(entry: dict) -> dict[str, object]:
+    metrics = _metrics_for_entry(entry, cohort="pooled", trim_mode=DEFAULT_TRIM_MODE)
+    return {
+        "biomarker_id": entry["biomarker_id"],
+        "display_name": entry["display_name"],
+        "featured_collection_title": entry["featured_collection_title"],
+        "median_change_pct_20_24_to_80_84": metrics.get("median_change_pct_20_24_to_80_84"),
+        "cv_change_pct_20_24_to_80_84": metrics.get("cv_change_pct_20_24_to_80_84"),
+        "upper_tail_change_pct": metrics.get("upper_tail_change_pct"),
+        "sex_divergence_score": metrics.get("sex_divergence_score"),
+    }
+
+
 def build_public_manifest(
     metadata: pd.DataFrame,
     series_index: dict[str, str],
@@ -923,6 +1147,7 @@ def write_public_dashboard_bundle(
     data_dir_name: str,
     manifest: list[dict],
     disease_bundle: dict[str, object] | None = None,
+    surprising_bundle: dict[str, object] | None = None,
 ) -> None:
     data_dir = out_html.parent / data_dir_name
     disease_dir = data_dir / "diseases"
@@ -937,8 +1162,13 @@ def write_public_dashboard_bundle(
         encoding="utf-8",
     )
     disease_bundle = disease_bundle or {"conditions": [], "by_condition": {}}
+    surprising_bundle = surprising_bundle or {"groups": []}
     (data_dir / "disease_index.json").write_text(
         json.dumps(disease_bundle.get("conditions", []), ensure_ascii=True, allow_nan=False, indent=2),
+        encoding="utf-8",
+    )
+    (data_dir / "surprising.json").write_text(
+        json.dumps(surprising_bundle, ensure_ascii=True, allow_nan=False, indent=2),
         encoding="utf-8",
     )
     for condition_key, payload in (disease_bundle.get("by_condition", {}) or {}).items():
@@ -952,6 +1182,7 @@ def write_public_dashboard_bundle(
         "manifest_count": len(manifest),
         "featured_collection_count": len(COLLECTION_COPY),
         "disease_condition_count": len(disease_bundle.get("conditions", [])),
+        "surprising_group_count": len(surprising_bundle.get("groups", [])),
         "default_trim_mode": DEFAULT_TRIM_MODE,
         "data_dir": str(data_dir),
     }
@@ -959,5 +1190,6 @@ def write_public_dashboard_bundle(
 
     print(f"Wrote public manifest: {data_dir / 'manifest.json'}")
     print(f"Wrote public disease index: {data_dir / 'disease_index.json'}")
+    print(f"Wrote public surprising groups: {data_dir / 'surprising.json'}")
     print(f"Wrote public dashboard HTML: {out_html}")
     print(f"Wrote public dashboard summary JSON: {out_json}")

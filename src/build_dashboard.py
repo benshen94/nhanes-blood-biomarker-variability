@@ -17,6 +17,7 @@ from scipy.stats import skew as scipy_skew
 from scipy.stats import spearmanr
 
 from build_aging_biomarkers_dashboard import (
+    build_surprising_groups,
     build_disease_explorer_bundle,
     build_public_manifest,
     load_public_disease_long,
@@ -4001,12 +4002,14 @@ def main() -> None:
         long_df=disease_long_df,
         participant_flags=participant_flags,
     )
+    surprising_bundle = build_surprising_groups(public_manifest)
     write_public_dashboard_bundle(
         out_html=aging_public_out_html,
         out_json=aging_public_out_json,
         data_dir_name="aging_biomarkers_public",
         manifest=public_manifest,
         disease_bundle=disease_bundle,
+        surprising_bundle=surprising_bundle,
     )
     write_dashboard_bundle(
         out_html=urine_out_html,

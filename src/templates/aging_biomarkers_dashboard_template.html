@@ -1585,6 +1585,7 @@
         <button id="tab-explore" class="tab-btn" data-tab="explore" type="button">Explore a Biomarker</button>
         <button id="tab-disease" class="tab-btn" data-tab="disease" type="button">Disease Explorer</button>
         <button id="tab-rankings" class="tab-btn" data-tab="rankings" type="button">What Changes Most?</button>
+        <button id="tab-surprising" class="tab-btn" data-tab="surprising" type="button">What’s Surprising?</button>
         <button id="tab-compare" class="tab-btn" data-tab="compare" type="button">Compare Biomarkers</button>
         <button id="tab-calculator" class="tab-btn" data-tab="calculator" type="button">Blood Age</button>
         <button id="tab-about" class="tab-btn" data-tab="about" type="button">About the Data</button>
@@ -1628,7 +1629,11 @@
               </button>
               <button class="tab-summary-card" data-tab-jump="rankings" type="button">
                 <strong>What Changes Most?</strong>
-                <span>Rank biomarkers by how much they rise, fall, spread out, or diverge by sex.</span>
+                <span>Rank biomarkers by how much they rise, fall, stretch their upper tail, or diverge by sex.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="surprising" type="button">
+                <strong>What’s Surprising?</strong>
+                <span>See the markers that fall with age, hide their shifts in the tails, or split strongly by sex.</span>
               </button>
               <button class="tab-summary-card" data-tab-jump="compare" type="button">
                 <strong>Compare Biomarkers</strong>
@@ -1764,8 +1769,11 @@
 
             <div class="rail-block">
               <div class="section-kicker">Choose a test</div>
-              <h3>Compare one biomarker at a time</h3>
-              <label class="control-label" for="disease-search">Search</label>
+              <h3>Start with familiar separators</h3>
+              <div id="disease-default-title" class="control-label"></div>
+              <p id="disease-default-summary" class="rail-copy"></p>
+              <div id="disease-default-chips" class="chip-cloud"></div>
+              <label class="control-label" for="disease-search">Search all biomarkers</label>
               <input id="disease-search" type="search" placeholder="Creatinine, HbA1c, CRP..." autocomplete="off" spellcheck="false" />
               <div id="disease-list" class="marker-list" aria-live="polite"></div>
             </div>
@@ -1831,7 +1839,6 @@
               <select id="rankings-metric">
                 <option value="median_rise">Biggest median rise</option>
                 <option value="median_fall">Biggest median fall</option>
-                <option value="spread_rise">Biggest spread increase</option>
                 <option value="upper_tail_rise">Biggest upper-tail increase</option>
                 <option value="sex_divergence">Largest sex divergence</option>
               </select>
@@ -1857,6 +1864,18 @@
             <div id="rankings-list" class="rankings-list"></div>
           </div>
         </div>
+      </section>
+
+      <section id="panel-surprising" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Counterintuitive patterns</div>
+            <h2>What’s surprising?</h2>
+            <p>These are the patterns people tend to remember and share: familiar markers that move the opposite way, hide their shifts in the tails, or split sharply by sex.</p>
+          </div>
+        </div>
+
+        <div id="surprising-groups" class="editorial-grid"></div>
       </section>
 
       <section id="panel-compare" class="panel reveal">
@@ -2267,6 +2286,7 @@
       diseaseIndex: [],
       diseaseIndexByKey: new Map(),
       diseaseCache: new Map(),
+      surprisingGroups: [],
       tab: "start",
       exploreId: "",
       exploreCollection: "all",
@@ -2279,7 +2299,6 @@
       rankingsMetric: "median_rise",
       rankingsCohort: "pooled",
       rankingsCollection: "all",
-      rankingsOrgan: "all",
       rankingsTopN: 12,
       compareMode: "median",
       compareIds: [],
@@ -2551,6 +2570,9 @@
       if (state.tab === "rankings") {
         return "rankings-plot";
       }
+      if (state.tab === "surprising") {
+        return null;
+      }
       if (state.tab === "compare") {
         return "compare-plot";
       }
@@ -2618,7 +2640,7 @@
       const compareMode = params.get("compareMode");
       const compare = params.get("compare");
 
-      if (tab && ["start", "explore", "disease", "rankings", "compare", "calculator", "about"].includes(tab)) {
+      if (tab && ["start", "explore", "disease", "rankings", "surprising", "compare", "calculator", "about"].includes(tab)) {
         state.tab = tab;
       }
       if (biomarker && state.manifestById.has(biomarker)) {
@@ -2675,7 +2697,7 @@
       }
 
       if (!state.diseaseBiomarkerId) {
-        state.diseaseBiomarkerId = state.exploreId;
+        state.diseaseBiomarkerId = "";
       }
     }
 
@@ -2761,6 +2783,58 @@
         .join("");
     }
 
+    function diseaseDefaultIds(conditionMeta, diseasePayload) {
+      const payloadIds = new Set((diseasePayload?.biomarkers || []).map((entry) => entry.biomarker_id));
+      return (conditionMeta?.default_biomarker_ids || []).filter((biomarkerId) => payloadIds.has(biomarkerId));
+    }
+
+    function firstDiseaseDefaultId(conditionMeta, diseasePayload) {
+      const ids = diseaseDefaultIds(conditionMeta, diseasePayload);
+      if (ids.length) {
+        return ids[0];
+      }
+      return diseasePayload?.biomarkers?.[0]?.biomarker_id || "";
+    }
+
+    function renderDiseaseDefaultChips(conditionMeta, diseasePayload) {
+      const ids = diseaseDefaultIds(conditionMeta, diseasePayload);
+      refs.diseaseDefaultTitle.textContent = conditionMeta?.default_title || "Start with familiar markers";
+      refs.diseaseDefaultSummary.textContent = conditionMeta?.default_summary || "";
+      refs.diseaseDefaultChips.innerHTML = ids
+        .map((biomarkerId) => {
+          const entry = state.manifestById.get(biomarkerId);
+          if (!entry) {
+            return "";
+          }
+          const active = biomarkerId === state.diseaseBiomarkerId ? "active" : "";
+          return `<button class="chip-btn ${active}" data-open-disease-id="${biomarkerId}" type="button">${entry.display_name}</button>`;
+        })
+        .join("");
+    }
+
+    function renderSurprisingPanel() {
+      refs.surprisingGroups.innerHTML = (state.surprisingGroups || [])
+        .map((group) => {
+          const items = (group.items || [])
+            .map((item) => `
+              <button class="marker-item" data-open-surprise-id="${item.biomarker_id}" data-open-surprise-view="${group.view}" type="button">
+                <strong>${item.display_name}</strong>
+                <span>${item.featured_collection_title || ""}</span>
+              </button>
+            `)
+            .join("");
+
+          return `
+            <article class="note-card">
+              <div class="section-kicker">${group.title}</div>
+              <h3>${group.summary}</h3>
+              <div class="marker-list">${items}</div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
     function openCollectionCompare(collectionKey) {
       const ids = collectionEntries(collectionKey)
         .sort((left, right) => (right.landing_score || 0) - (left.landing_score || 0))
@@ -2799,8 +2873,8 @@
           rows: pickTop("median_change_pct_20_24_to_80_84", "asc"),
         },
         {
-          title: "Biggest spread increase",
-          rows: pickTop("sd_change_pct_20_24_to_80_84", "desc"),
+          title: "Biggest upper-tail increase",
+          rows: pickTop("upper_tail_change_pct", "desc"),
         },
         {
           title: "Largest sex divergence",
@@ -3643,6 +3717,9 @@
         renderChartEmpty(refs.diseasePlot, "Choose a disease condition to begin.");
         refs.diseaseSummaryStrip.innerHTML = "";
         refs.diseaseList.innerHTML = "";
+        refs.diseaseDefaultTitle.textContent = "";
+        refs.diseaseDefaultSummary.textContent = "";
+        refs.diseaseDefaultChips.innerHTML = "";
         refs.diseaseConditionNote.textContent = "";
         refs.diseaseTech.innerHTML = "";
         setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
@@ -3655,15 +3732,19 @@
         const conditionMeta = payload?.condition || getDiseaseConditionMeta(state.diseaseCondition);
         const biomarkerLookup = new Map((payload?.biomarkers || []).map((entry) => [entry.biomarker_id, entry]));
         if (!biomarkerLookup.has(state.diseaseBiomarkerId)) {
-          state.diseaseBiomarkerId = payload?.biomarkers?.[0]?.biomarker_id || "";
+          state.diseaseBiomarkerId = firstDiseaseDefaultId(conditionMeta, payload);
         }
 
+        renderDiseaseDefaultChips(conditionMeta, payload);
         renderDiseaseBiomarkerList(payload);
 
         const record = biomarkerLookup.get(state.diseaseBiomarkerId);
         if (!record || !conditionMeta) {
           renderChartEmpty(refs.diseasePlot, "Choose a biomarker to compare against the selected disease cohort.");
           refs.diseaseSummaryStrip.innerHTML = "";
+          refs.diseaseDefaultTitle.textContent = "";
+          refs.diseaseDefaultSummary.textContent = "";
+          refs.diseaseDefaultChips.innerHTML = "";
           refs.diseaseTech.innerHTML = "";
           refs.diseaseConditionNote.textContent = "";
           setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
@@ -3723,6 +3804,9 @@
       } catch (error) {
         renderChartEmpty(refs.diseasePlot, "The disease explorer could not be loaded.");
         refs.diseaseSummaryStrip.innerHTML = "";
+        refs.diseaseDefaultTitle.textContent = "";
+        refs.diseaseDefaultSummary.textContent = "";
+        refs.diseaseDefaultChips.innerHTML = "";
         refs.diseaseTech.innerHTML = "";
         refs.diseaseConditionNote.textContent = "";
         setDiseaseAnnotation(error.message);
@@ -3732,9 +3816,6 @@
     function rankingValueFromMetrics(metrics) {
       if (state.rankingsMetric === "median_rise" || state.rankingsMetric === "median_fall") {
         return metrics.median_change_pct_20_24_to_80_84;
-      }
-      if (state.rankingsMetric === "spread_rise") {
-        return metrics.sd_change_pct_20_24_to_80_84;
       }
       if (state.rankingsMetric === "upper_tail_rise") {
         return metrics.upper_tail_change_pct;
@@ -3752,9 +3833,6 @@
       if (state.rankingsCollection !== "all") {
         entries = entries.filter((entry) => entry.featured_collection === state.rankingsCollection);
       }
-      if (state.rankingsOrgan !== "all") {
-        entries = entries.filter((entry) => entry.primary_organ_system === state.rankingsOrgan);
-      }
 
       entries = entries
         .map((entry) => {
@@ -3771,11 +3849,7 @@
             return { entry, femaleValue, maleValue, value: sortValue };
           }
 
-          const metrics = state.rankingsMetric === "sex_divergence"
-            ? metricsForCurrentContext(entry)
-            : state.rankingsCohort === "pooled"
-              ? metricsForCurrentContext(entry)
-              : rankingMetricsForCohort(entry, "pooled");
+          const metrics = rankingMetricsForCohort(entry, "pooled");
           const value = rankingValueFromMetrics(metrics);
           if (!Number.isFinite(value)) {
             return null;
@@ -3801,9 +3875,7 @@
         ? "Median change"
         : state.rankingsMetric === "median_fall"
           ? "Median change"
-          : state.rankingsMetric === "spread_rise"
-            ? "Spread change"
-            : state.rankingsMetric === "upper_tail_rise"
+          : state.rankingsMetric === "upper_tail_rise"
               ? "Upper-tail change"
               : "Sex divergence";
 
@@ -4400,14 +4472,18 @@
       resetBioAgeOutput();
     }
 
-    function openMarker(id) {
+    function openMarker(id, overrides = {}) {
       if (!state.manifestById.has(id)) {
         return;
       }
       state.exploreId = id;
+      if (overrides.view && ["typical", "spread", "tail", "sex"].includes(overrides.view)) {
+        state.view = overrides.view;
+      }
       state.tab = "explore";
       renderTabs();
       renderPanels();
+      renderGlobalButtons();
       renderExploreList();
       renderExplorePanel();
       writeHash();
@@ -4425,6 +4501,9 @@
           }
           if (button.dataset.tab === "rankings") {
             renderRankings();
+          }
+          if (button.dataset.tab === "surprising") {
+            renderSurprisingPanel();
           }
           if (button.dataset.tab === "explore") {
             renderExplorePanel();
@@ -4444,6 +4523,9 @@
           if (button.dataset.tabJump === "rankings") {
             renderRankings();
           }
+          if (button.dataset.tabJump === "surprising") {
+            renderSurprisingPanel();
+          }
           if (button.dataset.tabJump === "explore") {
             renderExplorePanel();
           }
@@ -4457,6 +4539,14 @@
           return;
         }
 
+        const surpriseItem = event.target.closest("[data-open-surprise-id]");
+        if (surpriseItem) {
+          openMarker(surpriseItem.dataset.openSurpriseId, {
+            view: surpriseItem.dataset.openSurpriseView,
+          });
+          return;
+        }
+
         const collectionKey = event.target.closest("[data-open-collection]")?.dataset.openCollection;
         if (collectionKey) {
           openCollectionCompare(collectionKey);
@@ -4466,7 +4556,7 @@
         const conditionKey = event.target.closest("[data-select-condition]")?.dataset.selectCondition;
         if (conditionKey) {
           state.diseaseCondition = conditionKey;
-          state.diseaseBiomarkerId = state.exploreId;
+          state.diseaseBiomarkerId = "";
           renderDiseasePanel();
           writeHash();
           return;
@@ -4534,6 +4624,7 @@
           renderExplorePanel();
           renderDiseasePanel();
           renderRankings();
+          renderSurprisingPanel();
           renderComparePanel();
           writeHash();
         });
@@ -4546,6 +4637,7 @@
           renderExplorePanel();
           renderDiseasePanel();
           renderRankings();
+          renderSurprisingPanel();
           renderComparePanel();
           writeHash();
         });
@@ -4581,10 +4673,6 @@
         state.rankingsCollection = refs.rankingsCollection.value;
         renderRankings();
       });
-      refs.rankingsOrgan.addEventListener("change", () => {
-        state.rankingsOrgan = refs.rankingsOrgan.value;
-        renderRankings();
-      });
       refs.rankingsTopN.addEventListener("change", () => {
         const next = Number.parseInt(refs.rankingsTopN.value, 10);
         state.rankingsTopN = Number.isFinite(next) ? Math.max(5, Math.min(30, next)) : 12;
@@ -4595,12 +4683,10 @@
         state.rankingsMetric = "median_rise";
         state.rankingsCohort = "pooled";
         state.rankingsCollection = "all";
-        state.rankingsOrgan = "all";
         state.rankingsTopN = 12;
         refs.rankingsMetric.value = state.rankingsMetric;
         refs.rankingsCohort.value = state.rankingsCohort;
         refs.rankingsCollection.value = state.rankingsCollection;
-        refs.rankingsOrgan.value = state.rankingsOrgan;
         refs.rankingsTopN.value = String(state.rankingsTopN);
         renderRankings();
       });
@@ -4641,6 +4727,7 @@
         renderExplorePanel();
         renderDiseasePanel();
         renderRankings();
+        renderSurprisingPanel();
         renderCompareSelected();
         renderComparePanel();
       });
@@ -4651,7 +4738,6 @@
       refs.rankingsMetric.value = state.rankingsMetric;
       refs.rankingsCohort.value = state.rankingsCohort;
       refs.rankingsCollection.value = state.rankingsCollection;
-      refs.rankingsOrgan.value = state.rankingsOrgan;
       refs.rankingsTopN.value = String(state.rankingsTopN);
       refs.compareMode.value = state.compareMode;
     }
@@ -4666,10 +4752,6 @@
         refs.rankingsCollection,
         Object.keys(COLLECTION_COPY),
         (value) => COLLECTION_COPY[value]?.title || value
-      );
-      populateFilterSelect(
-        refs.rankingsOrgan,
-        [...new Set(state.manifest.map((entry) => entry.primary_organ_system).filter(Boolean))].sort()
       );
 
       refs.compareOptions.innerHTML = state.manifest
@@ -4701,6 +4783,9 @@
       refs.exploreTitle = $("explore-title");
       refs.exploreSubtitle = $("explore-subtitle");
       refs.diseaseConditionList = $("disease-condition-list");
+      refs.diseaseDefaultTitle = $("disease-default-title");
+      refs.diseaseDefaultSummary = $("disease-default-summary");
+      refs.diseaseDefaultChips = $("disease-default-chips");
       refs.diseaseSearch = $("disease-search");
       refs.diseaseList = $("disease-list");
       refs.diseaseConditionNote = $("disease-condition-note");
@@ -4715,11 +4800,11 @@
       refs.rankingsMetric = $("rankings-metric");
       refs.rankingsCohort = $("rankings-cohort");
       refs.rankingsCollection = $("rankings-collection");
-      refs.rankingsOrgan = $("rankings-organ");
       refs.rankingsTopN = $("rankings-top-n");
       refs.rankingsReset = $("rankings-reset");
       refs.rankingsPlot = $("rankings-plot");
       refs.rankingsList = $("rankings-list");
+      refs.surprisingGroups = $("surprising-groups");
       refs.compareSearch = $("compare-search");
       refs.compareOptions = $("compare-options");
       refs.compareAdd = $("compare-add");
@@ -4764,20 +4849,23 @@
 
       try {
         setStatus("Loading curated blood markers...");
-        const [manifest, diseaseIndex] = await Promise.all([
+        const [manifest, diseaseIndex, surprising] = await Promise.all([
           fetchJson(`${DATA_BASE}/manifest.json`),
           fetchJson(`${DATA_BASE}/disease_index.json`),
+          fetchJson(`${DATA_BASE}/surprising.json`),
         ]);
         state.manifest = manifest;
         state.manifestById = new Map(manifest.map((entry) => [entry.biomarker_id, entry]));
         state.manifestBySlug = new Map(manifest.map((entry) => [entry.slug, entry]));
         state.diseaseIndex = diseaseIndex;
         state.diseaseIndexByKey = new Map(diseaseIndex.map((entry) => [entry.key, entry]));
+        state.surprisingGroups = surprising?.groups || [];
         applyHash();
         ensureDefaults();
         primeStaticControls();
         renderCollectionGrid();
         renderRankingModules();
+        renderSurprisingPanel();
         renderAboutTestList();
         renderExploreList();
         renderDiseaseConditionList();

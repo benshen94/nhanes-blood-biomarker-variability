@@ -9,7 +9,17 @@
     "detail_path": "diseases/cancer.json",
     "participant_count": 5166,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with broad systemic markers",
+    "default_summary": "Because this group is heterogeneous, the defaults focus on familiar inflammation, reserve, and blood markers rather than one narrow mechanism.",
+    "default_biomarker_ids": [
+      "high-sensitivity c-reactive protein hs-crp",
+      "c-reactive protein",
+      "nt-probnp",
+      "fibrinogen",
+      "albumin",
+      "hemoglobin"
+    ]
   },
   "biomarkers": [
     {

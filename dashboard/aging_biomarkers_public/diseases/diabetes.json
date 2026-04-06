@@ -9,7 +9,17 @@
     "detail_path": "diseases/diabetes.json",
     "participant_count": 6673,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with familiar metabolic markers",
+    "default_summary": "These biomarkers are the clearest familiar starting points for how diabetes separates from the healthy NHANES baseline across adulthood.",
+    "default_biomarker_ids": [
+      "c-peptide",
+      "c-reactive protein",
+      "alt",
+      "plasma glucose",
+      "triglyceride",
+      "glycohemoglobin"
+    ]
   },
   "biomarkers": [
     {

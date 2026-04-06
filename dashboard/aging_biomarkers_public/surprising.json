@@ -1,0 +1,244 @@
+{
+  "groups": [
+    {
+      "key": "falls_with_age",
+      "title": "Markers that fall with age",
+      "summary": "Some well-known biomarkers do not rise with age at all. They drift downward instead.",
+      "view": "typical",
+      "items": [
+        {
+          "biomarker_id": "testosterone total",
+          "display_name": "Testosterone",
+          "featured_collection_title": "Hormones & Nutrient Sensing",
+          "median_change_pct_20_24_to_80_84": -87.9003984063745,
+          "cv_change_pct_20_24_to_80_84": 36.68085172512587,
+          "upper_tail_change_pct": 14.331053888688942,
+          "sex_divergence_score": 14.348032505169954
+        },
+        {
+          "biomarker_id": "estradiol",
+          "display_name": "Estradiol",
+          "featured_collection_title": "Hormones & Nutrient Sensing",
+          "median_change_pct_20_24_to_80_84": -60.769230769230774,
+          "cv_change_pct_20_24_to_80_84": 3.539439694908135,
+          "upper_tail_change_pct": -71.71296296296296,
+          "sex_divergence_score": 59.409313614921416
+        },
+        {
+          "biomarker_id": "creatine phosphokinase cpk",
+          "display_name": "Creatine kinase",
+          "featured_collection_title": "Blood & Oxygen",
+          "median_change_pct_20_24_to_80_84": -30.89430894308943,
+          "cv_change_pct_20_24_to_80_84": -18.43886447195572,
+          "upper_tail_change_pct": -48.38709677419355,
+          "sex_divergence_score": 13.334180690426562
+        },
+        {
+          "biomarker_id": "lymphocyte number",
+          "display_name": "Lymphocytes",
+          "featured_collection_title": "Inflammation",
+          "median_change_pct_20_24_to_80_84": -22.727272727272734,
+          "cv_change_pct_20_24_to_80_84": 23.078980210881742,
+          "upper_tail_change_pct": 16.66666666666673,
+          "sex_divergence_score": 2.5974025974025965
+        },
+        {
+          "biomarker_id": "alt",
+          "display_name": "ALT",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": -20.0,
+          "cv_change_pct_20_24_to_80_84": -41.58821860302609,
+          "upper_tail_change_pct": -60.0,
+          "sex_divergence_score": 14.607515246901436
+        },
+        {
+          "biomarker_id": "total bilirubin",
+          "display_name": "Total bilirubin",
+          "featured_collection_title": "Kidney & Reserve",
+          "median_change_pct_20_24_to_80_84": -16.666666666666664,
+          "cv_change_pct_20_24_to_80_84": -2.957676121523366,
+          "upper_tail_change_pct": 0.0,
+          "sex_divergence_score": 0.0
+        },
+        {
+          "biomarker_id": "lymphocyte percent",
+          "display_name": "Lymphocyte percentage",
+          "featured_collection_title": "Inflammation",
+          "median_change_pct_20_24_to_80_84": -16.129032258064516,
+          "cv_change_pct_20_24_to_80_84": 20.892125138325444,
+          "upper_tail_change_pct": 5.750000000000188,
+          "sex_divergence_score": 4.98839221139361
+        },
+        {
+          "biomarker_id": "platelet count",
+          "display_name": "Platelet count",
+          "featured_collection_title": "Blood & Oxygen",
+          "median_change_pct_20_24_to_80_84": -13.580246913580247,
+          "cv_change_pct_20_24_to_80_84": 22.48268427521448,
+          "upper_tail_change_pct": 1.8181818181818181,
+          "sex_divergence_score": 1.3865394300176894
+        }
+      ]
+    },
+    {
+      "key": "stable_center_wild_distribution",
+      "title": "Markers whose center stays fairly steady while the distribution shifts",
+      "summary": "These markers are interesting because the middle barely moves, but variability or the upper tail changes a lot.",
+      "view": "tail",
+      "items": [
+        {
+          "biomarker_id": "alt",
+          "display_name": "ALT",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": -20.0,
+          "cv_change_pct_20_24_to_80_84": -41.58821860302609,
+          "upper_tail_change_pct": -60.0,
+          "sex_divergence_score": 14.607515246901436
+        },
+        {
+          "biomarker_id": "ast",
+          "display_name": "AST",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": 4.761904761904762,
+          "cv_change_pct_20_24_to_80_84": -39.375698250882536,
+          "upper_tail_change_pct": -50.0,
+          "sex_divergence_score": 7.74829873374107
+        },
+        {
+          "biomarker_id": "red cell distribution width",
+          "display_name": "RDW",
+          "featured_collection_title": "Blood & Oxygen",
+          "median_change_pct_20_24_to_80_84": 6.2992125984252025,
+          "cv_change_pct_20_24_to_80_84": 20.322324266634343,
+          "upper_tail_change_pct": 44.444444444444464,
+          "sex_divergence_score": 1.490003052503057
+        },
+        {
+          "biomarker_id": "creatinine",
+          "display_name": "Creatinine",
+          "featured_collection_title": "Kidney & Reserve",
+          "median_change_pct_20_24_to_80_84": 19.9943438914027,
+          "cv_change_pct_20_24_to_80_84": 22.02565768544278,
+          "upper_tail_change_pct": 44.02714932126685,
+          "sex_divergence_score": 2.3085365777369686
+        },
+        {
+          "biomarker_id": "direct hdl-cholesterol",
+          "display_name": "HDL-C",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": 11.0,
+          "cv_change_pct_20_24_to_80_84": 13.985368668185522,
+          "upper_tail_change_pct": 34.953940634595796,
+          "sex_divergence_score": 5.816270184463136
+        },
+        {
+          "biomarker_id": "glycohemoglobin",
+          "display_name": "HbA1c",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": 9.615384615384615,
+          "cv_change_pct_20_24_to_80_84": 26.577693264274583,
+          "upper_tail_change_pct": 33.333333333333236,
+          "sex_divergence_score": 0.5917159763313623
+        },
+        {
+          "biomarker_id": "potassium",
+          "display_name": "Potassium",
+          "featured_collection_title": "Kidney & Reserve",
+          "median_change_pct_20_24_to_80_84": 7.6923076923077,
+          "cv_change_pct_20_24_to_80_84": 24.722655969482688,
+          "upper_tail_change_pct": 33.33333333333304,
+          "sex_divergence_score": 0.6905818540433936
+        },
+        {
+          "biomarker_id": "insulin",
+          "display_name": "Fasting insulin",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": -10.828025477707003,
+          "cv_change_pct_20_24_to_80_84": -14.201447722753507,
+          "upper_tail_change_pct": -31.310942578548207,
+          "sex_divergence_score": 18.22418577132734
+        }
+      ]
+    },
+    {
+      "key": "sex_divergence",
+      "title": "Markers with strong sex divergence",
+      "summary": "These are the clearest cases where female and male age-trajectories pull apart after normalizing each sex to its own young-adult baseline.",
+      "view": "sex",
+      "items": [
+        {
+          "biomarker_id": "nt-probnp",
+          "display_name": "NT-proBNP",
+          "featured_collection_title": "Cardiovascular Stress",
+          "median_change_pct_20_24_to_80_84": 662.0578778135048,
+          "cv_change_pct_20_24_to_80_84": 13.656029854481055,
+          "upper_tail_change_pct": 774.1009567799405,
+          "sex_divergence_score": 201.322462250495
+        },
+        {
+          "biomarker_id": "c-reactive protein",
+          "display_name": "CRP",
+          "featured_collection_title": "Inflammation",
+          "median_change_pct_20_24_to_80_84": 100.0,
+          "cv_change_pct_20_24_to_80_84": -23.13672301298509,
+          "upper_tail_change_pct": -4.571428571428464,
+          "sex_divergence_score": 70.61651583710407
+        },
+        {
+          "biomarker_id": "estradiol",
+          "display_name": "Estradiol",
+          "featured_collection_title": "Hormones & Nutrient Sensing",
+          "median_change_pct_20_24_to_80_84": -60.769230769230774,
+          "cv_change_pct_20_24_to_80_84": 3.539439694908135,
+          "upper_tail_change_pct": -71.71296296296296,
+          "sex_divergence_score": 59.409313614921416
+        },
+        {
+          "biomarker_id": "c-peptide",
+          "display_name": "C-peptide",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": null,
+          "cv_change_pct_20_24_to_80_84": null,
+          "upper_tail_change_pct": null,
+          "sex_divergence_score": 51.79271597662367
+        },
+        {
+          "biomarker_id": "serum neurofilament light chain",
+          "display_name": "Neurofilament light chain",
+          "featured_collection_title": "Cardiovascular Stress",
+          "median_change_pct_20_24_to_80_84": null,
+          "cv_change_pct_20_24_to_80_84": null,
+          "upper_tail_change_pct": null,
+          "sex_divergence_score": 43.79991593106346
+        },
+        {
+          "biomarker_id": "cd4 counts",
+          "display_name": "CD4 T cells",
+          "featured_collection_title": "Inflammation",
+          "median_change_pct_20_24_to_80_84": null,
+          "cv_change_pct_20_24_to_80_84": null,
+          "upper_tail_change_pct": null,
+          "sex_divergence_score": 33.46912258974369
+        },
+        {
+          "biomarker_id": "cardiac hs-troponin t",
+          "display_name": "High-sensitivity troponin",
+          "featured_collection_title": "Cardiovascular Stress",
+          "median_change_pct_20_24_to_80_84": 247.19271623672233,
+          "cv_change_pct_20_24_to_80_84": 3.854507510862949,
+          "upper_tail_change_pct": 191.93020719738274,
+          "sex_divergence_score": 31.854781397464304
+        },
+        {
+          "biomarker_id": "high-sensitivity c-reactive protein hs-crp",
+          "display_name": "hs-CRP",
+          "featured_collection_title": "Inflammation",
+          "median_change_pct_20_24_to_80_84": 45.00000000000001,
+          "cv_change_pct_20_24_to_80_84": -21.534264274690575,
+          "upper_tail_change_pct": -15.634920634920663,
+          "sex_divergence_score": 31.463800904977372
+        }
+      ]
+    }
+  ]
+}

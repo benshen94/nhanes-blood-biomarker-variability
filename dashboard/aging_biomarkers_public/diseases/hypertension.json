@@ -9,7 +9,17 @@
     "detail_path": "diseases/hypertension.json",
     "participant_count": 19101,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with vascular and kidney-linked markers",
+    "default_summary": "These defaults emphasize familiar inflammatory, kidney, and cardiovascular markers that often pull away from the healthy baseline.",
+    "default_biomarker_ids": [
+      "c-reactive protein",
+      "nt-probnp",
+      "high-sensitivity c-reactive protein hs-crp",
+      "cystatin c",
+      "triglyceride",
+      "creatinine"
+    ]
   },
   "biomarkers": [
     {

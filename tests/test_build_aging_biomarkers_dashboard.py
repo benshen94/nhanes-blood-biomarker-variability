@@ -12,6 +12,7 @@ import pandas as pd
 sys.path.insert(0, str((Path(__file__).resolve().parents[1] / "src")))
 
 from build_aging_biomarkers_dashboard import (
+    build_surprising_groups,
     build_disease_explorer_bundle,
     build_public_manifest,
     load_public_disease_long,
@@ -155,6 +156,7 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         self.assertIn('id="tab-explore"', html)
         self.assertIn('id="tab-disease"', html)
         self.assertIn('id="tab-rankings"', html)
+        self.assertIn('id="tab-surprising"', html)
         self.assertIn('id="tab-compare"', html)
         self.assertIn('id="tab-calculator"', html)
         self.assertIn('id="explore-search"', html)
@@ -211,6 +213,8 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         diabetes = next(item for item in bundle["conditions"] if item["key"] == "diabetes")
         self.assertEqual(diabetes["title"], "Diabetes")
         self.assertIn("diseases/diabetes.json", diabetes["detail_path"])
+        self.assertTrue(diabetes["default_biomarker_ids"])
+        self.assertEqual(diabetes["default_title"], "Start with familiar metabolic markers")
 
         detail = bundle["by_condition"]["diabetes"]
         self.assertEqual(detail["condition"]["title"], "Diabetes")
@@ -220,6 +224,66 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         self.assertEqual(biomarker["groups"]["condition"]["raw_total_n"], 40)
         self.assertIn("trim_10_90", biomarker["groups"]["healthy"]["points_by_filter"])
         self.assertIn("female", biomarker["groups"]["condition"]["sex_points_by_filter"]["all"])
+
+    def test_build_surprising_groups_returns_three_non_empty_sections(self):
+        manifest = [
+            {
+                "biomarker_id": "testosterone",
+                "display_name": "Testosterone",
+                "featured_collection_title": "Hormones & Nutrient Sensing",
+                "public_metrics": {},
+                "public_metrics_by_context": {
+                    "pooled": {
+                        "trim_5_95": {
+                            "median_change_pct_20_24_to_80_84": -70.0,
+                            "cv_change_pct_20_24_to_80_84": 5.0,
+                            "upper_tail_change_pct": -5.0,
+                            "sex_divergence_score": 40.0,
+                        }
+                    }
+                },
+            },
+            {
+                "biomarker_id": "rdw",
+                "display_name": "RDW",
+                "featured_collection_title": "Blood & Oxygen",
+                "public_metrics": {},
+                "public_metrics_by_context": {
+                    "pooled": {
+                        "trim_5_95": {
+                            "median_change_pct_20_24_to_80_84": 4.0,
+                            "cv_change_pct_20_24_to_80_84": 28.0,
+                            "upper_tail_change_pct": 35.0,
+                            "sex_divergence_score": 12.0,
+                        }
+                    }
+                },
+            },
+            {
+                "biomarker_id": "ntprobnp",
+                "display_name": "NT-proBNP",
+                "featured_collection_title": "Cardiovascular Stress",
+                "public_metrics": {},
+                "public_metrics_by_context": {
+                    "pooled": {
+                        "trim_5_95": {
+                            "median_change_pct_20_24_to_80_84": 120.0,
+                            "cv_change_pct_20_24_to_80_84": 12.0,
+                            "upper_tail_change_pct": 20.0,
+                            "sex_divergence_score": 90.0,
+                        }
+                    }
+                },
+            },
+        ]
+
+        surprising = build_surprising_groups(manifest, limit=4)
+
+        self.assertEqual(len(surprising["groups"]), 3)
+        groups = {group["key"]: group for group in surprising["groups"]}
+        self.assertEqual(groups["falls_with_age"]["items"][0]["display_name"], "Testosterone")
+        self.assertEqual(groups["stable_center_wild_distribution"]["items"][0]["display_name"], "RDW")
+        self.assertEqual(groups["sex_divergence"]["items"][0]["display_name"], "NT-proBNP")
 
     def test_load_public_disease_long_reads_selected_public_biomarkers(self):
         public_manifest = [
@@ -317,6 +381,7 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
                     {
                         "key": "diabetes",
                         "title": "Diabetes",
+                        "default_biomarker_ids": ["albumin"],
                         "detail_path": "diseases/diabetes.json",
                     }
                 ],
@@ -327,6 +392,15 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
                     }
                 },
             }
+            surprising_bundle = {
+                "groups": [
+                    {
+                        "key": "falls_with_age",
+                        "title": "Markers that fall with age",
+                        "items": [{"biomarker_id": "albumin", "display_name": "Albumin"}],
+                    }
+                ]
+            }
 
             write_public_dashboard_bundle(
                 out_html=out_html,
@@ -334,16 +408,19 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
                 data_dir_name="aging_biomarkers_public",
                 manifest=manifest,
                 disease_bundle=disease_bundle,
+                surprising_bundle=surprising_bundle,
             )
 
             manifest_path = root / "dashboard" / "aging_biomarkers_public" / "manifest.json"
             disease_index_path = root / "dashboard" / "aging_biomarkers_public" / "disease_index.json"
             disease_detail_path = root / "dashboard" / "aging_biomarkers_public" / "diseases" / "diabetes.json"
+            surprising_path = root / "dashboard" / "aging_biomarkers_public" / "surprising.json"
             self.assertTrue(out_html.exists())
             self.assertTrue(out_json.exists())
             self.assertTrue(manifest_path.exists())
             self.assertTrue(disease_index_path.exists())
             self.assertTrue(disease_detail_path.exists())
+            self.assertTrue(surprising_path.exists())
 
             written_manifest = json.loads(manifest_path.read_text())
             summary = json.loads(out_json.read_text())
@@ -352,6 +429,7 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
             self.assertEqual(written_manifest[0]["display_name"], "Albumin")
             self.assertEqual(summary["manifest_count"], 1)
             self.assertEqual(summary["disease_condition_count"], 1)
+            self.assertEqual(summary["surprising_group_count"], 1)
             self.assertIn("aging_biomarkers_public", summary["data_dir"])
             self.assertIn("Aging Biomarkers Dashboard", html)
 

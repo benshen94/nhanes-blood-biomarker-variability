@@ -9,7 +9,17 @@
     "detail_path": "diseases/liver.json",
     "participant_count": 2065,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with liver-linked chemistry",
+    "default_summary": "These markers emphasize familiar liver and metabolic chemistry for a cleaner first read of the condition contrast.",
+    "default_biomarker_ids": [
+      "ggt",
+      "alt",
+      "total bilirubin",
+      "ast",
+      "triglyceride",
+      "albumin"
+    ]
   },
   "biomarkers": [
     {

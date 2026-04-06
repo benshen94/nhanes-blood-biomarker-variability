@@ -9,7 +9,17 @@
     "detail_path": "diseases/stroke.json",
     "participant_count": 2197,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with vascular stress markers",
+    "default_summary": "These defaults focus on familiar cardiovascular and inflammatory markers that tend to show the sharpest stroke-related differences.",
+    "default_biomarker_ids": [
+      "nt-probnp",
+      "high-sensitivity c-reactive protein hs-crp",
+      "c-reactive protein",
+      "cardiac hs-troponin t",
+      "fibrinogen",
+      "homocysteine"
+    ]
   },
   "biomarkers": [
     {

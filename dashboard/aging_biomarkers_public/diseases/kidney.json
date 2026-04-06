@@ -9,7 +9,17 @@
     "detail_path": "diseases/kidney.json",
     "participant_count": 1611,
     "female_count": 0,
-    "male_count": 0
+    "male_count": 0,
+    "default_title": "Start with kidney reserve markers",
+    "default_summary": "These defaults stay close to the familiar renal chemistry panel and show the clearest kidney-related separation from healthy aging.",
+    "default_biomarker_ids": [
+      "cystatin c",
+      "blood urea nitrogen",
+      "creatinine",
+      "albumin",
+      "potassium",
+      "bicarbonate"
+    ]
   },
   "biomarkers": [
     {
