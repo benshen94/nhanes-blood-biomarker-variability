@@ -1700,7 +1700,7 @@
 
   <script>
     const DATA_BASE = './data_urine';
-    const DATA_VERSION = '1775401451';
+    const DATA_VERSION = '1775457739';
     const HAS_CLALIT = false;
     const HAS_SR_COMPARISON = false;
     const SPECIMEN_TITLE = 'Urinary';
@@ -2788,8 +2788,12 @@
       return idx;
     }
 
+    function waterfallWantsSrReference() {
+      return Boolean(waterfallCompareSrEl?.checked);
+    }
+
     function waterfallUsesSrReference() {
-      return Boolean(waterfallCompareSrEl?.checked && state.srWaterfallReference);
+      return Boolean(waterfallWantsSrReference() && state.srWaterfallReference);
     }
 
     function currentWaterfallAgeBins() {
@@ -3857,7 +3861,9 @@
       const trimPct = normalizeTrimPct(waterfallTrimSliderEl.value);
       const minN = Math.max(5, Math.min(1000, Number(waterfallMinNEl.value || 20)));
       waterfallMinNEl.value = String(minN);
-      const compareSr = waterfallUsesSrReference();
+      const wantsSrReference = waterfallWantsSrReference();
+      const srReference = wantsSrReference ? await ensureSrWaterfallReference() : null;
+      const compareSr = Boolean(wantsSrReference && srReference);
       const ageBins = currentWaterfallAgeBins();
       setWaterfallPlotHeight(compareSr);
 
@@ -3916,7 +3922,6 @@
         return;
       }
 
-      const srReference = await ensureSrWaterfallReference();
       const srRows = buildWaterfallRowsFromSrReference(srReference, ageBins, trimPct, minN);
       if (!srRows.length) {
         Plotly.newPlot('waterfall-plot', [], applyPlotTheme({
