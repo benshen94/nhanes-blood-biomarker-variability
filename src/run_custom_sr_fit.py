@@ -67,14 +67,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_sr_utils(sr_root: Path):
+def load_sr_modules(sr_root: Path):
     if not sr_root.exists():
         raise FileNotFoundError(f"SR root does not exist: {sr_root}")
 
     sys.path.insert(0, str(sr_root))
     from ageing_packages.utils import sr_utils as utils  # type: ignore
+    from ageing_packages.SR_models.plotting import SR_plotting  # type: ignore
 
-    return utils
+    return utils, SR_plotting
 
 
 def build_params_dict(utils, args: argparse.Namespace) -> dict:
@@ -113,39 +114,22 @@ def get_alive_values_in_bin(
     return np.asarray(paths[alive_mask, time_idx], dtype=float)
 
 
-def save_survival_hazard_figure(sim, params_dict: dict, args: argparse.Namespace, out_path: Path) -> None:
-    survival_df = sim.survival
-    survival_times = np.asarray(survival_df.index.values, dtype=float)
-    survival_values = np.asarray(survival_df.iloc[:, 0].values, dtype=float)
-
-    if hasattr(sim, "tspan_interval_hazard") and hasattr(sim, "interval_hazard"):
-        hazard_times = np.asarray(sim.tspan_interval_hazard, dtype=float)
-        hazard_values = np.asarray(sim.interval_hazard, dtype=float).reshape(-1)
-    else:
-        hazard_times = np.asarray(sim.tspan_hazard, dtype=float)
-        hazard_values = np.asarray(sim.hazard, dtype=float).reshape(-1)
-
-    hazard_mask = np.isfinite(hazard_values) & (hazard_values > 0)
-    hazard_times = hazard_times[hazard_mask]
-    hazard_values = hazard_values[hazard_mask]
-
+def save_survival_hazard_figure(sim, sr_plotting_cls, args: argparse.Namespace, out_path: Path) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+    plotter = sr_plotting_cls(sim)
 
-    axes[0].plot(survival_times, survival_values, linewidth=2.2, color="#2166ac")
+    plotter.plot_survival(ax=axes[0], color="#2166ac", linewidth=2.2)
     axes[0].set_title("Survival", fontsize=14, fontweight="bold")
     axes[0].set_xlabel("Age (years)")
-    axes[0].set_ylabel("Survival fraction")
+    axes[0].set_ylabel("Survival")
     axes[0].set_xlim(args.dt, args.tmax)
     axes[0].set_ylim(0, 1.02)
-    axes[0].grid(alpha=0.25)
 
-    axes[1].plot(hazard_times, hazard_values, linewidth=2.2, color="#b35806")
+    plotter.plot_hazard(ax=axes[1], color="#b35806", linewidth=2.2, bandwidth=3)
     axes[1].set_title("Hazard", fontsize=14, fontweight="bold")
     axes[1].set_xlabel("Age (years)")
     axes[1].set_ylabel("Hazard (1/year)")
-    axes[1].set_yscale("log")
     axes[1].set_xlim(args.dt, args.tmax)
-    axes[1].grid(alpha=0.25)
 
     param_lines = [
         f"eta = {args.eta}",
@@ -297,7 +281,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     sr_root = Path(args.sr_root)
-    utils = load_sr_utils(sr_root)
+    utils, sr_plotting_cls = load_sr_modules(sr_root)
     params_dict = build_params_dict(utils, args)
 
     sim = utils.create_sr_simulation(
@@ -315,7 +299,7 @@ def main() -> None:
     waterfall_path = out_dir / f"{args.label}_waterfall.png"
     metadata_path = out_dir / f"{args.label}_params.json"
 
-    save_survival_hazard_figure(sim, params_dict, args, survival_hazard_path)
+    save_survival_hazard_figure(sim, sr_plotting_cls, args, survival_hazard_path)
     save_waterfall_figure(sim, args, waterfall_path)
     save_metadata(args, metadata_path)
 
