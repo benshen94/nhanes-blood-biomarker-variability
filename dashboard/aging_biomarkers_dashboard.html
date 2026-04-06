@@ -2260,7 +2260,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1775496269";
+    const DATA_VERSION = "1775496433";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -2711,6 +2711,13 @@
     }
 
     function ensureDefaults() {
+      if (!window.location.hash) {
+        state.tab = "start";
+        state.cohort = "both";
+        state.trim = "trim_5_95";
+        state.view = "typical";
+      }
+
       if (!state.exploreId) {
         const defaultEntry = state.manifest.find((entry) => entry.display_name === DEFAULT_EXPLORE_MARKER);
         state.exploreId = defaultEntry?.biomarker_id || state.manifest[0]?.biomarker_id || "";
@@ -4523,6 +4530,12 @@
       const entry = state.manifestById.get(id);
       const sourceTab = overrides.sourceTab || state.tab;
       state.exploreId = id;
+      if (overrides.cohort && ["both", "pooled", "female", "male"].includes(overrides.cohort)) {
+        state.cohort = overrides.cohort;
+      }
+      if (overrides.trim && ["raw", "trim_5_95", "trim_10_90"].includes(overrides.trim)) {
+        state.trim = overrides.trim;
+      }
       if (overrides.view && ["typical", "spread", "tail", "sex"].includes(overrides.view)) {
         state.view = overrides.view;
       }
@@ -4585,9 +4598,18 @@
       });
 
       document.addEventListener("click", (event) => {
-        const openId = event.target.closest("[data-open-id]")?.dataset.openId;
+        const openButton = event.target.closest("[data-open-id]");
+        const openId = openButton?.dataset.openId;
         if (openId) {
-          openMarker(openId, { sourceTab: state.tab });
+          const inCollectionCard = Boolean(event.target.closest("[data-open-collection]"));
+          openMarker(openId, inCollectionCard
+            ? {
+                sourceTab: "start",
+                cohort: "both",
+                trim: "trim_5_95",
+                view: "typical",
+              }
+            : { sourceTab: state.tab });
           return;
         }
 

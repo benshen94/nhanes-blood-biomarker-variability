@@ -2711,6 +2711,13 @@
     }
 
     function ensureDefaults() {
+      if (!window.location.hash) {
+        state.tab = "start";
+        state.cohort = "both";
+        state.trim = "trim_5_95";
+        state.view = "typical";
+      }
+
       if (!state.exploreId) {
         const defaultEntry = state.manifest.find((entry) => entry.display_name === DEFAULT_EXPLORE_MARKER);
         state.exploreId = defaultEntry?.biomarker_id || state.manifest[0]?.biomarker_id || "";
@@ -4523,6 +4530,12 @@
       const entry = state.manifestById.get(id);
       const sourceTab = overrides.sourceTab || state.tab;
       state.exploreId = id;
+      if (overrides.cohort && ["both", "pooled", "female", "male"].includes(overrides.cohort)) {
+        state.cohort = overrides.cohort;
+      }
+      if (overrides.trim && ["raw", "trim_5_95", "trim_10_90"].includes(overrides.trim)) {
+        state.trim = overrides.trim;
+      }
       if (overrides.view && ["typical", "spread", "tail", "sex"].includes(overrides.view)) {
         state.view = overrides.view;
       }
@@ -4585,9 +4598,18 @@
       });
 
       document.addEventListener("click", (event) => {
-        const openId = event.target.closest("[data-open-id]")?.dataset.openId;
+        const openButton = event.target.closest("[data-open-id]");
+        const openId = openButton?.dataset.openId;
         if (openId) {
-          openMarker(openId, { sourceTab: state.tab });
+          const inCollectionCard = Boolean(event.target.closest("[data-open-collection]"));
+          openMarker(openId, inCollectionCard
+            ? {
+                sourceTab: "start",
+                cohort: "both",
+                trim: "trim_5_95",
+                view: "typical",
+              }
+            : { sourceTab: state.tab });
           return;
         }
 
