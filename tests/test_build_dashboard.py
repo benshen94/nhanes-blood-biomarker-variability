@@ -128,6 +128,8 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertIn('id="tab-sr-comparison"', html)
         self.assertIn('id="sr-search" list="sr-biomarker-options" placeholder="Type biomarker name..." autocomplete="off"', html)
         self.assertIn('id="sr-biomarker"', html)
+        self.assertIn('id="sr-fit"', html)
+        self.assertIn('id="waterfall-sr-fit"', html)
         self.assertIn('id="sr-category-search"', html)
         self.assertIn('id="sr-category-multi"', html)
         self.assertIn('id="sr-category-all"', html)
@@ -169,6 +171,13 @@ class TestBuildDashboard(unittest.TestCase):
             ]
         )
         sr_bundle = {
+            "sr_fit_manifest": {
+                "default_fit_key": "original",
+                "fit_options": [
+                    {"key": "original", "label": "SR original fit"},
+                    {"key": "alternative", "label": "SR alternative fit"},
+                ],
+            },
             "summary_by_biomarker": {
                 "sr-marker": {
                     "mean_r2": 0.91,
@@ -206,6 +215,7 @@ class TestBuildDashboard(unittest.TestCase):
             },
             "detail_by_biomarker": {
                 "sr-marker": {
+                    "default_fit_key": "original",
                     "default_trim_mode": "trim_3_97",
                     "bins": [
                         {
@@ -254,6 +264,26 @@ class TestBuildDashboard(unittest.TestCase):
                             ],
                         }
                     },
+                    "sr_comparison_by_fit": {
+                        "original": {
+                            "default_trim_mode": "trim_3_97",
+                            "bins": [{"age_bin": "40-44", "age_mid": 42.5, "r2": 0.88}],
+                            "trim_details": {"trim_3_97": {"bins": [{"age_bin": "40-44", "age_mid": 42.5, "r2": 0.88}]}}
+                        }
+                    },
+                    "sr_rank_comparison_by_fit": {
+                        "original": {
+                            "default_trim_mode": "all",
+                            "bins": [{"age_bin": "40-44", "age_mid": 42.5, "wasserstein_rank": 0.08}],
+                            "trim_details": {"all": {"bins": [{"age_bin": "40-44", "age_mid": 42.5, "wasserstein_rank": 0.08}]}}
+                        }
+                    },
+                }
+            },
+            "summary_by_biomarker_by_fit": {
+                "sr-marker": {
+                    "original": {"mean_r2": 0.91},
+                    "alternative": {"mean_r2": 0.82},
                 }
             },
             "rank_summary_by_biomarker": {
@@ -272,6 +302,12 @@ class TestBuildDashboard(unittest.TestCase):
                             "wasserstein_rank_by_age_bin": [{"age_bin": "40-44", "age_mid": 42.5, "wasserstein_rank": 0.08}],
                         }
                     },
+                }
+            },
+            "rank_summary_by_biomarker_by_fit": {
+                "sr-marker": {
+                    "original": {"mean_wasserstein_rank": 0.08},
+                    "alternative": {"mean_wasserstein_rank": 0.12},
                 }
             },
             "rank_detail_by_biomarker": {
@@ -325,9 +361,14 @@ class TestBuildDashboard(unittest.TestCase):
         self.assertEqual(metrics[0]["sr_comparison_summary"]["mean_r2"], 0.91)
         self.assertEqual(metrics[0]["sr_comparison_summary"]["trim_summaries"]["trim_3_97"]["mean_wasserstein_z"], 0.14)
         self.assertEqual(metrics[0]["sr_rank_comparison_summary"]["trim_summaries"]["all"]["mean_wasserstein_rank"], 0.08)
+        self.assertEqual(metrics[0]["sr_comparison_summary_by_fit"]["alternative"]["mean_r2"], 0.82)
+        self.assertEqual(metrics[0]["sr_rank_comparison_summary_by_fit"]["alternative"]["mean_wasserstein_rank"], 0.12)
         payload = next(iter(series_payloads.values()))
         self.assertIn("sr_comparison", payload)
         self.assertIn("sr_rank_comparison", payload)
+        self.assertIn("sr_comparison_by_fit", payload)
+        self.assertIn("sr_rank_comparison_by_fit", payload)
+        self.assertEqual(payload["sr_default_fit_key"], "original")
         self.assertEqual(payload["sr_comparison"]["bins"][0]["age_bin"], "40-44")
         self.assertEqual(payload["sr_comparison"]["trim_details"]["trim_3_97"]["bins"][0]["wasserstein_z"], 0.12)
         self.assertEqual(payload["sr_rank_comparison"]["trim_details"]["all"]["bins"][0]["wasserstein_rank"], 0.08)
@@ -348,17 +389,34 @@ class TestBuildDashboard(unittest.TestCase):
                 series_payloads={},
                 raw_sample_n=50,
                 shared_payloads={
+                    "sr_fit_manifest.json": {
+                        "default_fit_key": "original",
+                        "fit_options": [{"key": "original", "label": "SR original fit"}],
+                    },
                     "sr_waterfall_reference.json": {
                         "age_bins": ["20-24"],
                         "bins": [{"age_bin": "20-24", "values_sample": [0.1, 0.2], "sr_n": 100}],
-                    }
+                    },
+                    "sr_waterfall_references.json": {
+                        "default_fit_key": "original",
+                        "fit_options": [{"key": "original", "label": "SR original fit"}],
+                        "fits": {
+                            "original": {"age_bins": ["20-24"], "bins": [{"age_bin": "20-24", "sr_n": 100}]}
+                        },
+                    },
                 },
             )
 
+            fit_manifest_path = out_html.parent / "data" / "sr_fit_manifest.json"
             shared_path = out_html.parent / "data" / "sr_waterfall_reference.json"
+            shared_multi_path = out_html.parent / "data" / "sr_waterfall_references.json"
+            fit_manifest = json.loads(fit_manifest_path.read_text())
             payload = json.loads(shared_path.read_text())
+            payload_multi = json.loads(shared_multi_path.read_text())
+            self.assertEqual(fit_manifest["default_fit_key"], "original")
             self.assertEqual(payload["bins"][0]["age_bin"], "20-24")
             self.assertEqual(payload["bins"][0]["sr_n"], 100)
+            self.assertEqual(payload_multi["fits"]["original"]["bins"][0]["sr_n"], 100)
 
     def test_build_outputs_drops_85_plus_age_bin(self):
         rows = []

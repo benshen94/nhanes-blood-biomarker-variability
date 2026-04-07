@@ -3447,6 +3447,8 @@ def build_outputs(
     clalit_data_map = process_clalit_data(clalit_f_df, clalit_m_df, clalit_map)
     sr_summary_by_id = (sr_comparison_bundle or {}).get("summary_by_biomarker") or {}
     sr_rank_summary_by_id = (sr_comparison_bundle or {}).get("rank_summary_by_biomarker") or {}
+    sr_summary_by_fit_by_id = (sr_comparison_bundle or {}).get("summary_by_biomarker_by_fit") or {}
+    sr_rank_summary_by_fit_by_id = (sr_comparison_bundle or {}).get("rank_summary_by_biomarker_by_fit") or {}
 
     metrics: list[dict] = []
     for r in metadata.itertuples(index=False):
@@ -3530,6 +3532,8 @@ def build_outputs(
                 "clalit_trends": c_trends,
                 "sr_comparison_summary": sr_summary_by_id.get(bid),
                 "sr_rank_comparison_summary": sr_rank_summary_by_id.get(bid),
+                "sr_comparison_summary_by_fit": sr_summary_by_fit_by_id.get(bid),
+                "sr_rank_comparison_summary_by_fit": sr_rank_summary_by_fit_by_id.get(bid),
             }
         )
 
@@ -3605,6 +3609,9 @@ def build_outputs(
             "clalit_data": clalit_data_map.get(str(bid)),
             "sr_comparison": sr_detail_payload.get("sr_comparison"),
             "sr_rank_comparison": sr_detail_payload.get("sr_rank_comparison"),
+            "sr_comparison_by_fit": sr_detail_payload.get("sr_comparison_by_fit"),
+            "sr_rank_comparison_by_fit": sr_detail_payload.get("sr_rank_comparison_by_fit"),
+            "sr_default_fit_key": sr_detail_payload.get("default_fit_key"),
         }
 
     return metadata, metrics, series_index, series_payloads
@@ -3646,6 +3653,9 @@ def render_dashboard_html(
             <select id="sr-biomarker"></select>
           </label>
           <label class="check-label"><input id="sr-include-env" type="checkbox" /> Include environmental/toxicant</label>
+          <label>SR fit
+            <select id="sr-fit"></select>
+          </label>
           <label>Current selection
             <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its SR Q-Q fit.</div>
           </label>
@@ -3758,7 +3768,18 @@ def sr_detail_payload_for_id(sr_comparison_bundle: dict | None, biomarker_id: st
     inline_qq = (sr_comparison_bundle.get("detail_by_biomarker") or {}).get(biomarker_id)
     inline_rank = (sr_comparison_bundle.get("rank_detail_by_biomarker") or {}).get(biomarker_id)
     if inline_qq is not None or inline_rank is not None:
+        if isinstance(inline_qq, dict) and (
+            "sr_comparison_by_fit" in inline_qq or "sr_rank_comparison_by_fit" in inline_qq
+        ):
+            return {
+                "default_fit_key": inline_qq.get("default_fit_key") or (sr_comparison_bundle.get("sr_fit_manifest") or {}).get("default_fit_key"),
+                "sr_comparison": inline_qq.get("sr_comparison") or inline_qq,
+                "sr_rank_comparison": inline_qq.get("sr_rank_comparison") or inline_rank,
+                "sr_comparison_by_fit": inline_qq.get("sr_comparison_by_fit") or {},
+                "sr_rank_comparison_by_fit": inline_qq.get("sr_rank_comparison_by_fit") or {},
+            }
         return {
+            "default_fit_key": (sr_comparison_bundle.get("sr_fit_manifest") or {}).get("default_fit_key"),
             "sr_comparison": inline_qq,
             "sr_rank_comparison": inline_rank,
         }
@@ -3789,13 +3810,22 @@ def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, di
     if not sr_comparison_bundle:
         return {}
 
+    sr_fit_manifest = sr_comparison_bundle.get("sr_fit_manifest")
     sr_waterfall_reference = sr_comparison_bundle.get("sr_waterfall_reference")
+    sr_waterfall_references = sr_comparison_bundle.get("sr_waterfall_references")
     sr_rank_reference = sr_comparison_bundle.get("sr_rank_reference")
+    sr_rank_references = sr_comparison_bundle.get("sr_rank_references")
     payloads: dict[str, dict] = {}
+    if sr_fit_manifest:
+        payloads["sr_fit_manifest.json"] = sr_fit_manifest
     if sr_waterfall_reference:
         payloads["sr_waterfall_reference.json"] = sr_waterfall_reference
+    if sr_waterfall_references:
+        payloads["sr_waterfall_references.json"] = sr_waterfall_references
     if sr_rank_reference:
         payloads["sr_rank_reference.json"] = sr_rank_reference
+    if sr_rank_references:
+        payloads["sr_rank_references.json"] = sr_rank_references
     return payloads
 
 
@@ -3830,7 +3860,13 @@ def write_dashboard_bundle(
         json.dumps(series_index, ensure_ascii=True, allow_nan=False), encoding="utf-8"
     )
 
-    shared_file_names = ["sr_waterfall_reference.json", "sr_rank_reference.json"]
+    shared_file_names = [
+        "sr_fit_manifest.json",
+        "sr_waterfall_reference.json",
+        "sr_waterfall_references.json",
+        "sr_rank_reference.json",
+        "sr_rank_references.json",
+    ]
     for file_name in shared_file_names:
         shared_path = data_dir / file_name
         if file_name in shared_payloads:

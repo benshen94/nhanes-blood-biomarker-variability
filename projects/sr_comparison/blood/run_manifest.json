@@ -1,15 +1,34 @@
 {
-  "built_at_unix": 1775460908,
-  "duration_seconds": 287.99,
-  "long_path": "data/processed/biomarker_long.parquet",
+  "built_at_unix": 1775570214,
+  "duration_seconds": 686.43,
+  "long_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/data/processed/biomarker_long.parquet",
   "out_root": "projects/sr_comparison/blood",
-  "sr_script_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py",
-  "sr_package_root": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python",
-  "sr_source": "local_cache",
-  "sr_model": {
-    "n_sim": 100000,
-    "tmax": 120,
-    "save_times": 1
+  "fit_library_root": "projects/sr_fits",
+  "fit_registry_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/projects/sr_fits/fit_registry.json",
+  "default_fit_key": "original",
+  "fit_options": [
+    {
+      "key": "original",
+      "label": "SR original fit",
+      "description": "Existing USA 2019 SR reference used by the original dashboard comparison.",
+      "reference_tail_policy": "alive_only_no_tail_trimming",
+      "is_default": true
+    },
+    {
+      "key": "alternative",
+      "label": "SR alternative fit",
+      "description": "Alternative male-oriented SR fit with Xc heterogeneity and half-day internal timestep.",
+      "reference_tail_policy": "alive_only_no_tail_trimming",
+      "is_default": false
+    }
+  ],
+  "fit_sources": {
+    "original": "rerun",
+    "alternative": "rerun"
+  },
+  "fit_output_dirs": {
+    "original": "projects/sr_fits/original",
+    "alternative": "projects/sr_fits/alternative"
   },
   "waterfall_reference_sample_n": 801,
   "age_bins": [
@@ -95,10 +114,22 @@
   "min_bin_n": 30,
   "biomarker_count": 689,
   "outputs": {
-    "biomarker_qq_summary_csv": "projects/sr_comparison/blood/biomarker_qq_summary.csv",
-    "biomarker_qq_detail_csv": "projects/sr_comparison/blood/biomarker_qq_detail.csv",
-    "biomarker_rank_summary_csv": "projects/sr_comparison/blood/biomarker_rank_summary.csv",
-    "biomarker_rank_detail_csv": "projects/sr_comparison/blood/biomarker_rank_detail.csv",
+    "fit_outputs": {
+      "original": {
+        "qq_summary_csv": "projects/sr_comparison/blood/fits/original/biomarker_qq_summary.csv",
+        "qq_detail_csv": "projects/sr_comparison/blood/fits/original/biomarker_qq_detail.csv",
+        "rank_summary_csv": "projects/sr_comparison/blood/fits/original/biomarker_rank_summary.csv",
+        "rank_detail_csv": "projects/sr_comparison/blood/fits/original/biomarker_rank_detail.csv",
+        "comparison_root": "projects/sr_comparison/blood/fits/original"
+      },
+      "alternative": {
+        "qq_summary_csv": "projects/sr_comparison/blood/fits/alternative/biomarker_qq_summary.csv",
+        "qq_detail_csv": "projects/sr_comparison/blood/fits/alternative/biomarker_qq_detail.csv",
+        "rank_summary_csv": "projects/sr_comparison/blood/fits/alternative/biomarker_rank_summary.csv",
+        "rank_detail_csv": "projects/sr_comparison/blood/fits/alternative/biomarker_rank_detail.csv",
+        "comparison_root": "projects/sr_comparison/blood/fits/alternative"
+      }
+    },
     "detail_by_biomarker_dir": "projects/sr_comparison/blood/detail_by_biomarker",
     "dashboard_payload_json": "projects/sr_comparison/blood/dashboard_payload.json"
   }

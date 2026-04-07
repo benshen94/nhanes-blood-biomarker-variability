@@ -1444,6 +1444,7 @@
               <input id="waterfall-compare-sr" type="checkbox" />
               <span>Show SR model X side by side</span>
             </div>
+            <select id="waterfall-sr-fit"></select>
             <div class="waterfall-caption">Switches the waterfall to the same 5-year age bins used by the SR comparison tab.</div>
           </label>
           <label>Symmetric trim (% per tail)
@@ -1482,6 +1483,9 @@
             <select id="sr-biomarker"></select>
           </label>
           <label class="check-label"><input id="sr-include-env" type="checkbox" /> Include environmental/toxicant</label>
+          <label>SR fit
+            <select id="sr-fit"></select>
+          </label>
           <label>Current selection
             <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its SR Q-Q fit.</div>
           </label>
@@ -1797,7 +1801,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1775460979';
+    const DATA_VERSION = '1775570378';
     const HAS_CLALIT = true;
     const HAS_SR_COMPARISON = true;
     const SPECIMEN_TITLE = 'Blood';
@@ -1922,6 +1926,7 @@
     const waterfallCohortEl = document.getElementById('waterfall-cohort');
     const waterfallCompareWrapEl = document.getElementById('waterfall-compare-wrap');
     const waterfallCompareSrEl = document.getElementById('waterfall-compare-sr');
+    const waterfallSrFitEl = document.getElementById('waterfall-sr-fit');
     const waterfallTrimSliderEl = document.getElementById('waterfall-trim-slider');
     const waterfallTrimLabelEl = document.getElementById('waterfall-trim-label');
     const waterfallMinNEl = document.getElementById('waterfall-min-n');
@@ -1929,6 +1934,7 @@
     const srOptionsEl = document.getElementById('sr-biomarker-options');
     const srBiomarkerEl = document.getElementById('sr-biomarker');
     const srMethodModeEl = document.getElementById('sr-method-mode');
+    const srFitEl = document.getElementById('sr-fit');
     const srCategorySearchEl = document.getElementById('sr-category-search');
     const srCategoryMultiEl = document.getElementById('sr-category-multi');
     const srCategoryAllBtn = document.getElementById('sr-category-all');
@@ -1977,12 +1983,15 @@
       metricsById: new Map(),
       metadataById: new Map(),
       cache: new Map(),
-      srWaterfallReference: null,
-      srWaterfallReferenceLoaded: false,
-      srWaterfallReferencePromise: null,
-      srRankReference: null,
-      srRankReferenceLoaded: false,
-      srRankReferencePromise: null,
+      srFitManifest: null,
+      srFitManifestLoaded: false,
+      srFitManifestPromise: null,
+      srWaterfallReferences: null,
+      srWaterfallReferencesLoaded: false,
+      srWaterfallReferencesPromise: null,
+      srRankReferences: null,
+      srRankReferencesLoaded: false,
+      srRankReferencesPromise: null,
       mode: 'cv',
       lastSingleMode: 'cv',
       currentId: null,
@@ -2009,6 +2018,8 @@
       srSortField: 'mean_r2',
       srSortDirection: 'desc',
       srCategorySelectionSet: new Set(),
+      srFitKey: null,
+      waterfallSrFitKey: null,
     };
 
     const WATERFALL_AGE_BINS = [
@@ -2088,6 +2099,33 @@
       return value === 'rank' ? 'rank' : 'qq';
     }
 
+    function srFitOptions() {
+      const manifest = state.srFitManifest || {};
+      const options = Array.isArray(manifest.fit_options) ? manifest.fit_options : [];
+      return options;
+    }
+
+    function srDefaultFitKey() {
+      const manifest = state.srFitManifest || {};
+      return manifest.default_fit_key || srFitOptions()[0]?.key || 'original';
+    }
+
+    function selectedSrFitKey() {
+      const value = srFitEl?.value || state.srFitKey || srDefaultFitKey();
+      return value || srDefaultFitKey();
+    }
+
+    function selectedWaterfallSrFitKey() {
+      const value = waterfallSrFitEl?.value || state.waterfallSrFitKey || selectedSrFitKey() || srDefaultFitKey();
+      return value || srDefaultFitKey();
+    }
+
+    function srFitLabel(fitKey) {
+      const option = srFitOptions().find(item => item.key === fitKey);
+      if (option?.label) return option.label;
+      return fitKey || 'SR fit';
+    }
+
     function srActiveTrimMode() {
       if (srCurrentMethod() === 'rank') {
         const value = srTrimModeEl?.value || state.srRankTrimMode || 'trim_3_97';
@@ -2118,6 +2156,42 @@
         { value: 'trim_5_95', label: '5% each tail' },
         { value: 'trim_10_90', label: '10% each tail' },
       ];
+    }
+
+    function renderSrFitOptions() {
+      const options = srFitOptions();
+      const defaultFitKey = srDefaultFitKey();
+      const previousSrFit = state.srFitKey || defaultFitKey;
+      const previousWaterfallFit = state.waterfallSrFitKey || previousSrFit || defaultFitKey;
+
+      if (srFitEl) {
+        srFitEl.innerHTML = '';
+      }
+      if (waterfallSrFitEl) {
+        waterfallSrFitEl.innerHTML = '';
+      }
+
+      for (const option of options) {
+        if (srFitEl) {
+          const el = document.createElement('option');
+          el.value = option.key;
+          el.textContent = option.label || option.key;
+          srFitEl.appendChild(el);
+        }
+        if (waterfallSrFitEl) {
+          const el = document.createElement('option');
+          el.value = option.key;
+          el.textContent = option.label || option.key;
+          waterfallSrFitEl.appendChild(el);
+        }
+      }
+
+      const validSrFit = options.some(option => option.key === previousSrFit) ? previousSrFit : defaultFitKey;
+      const validWaterfallFit = options.some(option => option.key === previousWaterfallFit) ? previousWaterfallFit : validSrFit;
+      state.srFitKey = validSrFit;
+      state.waterfallSrFitKey = validWaterfallFit;
+      if (srFitEl) srFitEl.value = validSrFit;
+      if (waterfallSrFitEl) waterfallSrFitEl.value = validWaterfallFit;
     }
 
     function renderSrTrimModeOptions() {
@@ -2210,41 +2284,58 @@
       updateSrCategorySelectionCount();
     }
 
-    async function ensureSrWaterfallReference() {
+    async function ensureSrFitManifest() {
       if (!HAS_SR_COMPARISON) return null;
-      if (state.srWaterfallReferenceLoaded) return state.srWaterfallReference;
-      if (state.srWaterfallReferencePromise) return await state.srWaterfallReferencePromise;
+      if (state.srFitManifestLoaded) return state.srFitManifest;
+      if (state.srFitManifestPromise) return await state.srFitManifestPromise;
 
-      state.srWaterfallReferencePromise = fetchOptionalJson(`${DATA_BASE}/sr_waterfall_reference.json`)
+      state.srFitManifestPromise = fetchOptionalJson(`${DATA_BASE}/sr_fit_manifest.json`)
         .then((payload) => {
-          state.srWaterfallReference = payload;
-          state.srWaterfallReferenceLoaded = true;
+          state.srFitManifest = payload;
+          state.srFitManifestLoaded = true;
+          return payload;
+        })
+        .finally(() => {
+          state.srFitManifestPromise = null;
+        });
+      return await state.srFitManifestPromise;
+    }
+
+    async function ensureSrWaterfallReferences() {
+      if (!HAS_SR_COMPARISON) return null;
+      if (state.srWaterfallReferencesLoaded) return state.srWaterfallReferences;
+      if (state.srWaterfallReferencesPromise) return await state.srWaterfallReferencesPromise;
+
+      state.srWaterfallReferencesPromise = fetchOptionalJson(`${DATA_BASE}/sr_waterfall_references.json`)
+        .then((payload) => {
+          state.srWaterfallReferences = payload;
+          state.srWaterfallReferencesLoaded = true;
           if (waterfallCompareWrapEl && !payload) {
             waterfallCompareWrapEl.style.display = 'none';
           }
           return payload;
         })
         .finally(() => {
-          state.srWaterfallReferencePromise = null;
+          state.srWaterfallReferencesPromise = null;
         });
-      return await state.srWaterfallReferencePromise;
+      return await state.srWaterfallReferencesPromise;
     }
 
-    async function ensureSrRankReference() {
+    async function ensureSrRankReferences() {
       if (!HAS_SR_COMPARISON) return null;
-      if (state.srRankReferenceLoaded) return state.srRankReference;
-      if (state.srRankReferencePromise) return await state.srRankReferencePromise;
+      if (state.srRankReferencesLoaded) return state.srRankReferences;
+      if (state.srRankReferencesPromise) return await state.srRankReferencesPromise;
 
-      state.srRankReferencePromise = fetchOptionalJson(`${DATA_BASE}/sr_rank_reference.json`)
+      state.srRankReferencesPromise = fetchOptionalJson(`${DATA_BASE}/sr_rank_references.json`)
         .then((payload) => {
-          state.srRankReference = payload;
-          state.srRankReferenceLoaded = true;
+          state.srRankReferences = payload;
+          state.srRankReferencesLoaded = true;
           return payload;
         })
         .finally(() => {
-          state.srRankReferencePromise = null;
+          state.srRankReferencesPromise = null;
         });
-      return await state.srRankReferencePromise;
+      return await state.srRankReferencesPromise;
     }
 
     function modeToStat(mode) {
@@ -2561,9 +2652,10 @@
       const includeEnv = Boolean(srIncludeEnvEl?.checked);
       const selectedCategories = selectedSrCategories();
       const trimMode = srActiveTrimMode();
-      const summaryGetter = srCurrentMethod() === 'rank' ? srRankSummaryForRecord : srSummaryForRecord;
+      const fitKey = selectedSrFitKey();
+      const summaryGetter = srCurrentMethod() === 'rank' ? srRankSummaryForRecordByFit : srSummaryForRecordByFit;
       return getAllMetricsEnriched()
-        .filter(record => summaryGetter(record, trimMode))
+        .filter(record => summaryGetter(record, fitKey, trimMode))
         .filter(record => isSrAllowedCategory(record.category))
         .filter(record => includeEnv || !Boolean(record.is_environmental))
         .filter(record => selectedCategories.has(record.category || 'Other Clinical'));
@@ -2891,7 +2983,9 @@
     }
 
     function waterfallUsesSrReference() {
-      return Boolean(waterfallWantsSrReference() && state.srWaterfallReference);
+      const references = state.srWaterfallReferences || {};
+      const fits = references.fits || {};
+      return Boolean(waterfallWantsSrReference() && fits[selectedWaterfallSrFitKey()]);
     }
 
     function currentWaterfallAgeBins() {
@@ -3960,8 +4054,13 @@
       const minN = Math.max(5, Math.min(1000, Number(waterfallMinNEl.value || 20)));
       waterfallMinNEl.value = String(minN);
       const wantsSrReference = waterfallWantsSrReference();
-      const srReference = wantsSrReference ? await ensureSrWaterfallReference() : null;
+      const selectedFitKey = selectedWaterfallSrFitKey();
+      if (wantsSrReference) {
+        await ensureSrWaterfallReferences();
+      }
+      const srReference = wantsSrReference ? srWaterfallReferenceForFit(selectedFitKey) : null;
       const compareSr = Boolean(wantsSrReference && srReference);
+      const srFitTitle = srFitLabel(selectedFitKey);
       const ageBins = currentWaterfallAgeBins();
       setWaterfallPlotHeight(compareSr);
 
@@ -4042,7 +4141,7 @@
       appendWaterfallPanelTraces(traces, srDensity, {
         xaxis: 'x2',
         yaxis: 'y2',
-        label: 'SR model X (pooled reference)',
+        label: `${srFitTitle} (pooled reference)`,
         showLegend: false,
       });
 
@@ -4050,7 +4149,7 @@
       const tickText = ageBins.map(ageBin => ageBin.label);
       Plotly.newPlot('waterfall-plot', traces, applyPlotTheme({
         title: {
-          text: `${displayName} vs SR model X — side-by-side waterfall`,
+          text: `${displayName} vs ${srFitTitle} — side-by-side waterfall`,
           y: 0.95,
         },
         margin: mobile ? { t: 146, l: 54, r: 14, b: 86 } : { t: 164, l: 72, r: 22, b: 92 },
@@ -4070,7 +4169,7 @@
             x: 0.77,
             y: 1.04,
             showarrow: false,
-            text: 'SR model X (alive-only reference)',
+            text: `${srFitTitle} (alive-only reference)`,
             font: { size: mobile ? 10 : 12, color: '#102a43' },
           },
           {
@@ -4079,7 +4178,7 @@
             x: 0.5,
             y: 1.11,
             showarrow: false,
-            text: `5-year bins used by SR comparison | Biomarker outliers: ${trimLabelFromPct(trimPct)} | SR X: alive-only, no tail clipping | min n/bin: ${minN}`,
+            text: `5-year bins used by SR comparison | Biomarker outliers: ${trimLabelFromPct(trimPct)} | ${srFitTitle}: alive-only, no tail clipping | min n/bin: ${minN}`,
             font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
           },
         ],
@@ -4128,8 +4227,28 @@
       }
     }
 
-    function srSummaryForRecord(record, trimMode = srActiveTrimMode()) {
-      const root = record?.sr_comparison_summary || null;
+    function srSummaryRootForFit(record, fitKey) {
+      const byFit = record?.sr_comparison_summary_by_fit || {};
+      return byFit[fitKey] || record?.sr_comparison_summary || null;
+    }
+
+    function srRankSummaryRootForFit(record, fitKey) {
+      const byFit = record?.sr_rank_comparison_summary_by_fit || {};
+      return byFit[fitKey] || record?.sr_rank_comparison_summary || null;
+    }
+
+    function srDetailRootForFit(series, fitKey) {
+      const byFit = series?.sr_comparison_by_fit || {};
+      return byFit[fitKey] || series?.sr_comparison || null;
+    }
+
+    function srRankDetailRootForFit(series, fitKey) {
+      const byFit = series?.sr_rank_comparison_by_fit || {};
+      return byFit[fitKey] || series?.sr_rank_comparison || null;
+    }
+
+    function srSummaryForRecordByFit(record, fitKey, trimMode = srActiveTrimMode()) {
+      const root = srSummaryRootForFit(record, fitKey);
       if (!root) return null;
 
       const trimSummaries = root.trim_summaries || {};
@@ -4138,8 +4257,8 @@
       return root;
     }
 
-    function srRankSummaryForRecord(record, trimMode = srActiveTrimMode()) {
-      const root = record?.sr_rank_comparison_summary || null;
+    function srRankSummaryForRecordByFit(record, fitKey, trimMode = srActiveTrimMode()) {
+      const root = srRankSummaryRootForFit(record, fitKey);
       if (!root) return null;
 
       const trimSummaries = root.trim_summaries || {};
@@ -4148,8 +4267,8 @@
       return root;
     }
 
-    function srDetailForSeries(series, trimMode = srActiveTrimMode()) {
-      const root = series?.sr_comparison || null;
+    function srDetailForSeriesByFit(series, fitKey, trimMode = srActiveTrimMode()) {
+      const root = srDetailRootForFit(series, fitKey);
       if (!root) return null;
 
       const trimDetails = root.trim_details || {};
@@ -4167,8 +4286,8 @@
       };
     }
 
-    function srRankDetailForSeries(series, trimMode = srActiveTrimMode()) {
-      const root = series?.sr_rank_comparison || null;
+    function srRankDetailForSeriesByFit(series, fitKey, trimMode = srActiveTrimMode()) {
+      const root = srRankDetailRootForFit(series, fitKey);
       if (!root) return null;
 
       const trimDetails = root.trim_details || {};
@@ -4186,18 +4305,30 @@
       };
     }
 
-    function srSummaryForMethod(record, trimMode = srActiveTrimMode()) {
-      if (srCurrentMethod() === 'rank') return srRankSummaryForRecord(record, trimMode);
-      return srSummaryForRecord(record, trimMode);
+    function srSummaryForMethod(record, fitKey = selectedSrFitKey(), trimMode = srActiveTrimMode()) {
+      if (srCurrentMethod() === 'rank') return srRankSummaryForRecordByFit(record, fitKey, trimMode);
+      return srSummaryForRecordByFit(record, fitKey, trimMode);
     }
 
-    function srDetailForMethod(series, trimMode = srActiveTrimMode()) {
-      if (srCurrentMethod() === 'rank') return srRankDetailForSeries(series, trimMode);
-      return srDetailForSeries(series, trimMode);
+    function srDetailForMethod(series, fitKey = selectedSrFitKey(), trimMode = srActiveTrimMode()) {
+      if (srCurrentMethod() === 'rank') return srRankDetailForSeriesByFit(series, fitKey, trimMode);
+      return srDetailForSeriesByFit(series, fitKey, trimMode);
     }
 
-    function srRankReferenceRow(trimMode = srActiveTrimMode(), ageBinLabel = selectedSrAgeBinLabel()) {
-      const root = state.srRankReference || null;
+    function srWaterfallReferenceForFit(fitKey = selectedWaterfallSrFitKey()) {
+      const root = state.srWaterfallReferences || {};
+      const fits = root.fits || {};
+      return fits[fitKey] || root.sr_waterfall_reference || null;
+    }
+
+    function srRankReferenceForFit(fitKey = selectedSrFitKey()) {
+      const root = state.srRankReferences || {};
+      const fits = root.fits || {};
+      return fits[fitKey] || root.sr_rank_reference || null;
+    }
+
+    function srRankReferenceRow(fitKey = selectedSrFitKey(), trimMode = srActiveTrimMode(), ageBinLabel = selectedSrAgeBinLabel()) {
+      const root = srRankReferenceForFit(fitKey);
       if (!root) return null;
 
       const trimDetails = root.trim_details || {};
@@ -4295,18 +4426,21 @@
     function renderSrSummaryStrip(record, detail) {
       if (!srSummaryStripEl) return;
       const trimMode = detail?.active_trim_mode || srActiveTrimMode();
-      const summary = srSummaryForMethod(record, trimMode);
+      const fitKey = selectedSrFitKey();
+      const summary = srSummaryForMethod(record, fitKey, trimMode);
       if (!summary) {
         srSummaryStripEl.innerHTML = '<div class="sr-stat-card"><strong>SR summary</strong><span>NA</span></div>';
         return;
       }
 
       const currentBinLabel = selectedSrAgeBinLabel();
+      const fitLabel = srFitLabel(fitKey);
       const currentDetailRow = srBinRowForLabel(detail?.bins || [], currentBinLabel);
       let cards = [];
       if (srCurrentMethod() === 'rank') {
         const currentRankRow = srBinRowForLabel(summary.wasserstein_rank_by_age_bin || [], currentBinLabel);
         cards = [
+          ['SR fit', fitLabel],
           ['Selected bin', currentBinLabel],
           ['Per-bin trim', detail?.trim_label || summary.trim_label || srTrimLabel(trimMode)],
           ['Current rank-W', formatNum(currentDetailRow?.wasserstein_rank ?? currentRankRow?.wasserstein_rank, 4)],
@@ -4321,6 +4455,7 @@
         const currentR2Row = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
         const currentWassersteinRow = srBinRowForLabel(summary.wasserstein_z_by_age_bin || [], currentBinLabel);
         cards = [
+          ['SR fit', fitLabel],
           ['Selected bin', currentBinLabel],
           ['Biomarker trim', detail?.trim_label || summary.trim_label || srTrimLabel(trimMode)],
           ['Current R²', formatNum(currentDetailRow?.r2 ?? currentR2Row?.r2, 4)],
@@ -4346,12 +4481,13 @@
         return;
       }
 
+      const fitLabel = srFitLabel(selectedSrFitKey());
       const currentBinLabel = selectedSrAgeBinLabel();
       const row = srBinRowForLabel(detail?.bins || [], currentBinLabel);
       if (!row || !Array.isArray(row.qq_sr_values) || row.qq_sr_values.length < 2 || !Array.isArray(row.qq_biomarker_values) || row.qq_biomarker_values.length < 2) {
         plotNoData(
           'sr-qq-plot',
-          `${displayName} — SR Q-Q plot`,
+          `${displayName} — ${fitLabel} Q-Q plot`,
           `No valid SR comparison data for age bin ${currentBinLabel}.`
         );
         return;
@@ -4372,7 +4508,7 @@
           y,
           marker: { color: '#0f766e', size: 7, opacity: 0.82 },
           name: 'Quantile pairs',
-          hovertemplate: 'SR quantile=%{x:.4f}<br>Biomarker quantile=%{y:.4f}<extra></extra>',
+          hovertemplate: `${fitLabel} value=%{x:.4f}<br>Biomarker value=%{y:.4f}<extra></extra>`,
         },
         {
           type: 'scatter',
@@ -4384,17 +4520,17 @@
           hovertemplate: `m=${formatNum(row.slope_m, 4)}<br>c=${formatNum(row.intercept_c, 4)}<extra></extra>`,
         },
       ], applyPlotTheme({
-        title: `${displayName} vs SR model — Q-Q plot (${currentBinLabel})`,
+        title: `${displayName} vs ${fitLabel} — Q-Q plot (${currentBinLabel})`,
         annotations: [{
           xref: 'paper',
           yref: 'paper',
           x: 1,
           y: 1.08,
           showarrow: false,
-          text: `Trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | R²=${formatNum(row.r2, 4)} | z-W=${formatNum(row.wasserstein_z, 4)} | m=${formatNum(row.slope_m, 4)} | c=${formatNum(row.intercept_c, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | SR alive n=${row.sr_n ?? 'NA'}`,
+          text: `Trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | R²=${formatNum(row.r2, 4)} | z-W=${formatNum(row.wasserstein_z, 4)} | m=${formatNum(row.slope_m, 4)} | c=${formatNum(row.intercept_c, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | ${fitLabel} alive n=${row.sr_n ?? 'NA'}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
-        xaxis: { title: 'SR model X values at matched quantiles' },
+        xaxis: { title: `${fitLabel} X values at matched quantiles` },
         yaxis: { title: `${displayName} values at matched quantiles` },
       }, mobile), { responsive: true, displaylogo: false });
     }
@@ -4416,15 +4552,17 @@
     }
 
     function renderSrRankCdfPlot(record, detail, displayName) {
+      const fitKey = selectedSrFitKey();
+      const fitLabel = srFitLabel(fitKey);
       const currentBinLabel = selectedSrAgeBinLabel();
       const row = srBinRowForLabel(detail?.bins || [], currentBinLabel);
-      const srRow = srRankReferenceRow(detail?.active_trim_mode, currentBinLabel);
+      const srRow = srRankReferenceRow(fitKey, detail?.active_trim_mode, currentBinLabel);
       const nhanesTrace = buildRankCdfTrace(row?.nhanes_rank_values || []);
       const srTrace = buildRankCdfTrace(srRow?.sr_rank_values || []);
       if (nhanesTrace.x.length < 2 || srTrace.x.length < 2) {
         plotNoData(
           'sr-qq-plot',
-          `${displayName} — rank comparison`,
+          `${displayName} — ${fitLabel} rank comparison`,
           `No valid rank-comparison data for age bin ${currentBinLabel}.`
         );
         return;
@@ -4438,7 +4576,7 @@
           x: srTrace.x,
           y: srTrace.y,
           line: { color: '#2563eb', width: 2.5 },
-          name: 'SR model X',
+          name: fitLabel,
           hovertemplate: 'Percentile-rank=%{x:.4f}<br>CDF=%{y:.4f}<extra></extra>',
         },
         {
@@ -4451,14 +4589,14 @@
           hovertemplate: 'Percentile-rank=%{x:.4f}<br>CDF=%{y:.4f}<extra></extra>',
         },
       ], applyPlotTheme({
-        title: `${displayName} vs SR model — Rank CDF (${currentBinLabel})`,
+        title: `${displayName} vs ${fitLabel} — Rank CDF (${currentBinLabel})`,
         annotations: [{
           xref: 'paper',
           yref: 'paper',
           x: 1,
           y: 1.08,
           showarrow: false,
-          text: `Per-bin trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | rank-W=${formatNum(row.wasserstein_rank, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | SR alive n=${row.sr_n ?? 'NA'}`,
+          text: `Per-bin trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | rank-W=${formatNum(row.wasserstein_rank, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | ${fitLabel} alive n=${row.sr_n ?? 'NA'}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
         xaxis: { title: 'Normalized rank (1-100)' },
@@ -4472,6 +4610,7 @@
         return;
       }
 
+      const fitLabel = srFitLabel(selectedSrFitKey());
       const rows = detail?.bins || [];
       const x = rows.map(row => row.age_bin);
       const y = rows.map(row => row.r2);
@@ -4497,7 +4636,7 @@
           hovertemplate: 'age_bin=%{x}<br>R²=%{y:.4f}<extra></extra>',
         },
       ], applyPlotTheme({
-        title: `R² across age bins (${detail?.trim_label || srTrimLabel(detail?.active_trim_mode)})`,
+        title: `${fitLabel} R² across age bins (${detail?.trim_label || srTrimLabel(detail?.active_trim_mode)})`,
         xaxis: { title: 'Age bin' },
         yaxis: { title: 'R²', range: [0, 1.02] },
         showlegend: false,
@@ -4505,6 +4644,7 @@
     }
 
     function renderSrRankDistancePlot(record, detail) {
+      const fitLabel = srFitLabel(selectedSrFitKey());
       const rows = detail?.bins || [];
       const x = rows.map(row => row.age_bin);
       const y = rows.map(row => row.wasserstein_rank);
@@ -4530,7 +4670,7 @@
           hovertemplate: 'age_bin=%{x}<br>rank-W=%{y:.4f}<extra></extra>',
         },
       ], applyPlotTheme({
-        title: `Rank-Wasserstein across age bins (${detail?.trim_label || srTrimLabel(detail?.active_trim_mode)})`,
+        title: `${fitLabel} rank-Wasserstein across age bins (${detail?.trim_label || srTrimLabel(detail?.active_trim_mode)})`,
         xaxis: { title: 'Age bin' },
         yaxis: { title: 'Rank-Wasserstein' },
         showlegend: false,
@@ -4547,6 +4687,7 @@
         return;
       }
 
+      const fitLabel = srFitLabel(selectedSrFitKey());
       const rows = detail?.bins || [];
       const slopeValues = rows.map(row => row.slope_m);
       const interceptValues = rows.map(row => row.intercept_c);
@@ -4590,7 +4731,7 @@
           yaxis: 'y2',
         },
       ], applyPlotTheme({
-        title: `QQ fit coefficients across age bins (${detail?.trim_label || srTrimLabel(detail?.active_trim_mode)})`,
+        title: `${fitLabel} QQ fit coefficients across age bins (${detail?.trim_label || srTrimLabel(detail?.active_trim_mode)})`,
         xaxis: { title: 'Age bin' },
         yaxis: { title: 'Slope m' },
         yaxis2: {
@@ -4607,13 +4748,14 @@
       const currentBinLabel = selectedSrAgeBinLabel();
       const trimMode = srActiveTrimMode();
       const method = srCurrentMethod();
+      const fitKey = selectedSrFitKey();
       const sortField = srSortFieldEl?.value || state.srSortField || srDefaultSortField(method);
       const sortDirection = srSortDirectionEl?.value || state.srSortDirection || srDefaultSortDirection(method);
       state.srSortField = sortField;
       state.srSortDirection = sortDirection;
 
       const rows = getSrComparisonRecords()
-        .map(record => ({ ...record, srSummary: srSummaryForMethod(record, trimMode) }))
+        .map(record => ({ ...record, srSummary: srSummaryForMethod(record, fitKey, trimMode) }))
         .filter(record => Boolean(record.srSummary));
 
       function sortableValue(record) {
@@ -4756,6 +4898,8 @@
       if (!HAS_SR_COMPARISON) return;
       const trimMode = srActiveTrimMode();
       const method = srCurrentMethod();
+      const fitKey = selectedSrFitKey();
+      const fitLabel = srFitLabel(fitKey);
 
       const available = getSrComparisonRecords();
       if (!available.length) {
@@ -4783,14 +4927,14 @@
       const displayName = md.display_name || record?.biomarker_name || id;
       const category = md.category || 'Other Clinical';
       if (method === 'rank') {
-        await ensureSrRankReference();
+        await ensureSrRankReferences();
       }
       const series = await loadSeries(id);
-      const detail = srDetailForMethod(series, trimMode);
+      const detail = srDetailForMethod(series, fitKey, trimMode);
       if (srSelectedBiomarkerEl) {
         const trimPrefix = method === 'rank' ? 'per-bin trim' : 'biomarker trim';
         const methodLabel = method === 'rank' ? 'Rank-Wasserstein' : 'QQ / Shape';
-        srSelectedBiomarkerEl.textContent = `${displayName} · ${category} · ${methodLabel} · ${trimPrefix} ${detail?.trim_label || srTrimLabel(trimMode)}`;
+        srSelectedBiomarkerEl.textContent = `${displayName} · ${category} · ${fitLabel} · ${methodLabel} · ${trimPrefix} ${detail?.trim_label || srTrimLabel(trimMode)}`;
       }
 
       renderSrSummaryStrip(record, detail);
@@ -6135,11 +6279,16 @@
     }
 
     async function init() {
-      const [metadata, metrics, index] = await Promise.all([
+      const loadJobs = [
         fetchJson(`${DATA_BASE}/metadata.json`),
         fetchJson(`${DATA_BASE}/metrics.json`),
         fetchJson(`${DATA_BASE}/series_index.json`),
-      ]);
+      ];
+      if (HAS_SR_COMPARISON) {
+        loadJobs.push(ensureSrFitManifest());
+      }
+
+      const [metadata, metrics, index] = await Promise.all(loadJobs);
 
       state.metadata = metadata;
       state.metrics = metrics;
@@ -6164,6 +6313,8 @@
       if (!HAS_SR_COMPARISON) {
         if (tabSrComparisonBtn) tabSrComparisonBtn.style.display = 'none';
         if (panelSrComparison) panelSrComparison.style.display = 'none';
+      } else {
+        renderSrFitOptions();
       }
       if (waterfallCompareSrEl) {
         waterfallCompareSrEl.checked = false;
@@ -6548,6 +6699,10 @@
       waterfallCompareSrEl?.addEventListener('change', () => {
         renderWaterfallPlot(state.waterfallId);
       });
+      waterfallSrFitEl?.addEventListener('change', () => {
+        state.waterfallSrFitKey = waterfallSrFitEl.value || selectedSrFitKey();
+        renderWaterfallPlot(state.waterfallId);
+      });
       filterClauseSaveBtn.addEventListener('click', () => {
         upsertFilterClause(false);
       });
@@ -6659,6 +6814,14 @@
         state.srAgeBinIndex = Number(srAgeBinSliderEl.value || 0);
         if (srAgeBinLabelEl) srAgeBinLabelEl.textContent = selectedSrAgeBinLabel();
         await renderSRComparison(state.currentId);
+      });
+      srFitEl?.addEventListener('change', async () => {
+        state.srFitKey = srFitEl.value || srDefaultFitKey();
+        if (waterfallSrFitEl && !waterfallSrFitEl.value) {
+          waterfallSrFitEl.value = state.srFitKey;
+          state.waterfallSrFitKey = state.srFitKey;
+        }
+        await renderSRComparison(srBiomarkerEl?.value || state.currentId);
       });
       srMethodModeEl?.addEventListener('change', async () => {
         state.srMethod = srMethodModeEl.value === 'rank' ? 'rank' : 'qq';

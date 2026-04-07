@@ -1,0 +1,25 @@
+{
+  "key": "alternative",
+  "label": "SR alternative fit",
+  "kind": "custom_params",
+  "description": "Alternative male-oriented SR fit with Xc heterogeneity and half-day internal timestep.",
+  "reference_tail_policy": "alive_only_no_tail_trimming",
+  "params": {
+    "eta": 1.3,
+    "beta": 173.9,
+    "kappa": 0.5,
+    "epsilon": 0.833,
+    "Xc": 1.23
+  },
+  "heterogeneity": {
+    "param": "Xc",
+    "std": 0.27,
+    "dist_type": "gaussian",
+    "family": "None"
+  },
+  "n_sim": 100000,
+  "tmax": 120.0,
+  "dt": 0.0013698630136986301,
+  "save_times": 1.0,
+  "h_ext": 0.0
+}

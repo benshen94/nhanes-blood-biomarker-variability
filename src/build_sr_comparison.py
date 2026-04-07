@@ -27,6 +27,8 @@ from nhanes_common import ensure_dir
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LONG = ROOT / "data" / "processed" / "biomarker_long.parquet"
 DEFAULT_OUT_ROOT = ROOT / "projects" / "sr_comparison" / "blood"
+DEFAULT_FIT_LIBRARY_ROOT = ROOT / "projects" / "sr_fits"
+DEFAULT_FIT_REGISTRY_PATH = DEFAULT_FIT_LIBRARY_ROOT / "fit_registry.json"
 DEFAULT_SR_SCRIPT = Path(
     "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py"
 )
@@ -44,6 +46,7 @@ WATERFALL_SAMPLE_PROBABILITIES = np.linspace(0.001, 0.999, 801)
 SR_N_SIM = 100_000
 SR_TMAX = 120
 SR_SAVE_TIMES = 1
+ALT_SR_DT = 1.0 / 365.0 / 2.0
 EPS = 1e-12
 SR_TRIM_MODES = [
     {"key": "all", "label": "0% each tail", "tail_pct": 0, "lo": 0.0, "hi": 1.0},
@@ -158,6 +161,27 @@ def rounded_trim_modes(trim_modes: list[dict[str, Any]] | None = None) -> list[d
             }
         )
     return rows
+
+
+def load_fit_registry(registry_path: Path) -> dict[str, Any]:
+    payload = json.loads(registry_path.read_text(encoding="utf-8"))
+    fits = payload.get("fits") or []
+    if not fits:
+        raise ValueError(f"No SR fits found in registry: {registry_path}")
+    default_fit_key = str(payload.get("default_fit_key") or fits[0]["key"])
+    payload["default_fit_key"] = default_fit_key
+    return payload
+
+
+def fit_option_payload(fit_def: dict[str, Any], default_fit_key: str) -> dict[str, Any]:
+    fit_key = str(fit_def["key"])
+    return {
+        "key": fit_key,
+        "label": str(fit_def.get("label") or fit_key),
+        "description": str(fit_def.get("description") or ""),
+        "reference_tail_policy": str(fit_def.get("reference_tail_policy") or "alive_only_no_tail_trimming"),
+        "is_default": fit_key == default_fit_key,
+    }
 
 
 def stable_seed(seed_key: str) -> int:
@@ -488,6 +512,14 @@ def load_sr_module(sr_script_path: Path, sr_package_root: Path):
     return module
 
 
+def load_sr_utils(sr_package_root: Path):
+    if str(sr_package_root) not in sys.path:
+        sys.path.insert(0, str(sr_package_root))
+    from ageing_packages.utils import sr_utils as utils  # type: ignore
+
+    return utils
+
+
 def run_sr_simulation(
     sr_script_path: Path,
     sr_package_root: Path,
@@ -501,23 +533,132 @@ def run_sr_simulation(
     return np.asarray(sim.tspan), np.asarray(sim.paths), np.asarray(sim.death_times)
 
 
-def load_or_build_sr_cache(
-    out_root: Path,
-    sr_script_path: Path,
-    sr_package_root: Path,
-    force_rerun: bool,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
-    cache_path = out_root / "sr_usa_2019_trajectories.npz"
-    if cache_path.exists() and not force_rerun:
-        cached = np.load(cache_path)
-        return np.asarray(cached["tspan"]), np.asarray(cached["paths"]), np.asarray(cached["death_times"]), "local_cache"
+def run_custom_fit_simulation(fit_def: dict[str, Any]) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
+    sr_package_root = Path(str(fit_def["sr_package_root"]))
+    utils = load_sr_utils(sr_package_root)
 
-    tspan, paths, death_times = run_sr_simulation(
-        sr_script_path=sr_script_path,
-        sr_package_root=sr_package_root,
+    n_sim = int(fit_def.get("n_sim", SR_N_SIM))
+    tmax = float(fit_def.get("tmax", SR_TMAX))
+    dt = float(fit_def.get("dt", ALT_SR_DT))
+    save_times = float(fit_def.get("save_times", SR_SAVE_TIMES))
+    h_ext = float(fit_def.get("h_ext", 0.0))
+
+    base_params = {
+        key: float(value)
+        for key, value in (fit_def.get("params") or {}).items()
+    }
+    heterogeneity = fit_def.get("heterogeneity") or {}
+    hetero_param = str(heterogeneity.get("param") or "Xc")
+    hetero_std = float(heterogeneity.get("std", 0.0))
+    hetero_dist = str(heterogeneity.get("dist_type") or "gaussian")
+    hetero_family = str(heterogeneity.get("family") or "None")
+
+    params_dict = utils.create_param_distribution_dict(
+        params=hetero_param,
+        std=hetero_std,
+        n=n_sim,
+        dist_type=hetero_dist,
+        params_dict=base_params,
+        family=hetero_family,
     )
+    sim = utils.create_sr_simulation(
+        n=n_sim,
+        params_dict=params_dict,
+        h_ext=h_ext,
+        tmax=tmax,
+        dt=dt,
+        save_times=save_times,
+        parallel=True,
+        break_early=True,
+    )
+    fit_params = {
+        "kind": str(fit_def.get("kind") or "custom_params"),
+        "params": base_params,
+        "heterogeneity": {
+            "param": hetero_param,
+            "std": hetero_std,
+            "dist_type": hetero_dist,
+            "family": hetero_family,
+        },
+        "n_sim": n_sim,
+        "tmax": tmax,
+        "dt": dt,
+        "save_times": save_times,
+        "h_ext": h_ext,
+    }
+    return np.asarray(sim.tspan), np.asarray(sim.paths), np.asarray(sim.death_times), fit_params
+
+
+def fit_output_dir(fit_library_root: Path, fit_key: str) -> Path:
+    return fit_library_root / fit_key
+
+
+def load_or_build_fit_cache(
+    fit_def: dict[str, Any],
+    fit_library_root: Path,
+    force_rerun: bool,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, str, dict[str, Any], Path]:
+    fit_key = str(fit_def["key"])
+    fit_dir = fit_output_dir(fit_library_root, fit_key)
+    ensure_dir(fit_dir)
+
+    cache_path = fit_dir / "trajectories.npz"
+    fit_manifest_path = fit_dir / "fit_manifest.json"
+
+    if cache_path.exists() and fit_manifest_path.exists() and not force_rerun:
+        cached = np.load(cache_path)
+        fit_manifest = json.loads(fit_manifest_path.read_text(encoding="utf-8"))
+        return (
+            np.asarray(cached["tspan"]),
+            np.asarray(cached["paths"]),
+            np.asarray(cached["death_times"]),
+            "local_cache",
+            fit_manifest,
+            fit_dir,
+        )
+
+    fit_kind = str(fit_def.get("kind") or "usa_2019_script")
+    if fit_kind == "usa_2019_script":
+        sr_script_path = Path(str(fit_def.get("sr_script_path") or DEFAULT_SR_SCRIPT))
+        sr_package_root = Path(str(fit_def.get("sr_package_root") or DEFAULT_SR_PACKAGE_ROOT))
+        n_sim = int(fit_def.get("n_sim", SR_N_SIM))
+        tmax = int(fit_def.get("tmax", SR_TMAX))
+        save_times = int(fit_def.get("save_times", SR_SAVE_TIMES))
+        tspan, paths, death_times = run_sr_simulation(
+            sr_script_path=sr_script_path,
+            sr_package_root=sr_package_root,
+            n_sim=n_sim,
+            tmax=tmax,
+            save_times=save_times,
+        )
+        fit_manifest = {
+            "key": fit_key,
+            "label": str(fit_def.get("label") or fit_key),
+            "kind": fit_kind,
+            "description": str(fit_def.get("description") or ""),
+            "sr_script_path": str(sr_script_path),
+            "sr_package_root": str(sr_package_root),
+            "n_sim": n_sim,
+            "tmax": tmax,
+            "save_times": save_times,
+            "reference_tail_policy": str(fit_def.get("reference_tail_policy") or "alive_only_no_tail_trimming"),
+        }
+    elif fit_kind == "custom_params":
+        tspan, paths, death_times, custom_manifest = run_custom_fit_simulation(fit_def)
+        fit_manifest = {
+            "key": fit_key,
+            "label": str(fit_def.get("label") or fit_key),
+            "kind": fit_kind,
+            "description": str(fit_def.get("description") or ""),
+            "reference_tail_policy": str(fit_def.get("reference_tail_policy") or "alive_only_no_tail_trimming"),
+            **custom_manifest,
+        }
+    else:
+        raise ValueError(f"Unsupported SR fit kind: {fit_kind}")
+
     np.savez_compressed(cache_path, tspan=tspan, paths=paths, death_times=death_times)
-    return tspan, paths, death_times, "rerun"
+    write_json(fit_manifest_path, fit_manifest, pretty=True)
+    return tspan, paths, death_times, "rerun", fit_manifest, fit_dir
 
 
 def extract_sr_alive_distributions(
@@ -596,8 +737,10 @@ def build_sr_waterfall_reference(
     }
 
 
-def build_dashboard_payload(
+def build_single_fit_payload(
     long_df: pd.DataFrame,
+    fit_key: str,
+    fit_label: str,
     sr_reference_rows: list[dict[str, Any]],
     sr_distributions: dict[str, np.ndarray],
     sr_waterfall_reference: dict[str, Any],
@@ -856,6 +999,8 @@ def build_dashboard_payload(
     }
     payload = {
         "meta": {
+            "fit_key": fit_key,
+            "fit_label": fit_label,
             "age_bins": AGE_BIN_LABELS,
             "age_mids": AGE_BIN_MIDS,
             "default_trim_mode": DEFAULT_SR_TRIM_MODE,
@@ -885,53 +1030,246 @@ def build_dashboard_payload(
     )
 
 
+def merge_fit_summaries_by_biomarker(
+    fit_payloads: dict[str, dict[str, Any]],
+    summary_key: str,
+) -> dict[str, dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for fit_key, payload in fit_payloads.items():
+        by_biomarker = payload.get(summary_key) or {}
+        for biomarker_id, summary in by_biomarker.items():
+            merged.setdefault(str(biomarker_id), {})[fit_key] = summary
+    return merged
+
+
+def combine_detail_payloads_by_fit(
+    fit_payloads: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    biomarker_ids: set[str] = set()
+    for payload in fit_payloads.values():
+        biomarker_ids.update((payload.get("summary_by_biomarker") or {}).keys())
+
+    default_fit_key = next(iter(fit_payloads))
+    combined: dict[str, dict[str, Any]] = {}
+    for biomarker_id in sorted(biomarker_ids):
+        qq_by_fit: dict[str, Any] = {}
+        rank_by_fit: dict[str, Any] = {}
+        for fit_key, payload in fit_payloads.items():
+            detail_lookup = payload.get("detail_payloads") or {}
+            detail_payload = detail_lookup.get(biomarker_id) or {}
+            qq_detail = detail_payload.get("sr_comparison")
+            rank_detail = detail_payload.get("sr_rank_comparison")
+            if qq_detail is not None:
+                qq_by_fit[fit_key] = qq_detail
+            if rank_detail is not None:
+                rank_by_fit[fit_key] = rank_detail
+
+        default_qq = qq_by_fit.get(default_fit_key)
+        if default_qq is None and qq_by_fit:
+            default_qq = next(iter(qq_by_fit.values()))
+        default_rank = rank_by_fit.get(default_fit_key)
+        if default_rank is None and rank_by_fit:
+            default_rank = next(iter(rank_by_fit.values()))
+
+        combined[biomarker_id] = {
+            "default_fit_key": default_fit_key,
+            "sr_comparison": default_qq,
+            "sr_rank_comparison": default_rank,
+            "sr_comparison_by_fit": qq_by_fit,
+            "sr_rank_comparison_by_fit": rank_by_fit,
+        }
+
+    return combined
+
+
+def build_multi_fit_dashboard_payload(
+    long_df: pd.DataFrame,
+    fit_builds: list[dict[str, Any]],
+    default_fit_key: str,
+    fit_options: list[dict[str, Any]],
+) -> tuple[
+    dict[str, Any],
+    dict[str, pd.DataFrame],
+    dict[str, pd.DataFrame],
+    dict[str, pd.DataFrame],
+    dict[str, pd.DataFrame],
+    dict[str, dict[str, Any]],
+]:
+    fit_payloads: dict[str, dict[str, Any]] = {}
+    summary_frames: dict[str, pd.DataFrame] = {}
+    detail_frames: dict[str, pd.DataFrame] = {}
+    rank_summary_frames: dict[str, pd.DataFrame] = {}
+    rank_detail_frames: dict[str, pd.DataFrame] = {}
+
+    for fit_build in fit_builds:
+        fit_key = str(fit_build["fit_key"])
+        fit_label = str(fit_build["fit_label"])
+        (
+            fit_payload,
+            summary_df,
+            detail_df,
+            rank_summary_df,
+            rank_detail_df,
+            detail_payloads,
+        ) = build_single_fit_payload(
+            long_df=long_df,
+            fit_key=fit_key,
+            fit_label=fit_label,
+            sr_reference_rows=fit_build["sr_reference_rows"],
+            sr_distributions=fit_build["sr_distributions"],
+            sr_waterfall_reference=fit_build["sr_waterfall_reference"],
+        )
+        fit_payload["detail_payloads"] = detail_payloads
+        fit_payload["fit_manifest"] = fit_build["fit_manifest"]
+        fit_payloads[fit_key] = fit_payload
+        summary_frames[fit_key] = summary_df
+        detail_frames[fit_key] = detail_df
+        rank_summary_frames[fit_key] = rank_summary_df
+        rank_detail_frames[fit_key] = rank_detail_df
+
+    default_payload = fit_payloads[default_fit_key]
+    summary_by_biomarker_by_fit = merge_fit_summaries_by_biomarker(fit_payloads, "summary_by_biomarker")
+    rank_summary_by_biomarker_by_fit = merge_fit_summaries_by_biomarker(fit_payloads, "rank_summary_by_biomarker")
+    combined_detail_by_biomarker = combine_detail_payloads_by_fit(fit_payloads)
+    detail_index_by_biomarker = {
+        biomarker_id: sr_detail_relative_path(biomarker_id)
+        for biomarker_id in combined_detail_by_biomarker
+    }
+
+    payload = {
+        "meta": {
+            **(default_payload.get("meta") or {}),
+            "default_fit_key": default_fit_key,
+            "fit_options": fit_options,
+        },
+        "summary_by_biomarker": default_payload.get("summary_by_biomarker") or {},
+        "rank_summary_by_biomarker": default_payload.get("rank_summary_by_biomarker") or {},
+        "summary_by_biomarker_by_fit": summary_by_biomarker_by_fit,
+        "rank_summary_by_biomarker_by_fit": rank_summary_by_biomarker_by_fit,
+        "detail_index_by_biomarker": detail_index_by_biomarker,
+        "sr_fit_manifest": {
+            "default_fit_key": default_fit_key,
+            "fit_options": fit_options,
+        },
+        "sr_reference_bins": default_payload.get("sr_reference_bins") or [],
+        "sr_reference_bins_by_fit": {
+            fit_key: fit_payload.get("sr_reference_bins") or []
+            for fit_key, fit_payload in fit_payloads.items()
+        },
+        "sr_waterfall_reference": default_payload.get("sr_waterfall_reference"),
+        "sr_waterfall_references": {
+            "default_fit_key": default_fit_key,
+            "fit_options": fit_options,
+            "fits": {
+                fit_key: fit_payload.get("sr_waterfall_reference")
+                for fit_key, fit_payload in fit_payloads.items()
+            },
+        },
+        "sr_rank_reference": default_payload.get("sr_rank_reference"),
+        "sr_rank_references": {
+            "default_fit_key": default_fit_key,
+            "fit_options": fit_options,
+            "fits": {
+                fit_key: fit_payload.get("sr_rank_reference")
+                for fit_key, fit_payload in fit_payloads.items()
+            },
+        },
+    }
+    return (
+        payload,
+        summary_frames,
+        detail_frames,
+        rank_summary_frames,
+        rank_detail_frames,
+        combined_detail_by_biomarker,
+    )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--long", default=str(DEFAULT_LONG))
     ap.add_argument("--out-root", default=str(DEFAULT_OUT_ROOT))
-    ap.add_argument("--sr-script-path", default=str(DEFAULT_SR_SCRIPT))
-    ap.add_argument("--sr-package-root", default=str(DEFAULT_SR_PACKAGE_ROOT))
+    ap.add_argument("--fit-library-root", default=str(DEFAULT_FIT_LIBRARY_ROOT))
+    ap.add_argument("--fit-registry", default=str(DEFAULT_FIT_REGISTRY_PATH))
     ap.add_argument("--force-rerun", action="store_true")
     args = ap.parse_args()
 
     long_path = Path(args.long)
     out_root = Path(args.out_root)
-    sr_script_path = Path(args.sr_script_path)
-    sr_package_root = Path(args.sr_package_root)
+    fit_library_root = Path(args.fit_library_root)
+    fit_registry_path = Path(args.fit_registry)
 
     ensure_dir(out_root)
+    ensure_dir(fit_library_root)
 
     long_df = pd.read_parquet(long_path, columns=["biomarker_id", "biomarker_name", "age_years", "value"])
+    fit_registry = load_fit_registry(fit_registry_path)
+    fit_defs = list(fit_registry.get("fits") or [])
+    default_fit_key = str(fit_registry["default_fit_key"])
+    fit_options = [fit_option_payload(fit_def, default_fit_key) for fit_def in fit_defs]
 
     started_at = time.time()
-    tspan, paths, death_times, sr_source = load_or_build_sr_cache(
-        out_root=out_root,
-        sr_script_path=sr_script_path,
-        sr_package_root=sr_package_root,
-        force_rerun=args.force_rerun,
-    )
-    sr_reference_rows, sr_distributions = build_sr_reference_rows(tspan, paths, death_times)
-    sr_waterfall_reference = build_sr_waterfall_reference(tspan, paths, death_times)
-    payload, summary_df, detail_df, rank_summary_df, rank_detail_df, detail_payloads = build_dashboard_payload(
-        long_df,
-        sr_reference_rows,
-        sr_distributions,
-        sr_waterfall_reference,
-    )
+    fit_builds: list[dict[str, Any]] = []
+    fit_sources: dict[str, str] = {}
+    fit_output_dirs: dict[str, str] = {}
+    for fit_def in fit_defs:
+        fit_key = str(fit_def["key"])
+        fit_label = str(fit_def.get("label") or fit_key)
+        tspan, paths, death_times, fit_source, fit_manifest, fit_dir = load_or_build_fit_cache(
+            fit_def=fit_def,
+            fit_library_root=fit_library_root,
+            force_rerun=args.force_rerun,
+        )
+        sr_reference_rows, sr_distributions = build_sr_reference_rows(tspan, paths, death_times)
+        sr_waterfall_reference = build_sr_waterfall_reference(tspan, paths, death_times)
+        write_json(fit_dir / "sr_reference_bins.json", sr_reference_rows, pretty=True)
+        write_json(fit_dir / "sr_waterfall_reference.json", sr_waterfall_reference)
+        fit_builds.append(
+            {
+                "fit_key": fit_key,
+                "fit_label": fit_label,
+                "sr_reference_rows": sr_reference_rows,
+                "sr_distributions": sr_distributions,
+                "sr_waterfall_reference": sr_waterfall_reference,
+                "fit_manifest": fit_manifest,
+            }
+        )
+        fit_sources[fit_key] = fit_source
+        fit_output_dirs[fit_key] = str(fit_dir)
 
-    summary_path = out_root / "biomarker_qq_summary.csv"
-    detail_path = out_root / "biomarker_qq_detail.csv"
-    rank_summary_path = out_root / "biomarker_rank_summary.csv"
-    rank_detail_path = out_root / "biomarker_rank_detail.csv"
+    payload, summary_frames, detail_frames, rank_summary_frames, rank_detail_frames, detail_payloads = build_multi_fit_dashboard_payload(
+        long_df=long_df,
+        fit_builds=fit_builds,
+        default_fit_key=default_fit_key,
+        fit_options=fit_options,
+    )
     detail_root = out_root / "detail_by_biomarker"
     payload_path = out_root / "dashboard_payload.json"
     manifest_path = out_root / "run_manifest.json"
 
     ensure_dir(detail_root)
-    summary_df.to_csv(summary_path, index=False)
-    detail_df.to_csv(detail_path, index=False)
-    rank_summary_df.to_csv(rank_summary_path, index=False)
-    rank_detail_df.to_csv(rank_detail_path, index=False)
+    fit_comparison_root = out_root / "fits"
+    ensure_dir(fit_comparison_root)
+    fit_output_manifest: dict[str, dict[str, str]] = {}
+    for fit_key in summary_frames:
+        fit_root = fit_comparison_root / fit_key
+        ensure_dir(fit_root)
+        summary_path = fit_root / "biomarker_qq_summary.csv"
+        detail_path = fit_root / "biomarker_qq_detail.csv"
+        rank_summary_path = fit_root / "biomarker_rank_summary.csv"
+        rank_detail_path = fit_root / "biomarker_rank_detail.csv"
+        summary_frames[fit_key].to_csv(summary_path, index=False)
+        detail_frames[fit_key].to_csv(detail_path, index=False)
+        rank_summary_frames[fit_key].to_csv(rank_summary_path, index=False)
+        rank_detail_frames[fit_key].to_csv(rank_detail_path, index=False)
+        fit_output_manifest[fit_key] = {
+            "qq_summary_csv": str(summary_path),
+            "qq_detail_csv": str(detail_path),
+            "rank_summary_csv": str(rank_summary_path),
+            "rank_detail_csv": str(rank_detail_path),
+            "comparison_root": str(fit_root),
+        }
+
     for biomarker_id, detail_payload in detail_payloads.items():
         detail_path_for_id = out_root / sr_detail_relative_path(biomarker_id)
         ensure_dir(detail_path_for_id.parent)
@@ -943,14 +1281,12 @@ def main() -> None:
         "duration_seconds": round(time.time() - started_at, 2),
         "long_path": str(long_path),
         "out_root": str(out_root),
-        "sr_script_path": str(sr_script_path),
-        "sr_package_root": str(sr_package_root),
-        "sr_source": sr_source,
-        "sr_model": {
-            "n_sim": SR_N_SIM,
-            "tmax": SR_TMAX,
-            "save_times": SR_SAVE_TIMES,
-        },
+        "fit_library_root": str(fit_library_root),
+        "fit_registry_path": str(fit_registry_path),
+        "default_fit_key": default_fit_key,
+        "fit_options": fit_options,
+        "fit_sources": fit_sources,
+        "fit_output_dirs": fit_output_dirs,
         "waterfall_reference_sample_n": int(len(WATERFALL_SAMPLE_PROBABILITIES)),
         "age_bins": AGE_BIN_LABELS,
         "default_trim_mode": DEFAULT_SR_TRIM_MODE,
@@ -961,22 +1297,20 @@ def main() -> None:
         "rank_tail_policy": "trim_biomarker_each_age_bin_then_pool_for_percentile_ranking__sr_untrimmed_alive_only",
         "rank_tie_policy": "deterministic_seeded_random_tie_breaks",
         "min_bin_n": MIN_BIN_N,
-        "biomarker_count": int(summary_df["biomarker_id"].nunique()),
+        "biomarker_count": int(len(detail_payloads)),
         "outputs": {
-            "biomarker_qq_summary_csv": str(summary_path),
-            "biomarker_qq_detail_csv": str(detail_path),
-            "biomarker_rank_summary_csv": str(rank_summary_path),
-            "biomarker_rank_detail_csv": str(rank_detail_path),
+            "fit_outputs": fit_output_manifest,
             "detail_by_biomarker_dir": str(detail_root),
             "dashboard_payload_json": str(payload_path),
         },
     }
     write_json(manifest_path, manifest, pretty=True)
 
-    print(f"Wrote SR summary CSV: {summary_path}")
-    print(f"Wrote SR detail CSV: {detail_path}")
-    print(f"Wrote SR rank summary CSV: {rank_summary_path}")
-    print(f"Wrote SR rank detail CSV: {rank_detail_path}")
+    for fit_key, outputs in fit_output_manifest.items():
+        print(f"[{fit_key}] Wrote SR summary CSV: {outputs['qq_summary_csv']}")
+        print(f"[{fit_key}] Wrote SR detail CSV: {outputs['qq_detail_csv']}")
+        print(f"[{fit_key}] Wrote SR rank summary CSV: {outputs['rank_summary_csv']}")
+        print(f"[{fit_key}] Wrote SR rank detail CSV: {outputs['rank_detail_csv']}")
     print(f"Wrote SR dashboard payload: {payload_path}")
     print(f"Wrote SR run manifest: {manifest_path}")
 

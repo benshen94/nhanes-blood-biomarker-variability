@@ -10,73 +10,73 @@
           "biomarker_id": "testosterone total",
           "display_name": "Testosterone",
           "featured_collection_title": "Hormones & Nutrient Sensing",
-          "median_change_pct_20_24_to_80_84": -87.9003984063745,
-          "cv_change_pct_20_24_to_80_84": 36.68085172512587,
-          "upper_tail_change_pct": 14.331053888688942,
-          "sex_divergence_score": 14.348032505169954
+          "median_change_pct_20_24_to_80_84": -87.92828685258964,
+          "cv_change_pct_20_24_to_80_84": 33.2058356005165,
+          "upper_tail_change_pct": 14.361397479954189,
+          "sex_divergence_score": 14.361057874348298
         },
         {
           "biomarker_id": "estradiol",
           "display_name": "Estradiol",
           "featured_collection_title": "Hormones & Nutrient Sensing",
-          "median_change_pct_20_24_to_80_84": -60.769230769230774,
-          "cv_change_pct_20_24_to_80_84": 3.539439694908135,
-          "upper_tail_change_pct": -71.71296296296296,
-          "sex_divergence_score": 59.409313614921416
+          "median_change_pct_20_24_to_80_84": -60.777713755241834,
+          "cv_change_pct_20_24_to_80_84": -11.993077453548404,
+          "upper_tail_change_pct": -77.07625985405177,
+          "sex_divergence_score": 59.144161355070544
         },
         {
           "biomarker_id": "creatine phosphokinase cpk",
           "display_name": "Creatine kinase",
           "featured_collection_title": "Blood & Oxygen",
-          "median_change_pct_20_24_to_80_84": -30.89430894308943,
-          "cv_change_pct_20_24_to_80_84": -18.43886447195572,
-          "upper_tail_change_pct": -48.38709677419355,
-          "sex_divergence_score": 13.334180690426562
+          "median_change_pct_20_24_to_80_84": -30.327868852459016,
+          "cv_change_pct_20_24_to_80_84": -21.448925471976697,
+          "upper_tail_change_pct": -48.86075949367091,
+          "sex_divergence_score": 13.480349789008084
         },
         {
           "biomarker_id": "lymphocyte number",
           "display_name": "Lymphocytes",
           "featured_collection_title": "Inflammation",
           "median_change_pct_20_24_to_80_84": -22.727272727272734,
-          "cv_change_pct_20_24_to_80_84": 23.078980210881742,
-          "upper_tail_change_pct": 16.66666666666673,
-          "sex_divergence_score": 2.5974025974025965
+          "cv_change_pct_20_24_to_80_84": 25.121205838182302,
+          "upper_tail_change_pct": 14.285714285714334,
+          "sex_divergence_score": 2.24775224775225
         },
         {
           "biomarker_id": "alt",
           "display_name": "ALT",
           "featured_collection_title": "Metabolism",
           "median_change_pct_20_24_to_80_84": -20.0,
-          "cv_change_pct_20_24_to_80_84": -41.58821860302609,
-          "upper_tail_change_pct": -60.0,
-          "sex_divergence_score": 14.607515246901436
-        },
-        {
-          "biomarker_id": "total bilirubin",
-          "display_name": "Total bilirubin",
-          "featured_collection_title": "Kidney & Reserve",
-          "median_change_pct_20_24_to_80_84": -16.666666666666664,
-          "cv_change_pct_20_24_to_80_84": -2.957676121523366,
-          "upper_tail_change_pct": 0.0,
-          "sex_divergence_score": 0.0
+          "cv_change_pct_20_24_to_80_84": -44.70005750202383,
+          "upper_tail_change_pct": -60.97560975609756,
+          "sex_divergence_score": 15.050167224080267
         },
         {
           "biomarker_id": "lymphocyte percent",
           "display_name": "Lymphocyte percentage",
           "featured_collection_title": "Inflammation",
-          "median_change_pct_20_24_to_80_84": -16.129032258064516,
-          "cv_change_pct_20_24_to_80_84": 20.892125138325444,
-          "upper_tail_change_pct": 5.750000000000188,
-          "sex_divergence_score": 4.98839221139361
+          "median_change_pct_20_24_to_80_84": -16.398713826366563,
+          "cv_change_pct_20_24_to_80_84": 19.23646357620047,
+          "upper_tail_change_pct": 3.12499999999997,
+          "sex_divergence_score": 5.168949917419994
+        },
+        {
+          "biomarker_id": "free t3",
+          "display_name": "Free T3",
+          "featured_collection_title": "Hormones & Nutrient Sensing",
+          "median_change_pct_20_24_to_80_84": -14.705882352941178,
+          "cv_change_pct_20_24_to_80_84": -15.915147578766165,
+          "upper_tail_change_pct": -44.99999999999994,
+          "sex_divergence_score": 2.890955198647507
         },
         {
           "biomarker_id": "platelet count",
           "display_name": "Platelet count",
           "featured_collection_title": "Blood & Oxygen",
           "median_change_pct_20_24_to_80_84": -13.580246913580247,
-          "cv_change_pct_20_24_to_80_84": 22.48268427521448,
-          "upper_tail_change_pct": 1.8181818181818181,
-          "sex_divergence_score": 1.3865394300176894
+          "cv_change_pct_20_24_to_80_84": 23.8833148344538,
+          "upper_tail_change_pct": 1.4925373134328357,
+          "sex_divergence_score": 1.3382445991141638
         }
       ]
     },
@@ -87,76 +87,76 @@
       "view": "tail",
       "items": [
         {
+          "biomarker_id": "glycohemoglobin",
+          "display_name": "HbA1c",
+          "featured_collection_title": "Metabolism",
+          "median_change_pct_20_24_to_80_84": 9.615384615384615,
+          "cv_change_pct_20_24_to_80_84": 37.093454139952854,
+          "upper_tail_change_pct": 66.66666666666676,
+          "sex_divergence_score": 0.7396449704142002
+        },
+        {
           "biomarker_id": "alt",
           "display_name": "ALT",
           "featured_collection_title": "Metabolism",
           "median_change_pct_20_24_to_80_84": -20.0,
-          "cv_change_pct_20_24_to_80_84": -41.58821860302609,
-          "upper_tail_change_pct": -60.0,
-          "sex_divergence_score": 14.607515246901436
+          "cv_change_pct_20_24_to_80_84": -44.70005750202383,
+          "upper_tail_change_pct": -60.97560975609756,
+          "sex_divergence_score": 15.050167224080267
+        },
+        {
+          "biomarker_id": "protein total",
+          "display_name": "Total protein",
+          "featured_collection_title": "Kidney & Reserve",
+          "median_change_pct_20_24_to_80_84": -5.194805194805188,
+          "cv_change_pct_20_24_to_80_84": 40.98794057390769,
+          "upper_tail_change_pct": 60.00000000000008,
+          "sex_divergence_score": 1.845219557770157
         },
         {
           "biomarker_id": "ast",
           "display_name": "AST",
           "featured_collection_title": "Metabolism",
           "median_change_pct_20_24_to_80_84": 4.761904761904762,
-          "cv_change_pct_20_24_to_80_84": -39.375698250882536,
-          "upper_tail_change_pct": -50.0,
-          "sex_divergence_score": 7.74829873374107
+          "cv_change_pct_20_24_to_80_84": -43.69425782612637,
+          "upper_tail_change_pct": -54.54545454545454,
+          "sex_divergence_score": 8.729757085020244
         },
         {
-          "biomarker_id": "red cell distribution width",
-          "display_name": "RDW",
-          "featured_collection_title": "Blood & Oxygen",
-          "median_change_pct_20_24_to_80_84": 6.2992125984252025,
-          "cv_change_pct_20_24_to_80_84": 20.322324266634343,
-          "upper_tail_change_pct": 44.444444444444464,
-          "sex_divergence_score": 1.490003052503057
-        },
-        {
-          "biomarker_id": "creatinine",
-          "display_name": "Creatinine",
+          "biomarker_id": "bicarbonate",
+          "display_name": "Bicarbonate / CO2",
           "featured_collection_title": "Kidney & Reserve",
-          "median_change_pct_20_24_to_80_84": 19.9943438914027,
-          "cv_change_pct_20_24_to_80_84": 22.02565768544278,
-          "upper_tail_change_pct": 44.02714932126685,
-          "sex_divergence_score": 2.3085365777369686
+          "median_change_pct_20_24_to_80_84": 4.0,
+          "cv_change_pct_20_24_to_80_84": 6.317453596498747,
+          "upper_tail_change_pct": 50.0,
+          "sex_divergence_score": 5.670611439842206
         },
         {
-          "biomarker_id": "direct hdl-cholesterol",
-          "display_name": "HDL-C",
+          "biomarker_id": "free t3",
+          "display_name": "Free T3",
+          "featured_collection_title": "Hormones & Nutrient Sensing",
+          "median_change_pct_20_24_to_80_84": -14.705882352941178,
+          "cv_change_pct_20_24_to_80_84": -15.915147578766165,
+          "upper_tail_change_pct": -44.99999999999994,
+          "sex_divergence_score": 2.890955198647507
+        },
+        {
+          "biomarker_id": "apolipoprotein b",
+          "display_name": "ApoB",
           "featured_collection_title": "Metabolism",
-          "median_change_pct_20_24_to_80_84": 11.0,
-          "cv_change_pct_20_24_to_80_84": 13.985368668185522,
-          "upper_tail_change_pct": 34.953940634595796,
-          "sex_divergence_score": 5.816270184463136
+          "median_change_pct_20_24_to_80_84": 18.9873417721519,
+          "cv_change_pct_20_24_to_80_84": -22.79247395126111,
+          "upper_tail_change_pct": -38.46153846153841,
+          "sex_divergence_score": 7.440730001705609
         },
         {
-          "biomarker_id": "glycohemoglobin",
-          "display_name": "HbA1c",
-          "featured_collection_title": "Metabolism",
-          "median_change_pct_20_24_to_80_84": 9.615384615384615,
-          "cv_change_pct_20_24_to_80_84": 26.577693264274583,
-          "upper_tail_change_pct": 33.333333333333236,
-          "sex_divergence_score": 0.5917159763313623
-        },
-        {
-          "biomarker_id": "potassium",
-          "display_name": "Potassium",
+          "biomarker_id": "chloride",
+          "display_name": "Chloride",
           "featured_collection_title": "Kidney & Reserve",
-          "median_change_pct_20_24_to_80_84": 7.6923076923077,
-          "cv_change_pct_20_24_to_80_84": 24.722655969482688,
-          "upper_tail_change_pct": 33.33333333333304,
-          "sex_divergence_score": 0.6905818540433936
-        },
-        {
-          "biomarker_id": "insulin",
-          "display_name": "Fasting insulin",
-          "featured_collection_title": "Metabolism",
-          "median_change_pct_20_24_to_80_84": -10.828025477707003,
-          "cv_change_pct_20_24_to_80_84": -14.201447722753507,
-          "upper_tail_change_pct": -31.310942578548207,
-          "sex_divergence_score": 18.22418577132734
+          "median_change_pct_20_24_to_80_84": -1.0669253152279286,
+          "cv_change_pct_20_24_to_80_84": 21.71665447395262,
+          "upper_tail_change_pct": 37.93103448275835,
+          "sex_divergence_score": 0.5628482794278155
         }
       ]
     },
@@ -170,28 +170,28 @@
           "biomarker_id": "nt-probnp",
           "display_name": "NT-proBNP",
           "featured_collection_title": "Cardiovascular Stress",
-          "median_change_pct_20_24_to_80_84": 662.0578778135048,
-          "cv_change_pct_20_24_to_80_84": 13.656029854481055,
-          "upper_tail_change_pct": 774.1009567799405,
-          "sex_divergence_score": 201.322462250495
+          "median_change_pct_20_24_to_80_84": 697.644089188052,
+          "cv_change_pct_20_24_to_80_84": 8.127619007402037,
+          "upper_tail_change_pct": 868.4266952559631,
+          "sex_divergence_score": 165.62413676763524
         },
         {
           "biomarker_id": "c-reactive protein",
           "display_name": "CRP",
           "featured_collection_title": "Inflammation",
           "median_change_pct_20_24_to_80_84": 100.0,
-          "cv_change_pct_20_24_to_80_84": -23.13672301298509,
-          "upper_tail_change_pct": -4.571428571428464,
-          "sex_divergence_score": 70.61651583710407
+          "cv_change_pct_20_24_to_80_84": -19.541509241361908,
+          "upper_tail_change_pct": -2.2222222222222237,
+          "sex_divergence_score": 62.01923076923077
         },
         {
           "biomarker_id": "estradiol",
           "display_name": "Estradiol",
           "featured_collection_title": "Hormones & Nutrient Sensing",
-          "median_change_pct_20_24_to_80_84": -60.769230769230774,
-          "cv_change_pct_20_24_to_80_84": 3.539439694908135,
-          "upper_tail_change_pct": -71.71296296296296,
-          "sex_divergence_score": 59.409313614921416
+          "median_change_pct_20_24_to_80_84": -60.777713755241834,
+          "cv_change_pct_20_24_to_80_84": -11.993077453548404,
+          "upper_tail_change_pct": -77.07625985405177,
+          "sex_divergence_score": 59.144161355070544
         },
         {
           "biomarker_id": "c-peptide",
@@ -209,7 +209,7 @@
           "median_change_pct_20_24_to_80_84": null,
           "cv_change_pct_20_24_to_80_84": null,
           "upper_tail_change_pct": null,
-          "sex_divergence_score": 43.79991593106346
+          "sex_divergence_score": 51.69044361930818
         },
         {
           "biomarker_id": "cd4 counts",
@@ -225,18 +225,18 @@
           "display_name": "High-sensitivity troponin",
           "featured_collection_title": "Cardiovascular Stress",
           "median_change_pct_20_24_to_80_84": 247.19271623672233,
-          "cv_change_pct_20_24_to_80_84": 3.854507510862949,
-          "upper_tail_change_pct": 191.93020719738274,
-          "sex_divergence_score": 31.854781397464304
+          "cv_change_pct_20_24_to_80_84": 13.929013890695451,
+          "upper_tail_change_pct": 249.76122254059194,
+          "sex_divergence_score": 32.045596679743
         },
         {
           "biomarker_id": "high-sensitivity c-reactive protein hs-crp",
           "display_name": "hs-CRP",
           "featured_collection_title": "Inflammation",
           "median_change_pct_20_24_to_80_84": 45.00000000000001,
-          "cv_change_pct_20_24_to_80_84": -21.534264274690575,
-          "upper_tail_change_pct": -15.634920634920663,
-          "sex_divergence_score": 31.463800904977372
+          "cv_change_pct_20_24_to_80_84": -16.84247426610242,
+          "upper_tail_change_pct": -14.033613445378174,
+          "sex_divergence_score": 31.34841628959276
         }
       ]
     }
