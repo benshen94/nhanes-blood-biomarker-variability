@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script>
-    window.PUBLIC_GA4_MEASUREMENT_ID = "G-EG5VWPN3D8";
+    window.PUBLIC_GA4_MEASUREMENT_ID = "";
     window.dataLayer = window.dataLayer || [];
 
     window.gtag = window.gtag || function gtag() {
@@ -91,7 +91,8 @@
 
     button,
     input,
-    select {
+    select,
+    textarea {
       font: inherit;
     }
 
@@ -652,6 +653,7 @@
     input[type="text"],
     input[type="number"],
     input[type="date"],
+    textarea,
     select {
       width: 100%;
       min-height: var(--control-h);
@@ -661,6 +663,11 @@
       background: rgba(252, 248, 241, 0.92);
       color: var(--ink);
       box-shadow: inset 0 1px 2px rgba(23, 36, 50, 0.03);
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
     }
 
     select[multiple] {
@@ -1664,6 +1671,7 @@
         <button id="tab-surprising" class="tab-btn" data-tab="surprising" type="button">What’s Surprising?</button>
         <button id="tab-compare" class="tab-btn" data-tab="compare" type="button">Compare Biomarkers</button>
         <button id="tab-calculator" class="tab-btn" data-tab="calculator" type="button">Blood Age</button>
+        <button id="tab-feedback" class="tab-btn" data-tab="feedback" type="button">Feedback</button>
         <button id="tab-about" class="tab-btn" data-tab="about" type="button">About the Data</button>
       </div>
       <div class="toolbar-actions">
@@ -1701,7 +1709,7 @@
               </button>
               <button class="tab-summary-card" data-tab-jump="disease" type="button">
                 <strong>Disease Explorer</strong>
-                <span>Compare healthy participants with selected disease groups for one biomarker at a time.</span>
+                <span>Compare a disease against the healthy baseline, or put two disease groups on the same biomarker.</span>
               </button>
               <button class="tab-summary-card" data-tab-jump="rankings" type="button">
                 <strong>What Changes Most?</strong>
@@ -1718,6 +1726,10 @@
               <button class="tab-summary-card" data-tab-jump="calculator" type="button">
                 <strong>Blood Age</strong>
                 <span>Try the open PhenoAge calculator and read the caveats in plain language.</span>
+              </button>
+              <button class="tab-summary-card" data-tab-jump="feedback" type="button">
+                <strong>Feedback</strong>
+                <span>Send missing ideas, bugs, and feature requests straight to Ben.</span>
               </button>
             </div>
           </article>
@@ -1836,11 +1848,15 @@
           <aside class="disease-rail">
             <div class="rail-block">
               <div class="section-kicker">Choose a condition</div>
-              <h3>Healthy baseline vs selected disease group</h3>
+              <h3>Healthy baseline, or disease vs disease</h3>
               <p class="rail-copy">
-                Each disease cohort comes from the processed NHANES participant flags. People in the disease group can still have other comorbidities, so this is a broad population comparison rather than a clean case-control study.
+                Each disease cohort comes from the processed NHANES participant flags. Leave the second selector on healthy baseline for the classic view, or pick a second condition to compare two disease groups directly.
               </p>
               <div id="disease-condition-list" class="condition-list"></div>
+              <label class="control-label" for="disease-compare-select">Second group</label>
+              <select id="disease-compare-select">
+                <option value="">Healthy baseline</option>
+              </select>
             </div>
 
             <div class="rail-block">
@@ -2232,6 +2248,44 @@
         </div>
       </section>
 
+      <section id="panel-feedback" class="panel reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Tell us what is missing</div>
+            <h2>Feedback</h2>
+            <p>
+              If something feels confusing, missing, or especially useful, send it over. This opens a prefilled email draft to Ben.
+            </p>
+          </div>
+        </div>
+
+        <div class="editorial-grid">
+          <article class="note-card">
+            <div class="section-kicker">Quick prompts</div>
+            <h3>What would make this more useful?</h3>
+            <div class="chip-cloud">
+              <button class="chip-btn" data-feedback-prompt="A biomarker or disease comparison I wish were included" type="button">Missing biomarker</button>
+              <button class="chip-btn" data-feedback-prompt="A feature or interaction that would make this dashboard easier to use" type="button">Missing feature</button>
+              <button class="chip-btn" data-feedback-prompt="A bug or confusing part of the dashboard I ran into" type="button">Bug or confusion</button>
+              <button class="chip-btn" data-feedback-prompt="A result or pattern I found interesting and worth highlighting" type="button">Interesting finding</button>
+            </div>
+          </article>
+
+          <article class="note-card">
+            <div class="section-kicker">Send a note</div>
+            <h3>Email feedback</h3>
+            <label class="control-label" for="feedback-subject">Subject</label>
+            <input id="feedback-subject" type="text" placeholder="What should we add or fix?" autocomplete="off" spellcheck="false" />
+            <label class="control-label" for="feedback-message">Message</label>
+            <textarea id="feedback-message" rows="8" placeholder="Tell us what you were looking for, what felt missing, or what broke."></textarea>
+            <div class="toolbar-actions" style="margin-top:1rem; justify-content:flex-start;">
+              <button id="feedback-email-btn" class="ghost-btn primary" type="button">Open email draft</button>
+              <a class="ghost-btn" href="mailto:benshenhar@gmail.com?subject=Biomarker%20dashboard%20feedback">Email directly</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section id="panel-about" class="panel reveal">
         <div class="section-head">
           <div>
@@ -2311,7 +2365,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1775496987";
+    const DATA_VERSION = "1775566567";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -2367,6 +2421,7 @@
       exploreId: "",
       exploreCollection: "all",
       diseaseCondition: "",
+      diseaseCompareCondition: "",
       diseaseBiomarkerId: "",
       cohort: "both",
       trim: "trim_5_95",
@@ -2692,6 +2747,7 @@
       params.set("tab", state.tab);
       params.set("biomarker", state.exploreId);
       params.set("diseaseCondition", state.diseaseCondition);
+      params.set("diseaseCompare", state.diseaseCompareCondition);
       params.set("diseaseBiomarker", state.diseaseBiomarkerId);
       params.set("cohort", state.cohort);
       params.set("trim", state.trim);
@@ -2717,6 +2773,7 @@
       const tab = params.get("tab");
       const biomarker = params.get("biomarker");
       const diseaseCondition = params.get("diseaseCondition");
+      const diseaseCompare = params.get("diseaseCompare");
       const diseaseBiomarker = params.get("diseaseBiomarker");
       const cohort = params.get("cohort");
       const trim = params.get("trim");
@@ -2725,7 +2782,7 @@
       const compareMode = params.get("compareMode");
       const compare = params.get("compare");
 
-      if (tab && ["start", "explore", "disease", "rankings", "surprising", "compare", "calculator", "about"].includes(tab)) {
+      if (tab && ["start", "explore", "disease", "rankings", "surprising", "compare", "calculator", "feedback", "about"].includes(tab)) {
         state.tab = tab;
       }
       if (biomarker && state.manifestById.has(biomarker)) {
@@ -2733,6 +2790,9 @@
       }
       if (diseaseCondition && state.diseaseIndexByKey.has(diseaseCondition)) {
         state.diseaseCondition = diseaseCondition;
+      }
+      if (diseaseCompare && state.diseaseIndexByKey.has(diseaseCompare)) {
+        state.diseaseCompareCondition = diseaseCompare;
       }
       if (diseaseBiomarker && state.manifestById.has(diseaseBiomarker)) {
         state.diseaseBiomarkerId = diseaseBiomarker;
@@ -2790,6 +2850,10 @@
 
       if (!state.diseaseBiomarkerId) {
         state.diseaseBiomarkerId = "";
+      }
+
+      if (state.diseaseCompareCondition === state.diseaseCondition) {
+        state.diseaseCompareCondition = "";
       }
     }
 
@@ -2879,21 +2943,37 @@
         .join("");
     }
 
-    function diseaseDefaultIds(conditionMeta, diseasePayload) {
-      const payloadIds = new Set((diseasePayload?.biomarkers || []).map((entry) => entry.biomarker_id));
-      return (conditionMeta?.default_biomarker_ids || []).filter((biomarkerId) => payloadIds.has(biomarkerId));
+    function activeDiseaseComparisonMode() {
+      return state.diseaseCompareCondition ? "condition_vs_condition" : "healthy_vs_condition";
     }
 
-    function firstDiseaseDefaultId(conditionMeta, diseasePayload) {
-      const ids = diseaseDefaultIds(conditionMeta, diseasePayload);
+    function activeDiseaseBiomarkerIds(primaryPayload, secondaryPayload = null) {
+      const primaryIds = new Set((primaryPayload?.biomarkers || []).map((entry) => entry.biomarker_id));
+      if (!secondaryPayload) {
+        return primaryIds;
+      }
+
+      const secondaryIds = new Set((secondaryPayload?.biomarkers || []).map((entry) => entry.biomarker_id));
+      return new Set([...primaryIds].filter((biomarkerId) => secondaryIds.has(biomarkerId)));
+    }
+
+    function diseaseDefaultIds(conditionMeta, primaryPayload, secondaryPayload = null) {
+      const allowedIds = activeDiseaseBiomarkerIds(primaryPayload, secondaryPayload);
+      return (conditionMeta?.default_biomarker_ids || []).filter((biomarkerId) => allowedIds.has(biomarkerId));
+    }
+
+    function firstDiseaseDefaultId(conditionMeta, primaryPayload, secondaryPayload = null) {
+      const ids = diseaseDefaultIds(conditionMeta, primaryPayload, secondaryPayload);
       if (ids.length) {
         return ids[0];
       }
-      return diseasePayload?.biomarkers?.[0]?.biomarker_id || "";
+
+      const allowedIds = activeDiseaseBiomarkerIds(primaryPayload, secondaryPayload);
+      return [...allowedIds][0] || "";
     }
 
-    function renderDiseaseDefaultChips(conditionMeta, diseasePayload) {
-      const ids = diseaseDefaultIds(conditionMeta, diseasePayload);
+    function renderDiseaseDefaultChips(conditionMeta, primaryPayload, secondaryPayload = null) {
+      const ids = diseaseDefaultIds(conditionMeta, primaryPayload, secondaryPayload);
       refs.diseaseDefaultTitle.textContent = conditionMeta?.default_title || "Start with familiar markers";
       refs.diseaseDefaultSummary.textContent = conditionMeta?.default_summary || "";
       refs.diseaseDefaultChips.innerHTML = ids
@@ -2906,6 +2986,17 @@
           return `<button class="chip-btn ${active}" data-open-disease-id="${biomarkerId}" type="button">${entry.display_name}</button>`;
         })
         .join("");
+    }
+
+    function populateDiseaseCompareSelect() {
+      const options = ['<option value="">Healthy baseline</option>']
+        .concat(
+          state.diseaseIndex.map((condition) => {
+            const selected = condition.key === state.diseaseCompareCondition ? "selected" : "";
+            return `<option value="${condition.key}" ${selected}>${condition.title}</option>`;
+          })
+        );
+      refs.diseaseCompareSelect.innerHTML = options.join("");
     }
 
     function renderSurprisingPanel() {
@@ -3601,9 +3692,10 @@
         .join("");
     }
 
-    function diseaseEntries(diseasePayload) {
+    function diseaseEntries(primaryPayload, secondaryPayload = null) {
       const search = normalizeText(refs.diseaseSearch.value);
-      const biomarkers = diseasePayload?.biomarkers || [];
+      const allowedIds = activeDiseaseBiomarkerIds(primaryPayload, secondaryPayload);
+      const biomarkers = (primaryPayload?.biomarkers || []).filter((entry) => allowedIds.has(entry.biomarker_id));
       return biomarkers
         .filter((entry) => {
           if (!search) {
@@ -3622,8 +3714,8 @@
         });
     }
 
-    function renderDiseaseBiomarkerList(diseasePayload) {
-      const entries = diseaseEntries(diseasePayload);
+    function renderDiseaseBiomarkerList(primaryPayload, secondaryPayload = null) {
+      const entries = diseaseEntries(primaryPayload, secondaryPayload);
       refs.diseaseList.innerHTML = entries
         .map((entry) => `
           <button class="marker-item ${entry.biomarker_id === state.diseaseBiomarkerId ? "active" : ""}" data-open-disease-id="${entry.biomarker_id}" type="button">
@@ -3664,15 +3756,41 @@
       return group?.raw_total_n_by_sex?.[state.cohort] || 0;
     }
 
-    function medianGapAtAgeBin(record, ageBin) {
-      const healthyLookup = pointLookup(getDiseaseGroupPoints(record, "healthy"));
-      const conditionLookup = pointLookup(getDiseaseGroupPoints(record, "condition"));
-      const healthyPoint = healthyLookup.get(ageBin);
-      const conditionPoint = conditionLookup.get(ageBin);
-      if (!Number.isFinite(healthyPoint?.median) || !Number.isFinite(conditionPoint?.median)) {
+    function diseaseComparisonConfig(primaryMeta, secondaryMeta = null) {
+      if (secondaryMeta) {
+        return {
+          firstKey: "condition",
+          firstLabel: primaryMeta.title,
+          secondKey: "condition",
+          secondLabel: secondaryMeta.title,
+          firstColor: COLORS.teal,
+          secondColor: COLORS.rust,
+          firstFill: "rgba(15, 103, 97, 0.12)",
+          secondFill: "rgba(182, 88, 58, 0.14)",
+        };
+      }
+
+      return {
+        firstKey: "healthy",
+        firstLabel: "Healthy baseline",
+        secondKey: "condition",
+        secondLabel: primaryMeta.title,
+        firstColor: COLORS.teal,
+        secondColor: COLORS.rust,
+        firstFill: "rgba(15, 103, 97, 0.12)",
+        secondFill: "rgba(182, 88, 58, 0.14)",
+      };
+    }
+
+    function medianGapAtAgeBin(firstRecord, secondRecord, ageBin, firstGroupKey, secondGroupKey) {
+      const firstLookup = pointLookup(getDiseaseGroupPoints(firstRecord, firstGroupKey));
+      const secondLookup = pointLookup(getDiseaseGroupPoints(secondRecord, secondGroupKey));
+      const firstPoint = firstLookup.get(ageBin);
+      const secondPoint = secondLookup.get(ageBin);
+      if (!Number.isFinite(firstPoint?.median) || !Number.isFinite(secondPoint?.median)) {
         return null;
       }
-      return conditionPoint.median - healthyPoint.median;
+      return secondPoint.median - firstPoint.median;
     }
 
     function formatSignedValue(value, unit = "", digits = 1) {
@@ -3717,32 +3835,32 @@
       return traces;
     }
 
-    function renderDiseaseSummaryStrip(conditionMeta, record) {
+    function renderDiseaseSummaryStrip(comparison, firstRecord, secondRecord) {
       if (state.cohort === "both") {
         refs.diseaseSummaryStrip.innerHTML = [
           {
-            label: "Healthy female n",
-            value: formatCount(record?.groups?.healthy?.raw_total_n_by_sex?.female || 0),
-            note: "female healthy observations",
+            label: `${comparison.firstLabel} female n`,
+            value: formatCount(firstRecord?.groups?.[comparison.firstKey]?.raw_total_n_by_sex?.female || 0),
+            note: "female observations",
           },
           {
-            label: "Healthy male n",
-            value: formatCount(record?.groups?.healthy?.raw_total_n_by_sex?.male || 0),
-            note: "male healthy observations",
+            label: `${comparison.firstLabel} male n`,
+            value: formatCount(firstRecord?.groups?.[comparison.firstKey]?.raw_total_n_by_sex?.male || 0),
+            note: "male observations",
           },
           {
-            label: `${conditionMeta.title} female n`,
-            value: formatCount(record?.groups?.condition?.raw_total_n_by_sex?.female || 0),
-            note: "female condition observations",
+            label: `${comparison.secondLabel} female n`,
+            value: formatCount(secondRecord?.groups?.[comparison.secondKey]?.raw_total_n_by_sex?.female || 0),
+            note: "female observations",
           },
           {
-            label: `${conditionMeta.title} male n`,
-            value: formatCount(record?.groups?.condition?.raw_total_n_by_sex?.male || 0),
-            note: "male condition observations",
+            label: `${comparison.secondLabel} male n`,
+            value: formatCount(secondRecord?.groups?.[comparison.secondKey]?.raw_total_n_by_sex?.male || 0),
+            note: "male observations",
           },
           {
             label: "View mode",
-            value: "Both",
+            value: activeDiseaseComparisonMode() === "healthy_vs_condition" ? "Healthy vs disease" : "Disease vs disease",
             note: "female red, male blue",
           },
         ]
@@ -3759,29 +3877,38 @@
 
       refs.diseaseSummaryStrip.innerHTML = [
         {
-          label: "Healthy sample count",
-          value: formatCount(getDiseaseGroupCount(record, "healthy")),
-          note: `${state.cohort} healthy observations`,
+          label: `${comparison.firstLabel} sample count`,
+          value: formatCount(getDiseaseGroupCount(firstRecord, comparison.firstKey)),
+          note: `${state.cohort} observations`,
         },
         {
-          label: `${conditionMeta.title} sample count`,
-          value: formatCount(getDiseaseGroupCount(record, "condition")),
-          note: `${state.cohort} condition observations`,
+          label: `${comparison.secondLabel} sample count`,
+          value: formatCount(getDiseaseGroupCount(secondRecord, comparison.secondKey)),
+          note: `${state.cohort} observations`,
         },
         {
           label: "40s median gap",
-          value: formatSignedValue(medianGapAtAgeBin(record, "40-44"), record.unit),
-          note: `${conditionMeta.title} minus healthy`,
+          value: formatSignedValue(
+            medianGapAtAgeBin(firstRecord, secondRecord, "40-44", comparison.firstKey, comparison.secondKey),
+            secondRecord.unit
+          ),
+          note: `${comparison.secondLabel} minus ${comparison.firstLabel}`,
         },
         {
           label: "60s median gap",
-          value: formatSignedValue(medianGapAtAgeBin(record, "60-64"), record.unit),
-          note: `${conditionMeta.title} minus healthy`,
+          value: formatSignedValue(
+            medianGapAtAgeBin(firstRecord, secondRecord, "60-64", comparison.firstKey, comparison.secondKey),
+            secondRecord.unit
+          ),
+          note: `${comparison.secondLabel} minus ${comparison.firstLabel}`,
         },
         {
           label: "80s median gap",
-          value: formatSignedValue(medianGapAtAgeBin(record, "80-84"), record.unit),
-          note: `${conditionMeta.title} minus healthy`,
+          value: formatSignedValue(
+            medianGapAtAgeBin(firstRecord, secondRecord, "80-84", comparison.firstKey, comparison.secondKey),
+            secondRecord.unit
+          ),
+          note: `${comparison.secondLabel} minus ${comparison.firstLabel}`,
         },
       ]
         .map((item) => `
@@ -3794,10 +3921,12 @@
         .join("");
     }
 
-    function renderDiseaseTech(conditionMeta, record) {
+    function renderDiseaseTech(primaryMeta, secondMeta, record) {
       const facts = [
-        ["Condition", conditionMeta.title],
-        ["Definition", conditionMeta.source || "Condition definition not provided"],
+        ["Primary group", primaryMeta.title],
+        ["Primary definition", primaryMeta.source || "Condition definition not provided"],
+        ["Comparison group", secondMeta ? secondMeta.title : "Healthy baseline"],
+        ["Comparison definition", secondMeta ? secondMeta.source : "Healthy reference cohort from the main dashboard"],
         ["Biomarker", record.chart_display_name],
         ["Collection", record.featured_collection_title],
         ["Aging domain", record.aging_domain || "General aging"],
@@ -3816,20 +3945,22 @@
         .join("");
     }
 
-    function buildDiseaseBothSexTraces(record, conditionMeta) {
+    function buildDiseaseBothSexTraces(firstRecord, secondRecord, comparison) {
       const traces = [];
 
       ["female", "male"].forEach((sex) => {
-        const healthyPoints = getDiseaseGroupPointsForSex(record, "healthy", sex);
-        const conditionPoints = getDiseaseGroupPointsForSex(record, "condition", sex);
-        if (!healthyPoints.length || !conditionPoints.length) {
+        const firstPoints = getDiseaseGroupPointsForSex(firstRecord, comparison.firstKey, sex);
+        const secondPoints = getDiseaseGroupPointsForSex(secondRecord, comparison.secondKey, sex);
+        if (!firstPoints.length || !secondPoints.length) {
           return;
         }
 
         const color = cohortColor(sex);
         const label = cohortLabel(sex);
-        traces.push(lineTraceFromPoints(healthyPoints, "median", `Healthy ${label}`, color, "dot"));
-        traces.push(lineTraceFromPoints(conditionPoints, "median", `${conditionMeta.title} ${label}`, color));
+        const firstDash = activeDiseaseComparisonMode() === "healthy_vs_condition" ? "dot" : "solid";
+        const secondDash = activeDiseaseComparisonMode() === "healthy_vs_condition" ? "solid" : "dash";
+        traces.push(lineTraceFromPoints(firstPoints, "median", `${comparison.firstLabel} ${label}`, color, firstDash));
+        traces.push(lineTraceFromPoints(secondPoints, "median", `${comparison.secondLabel} ${label}`, color, secondDash));
       });
 
       return traces;
@@ -3849,24 +3980,40 @@
         refs.diseaseDefaultChips.innerHTML = "";
         refs.diseaseConditionNote.textContent = "";
         refs.diseaseTech.innerHTML = "";
-        setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
+        populateDiseaseCompareSelect();
+        setDiseaseAnnotation("This tab can compare healthy vs disease, or two disease cohorts directly.");
         return;
       }
 
       renderDiseaseConditionList();
+      populateDiseaseCompareSelect();
       try {
-        const payload = await loadDiseaseCondition(state.diseaseCondition);
-        const conditionMeta = payload?.condition || getDiseaseConditionMeta(state.diseaseCondition);
-        const biomarkerLookup = new Map((payload?.biomarkers || []).map((entry) => [entry.biomarker_id, entry]));
+        const [primaryPayload, secondaryPayload] = await Promise.all([
+          loadDiseaseCondition(state.diseaseCondition),
+          state.diseaseCompareCondition ? loadDiseaseCondition(state.diseaseCompareCondition) : Promise.resolve(null),
+        ]);
+        const primaryMeta = primaryPayload?.condition || getDiseaseConditionMeta(state.diseaseCondition);
+        const secondaryMeta = secondaryPayload?.condition || getDiseaseConditionMeta(state.diseaseCompareCondition);
+        const allowedIds = activeDiseaseBiomarkerIds(primaryPayload, secondaryPayload);
+        const biomarkerLookup = new Map(
+          (primaryPayload?.biomarkers || [])
+            .filter((entry) => allowedIds.has(entry.biomarker_id))
+            .map((entry) => [entry.biomarker_id, entry])
+        );
+        const secondaryLookup = new Map((secondaryPayload?.biomarkers || []).map((entry) => [entry.biomarker_id, entry]));
+
         if (!biomarkerLookup.has(state.diseaseBiomarkerId)) {
-          state.diseaseBiomarkerId = firstDiseaseDefaultId(conditionMeta, payload);
+          state.diseaseBiomarkerId = firstDiseaseDefaultId(primaryMeta, primaryPayload, secondaryPayload);
         }
 
-        renderDiseaseDefaultChips(conditionMeta, payload);
-        renderDiseaseBiomarkerList(payload);
+        renderDiseaseDefaultChips(primaryMeta, primaryPayload, secondaryPayload);
+        renderDiseaseBiomarkerList(primaryPayload, secondaryPayload);
 
-        const record = biomarkerLookup.get(state.diseaseBiomarkerId);
-        if (!record || !conditionMeta) {
+        const primaryRecord = biomarkerLookup.get(state.diseaseBiomarkerId);
+        const secondRecord = secondaryPayload
+          ? secondaryLookup.get(state.diseaseBiomarkerId)
+          : primaryRecord;
+        if (!primaryRecord || !secondRecord || !primaryMeta) {
           renderChartEmpty(refs.diseasePlot, "Choose a biomarker to compare against the selected disease cohort.");
           refs.diseaseSummaryStrip.innerHTML = "";
           refs.diseaseDefaultTitle.textContent = "";
@@ -3874,33 +4021,36 @@
           refs.diseaseDefaultChips.innerHTML = "";
           refs.diseaseTech.innerHTML = "";
           refs.diseaseConditionNote.textContent = "";
-          setDiseaseAnnotation("This tab compares the healthy baseline against one selected disease cohort at a time.");
+          setDiseaseAnnotation("This tab can compare healthy vs disease, or two disease cohorts directly.");
           return;
         }
 
-        const healthyPoints = getDiseaseGroupPoints(record, "healthy");
-        const conditionPoints = getDiseaseGroupPoints(record, "condition");
-        refs.diseaseConditionNote.textContent = `${conditionMeta.kicker} | ${conditionMeta.source}`;
+        const comparison = diseaseComparisonConfig(primaryMeta, secondaryMeta);
+        const firstPoints = getDiseaseGroupPoints(primaryRecord, comparison.firstKey);
+        const secondPoints = getDiseaseGroupPoints(secondRecord, comparison.secondKey);
+        refs.diseaseConditionNote.textContent = secondaryMeta
+          ? `${primaryMeta.kicker} vs ${secondaryMeta.kicker}`
+          : `${primaryMeta.kicker} | ${primaryMeta.source}`;
 
-        if (state.cohort !== "both" && (!healthyPoints.length || !conditionPoints.length)) {
+        if (state.cohort !== "both" && (!firstPoints.length || !secondPoints.length)) {
           renderChartEmpty(refs.diseasePlot, "This biomarker does not have enough data for the current cohort and disease condition.");
           refs.diseaseSummaryStrip.innerHTML = "";
-          renderDiseaseTech(conditionMeta, record);
+          renderDiseaseTech(primaryMeta, secondaryMeta, primaryRecord);
           setDiseaseAnnotation("Some disease-by-age cells are sparse. Try pooled view or switch to the trimmed mode for a cleaner comparison.");
           return;
         }
 
         const traces = state.cohort === "both"
-          ? buildDiseaseBothSexTraces(record, conditionMeta)
+          ? buildDiseaseBothSexTraces(primaryRecord, secondRecord, comparison)
           : [
-              ...buildDiseaseBandTraces(healthyPoints, "Healthy baseline", COLORS.teal, "rgba(15, 103, 97, 0.12)"),
-              ...buildDiseaseBandTraces(conditionPoints, conditionMeta.title, COLORS.rust, "rgba(182, 88, 58, 0.14)"),
+              ...buildDiseaseBandTraces(firstPoints, comparison.firstLabel, comparison.firstColor, comparison.firstFill),
+              ...buildDiseaseBandTraces(secondPoints, comparison.secondLabel, comparison.secondColor, comparison.secondFill),
             ];
 
         if (!traces.length) {
           renderChartEmpty(refs.diseasePlot, "This biomarker does not have enough female and male data for the current condition.");
           refs.diseaseSummaryStrip.innerHTML = "";
-          renderDiseaseTech(conditionMeta, record);
+          renderDiseaseTech(primaryMeta, secondaryMeta, primaryRecord);
           setDiseaseAnnotation("Try pooled view if one sex has sparse data in the selected condition.");
           return;
         }
@@ -3910,23 +4060,31 @@
           refs.diseasePlot,
           traces,
           buildPlotLayout({
-            title: chartTitle(`${record.display_name}: healthy vs ${conditionMeta.title.toLowerCase()}`),
+            title: chartTitle(`${primaryRecord.display_name}: ${comparison.firstLabel.toLowerCase()} vs ${comparison.secondLabel.toLowerCase()}`),
             xaxis: {
               title: axisTitle("Age (years)"),
             },
             yaxis: {
-              title: axisTitle(record.unit || "Biomarker value"),
+              title: axisTitle(primaryRecord.unit || "Biomarker value"),
             },
           }),
           { responsive: true, displaylogo: false }
         );
         state.lastChartId = "disease-plot";
-        renderDiseaseSummaryStrip(conditionMeta, record);
-        renderDiseaseTech(conditionMeta, record);
+        renderDiseaseSummaryStrip(comparison, primaryRecord, secondRecord);
+        renderDiseaseTech(primaryMeta, secondaryMeta, primaryRecord);
         setDiseaseAnnotation(
           state.cohort === "both"
-            ? `${conditionMeta.summary} Female curves are red and male curves are blue. Dotted lines are the healthy baseline; solid lines are the selected disease cohort.`
-            : `${conditionMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort in the same age bins.`
+            ? (
+                secondaryMeta
+                  ? `${primaryMeta.summary} ${secondaryMeta.summary} Female curves are red and male curves are blue. Solid lines are ${comparison.firstLabel}; dashed lines are ${comparison.secondLabel}.`
+                  : `${primaryMeta.summary} Female curves are red and male curves are blue. Dotted lines are the healthy baseline; solid lines are the selected disease cohort.`
+              )
+            : (
+                secondaryMeta
+                  ? `The teal line is ${comparison.firstLabel}; the rust line is ${comparison.secondLabel}. Both are shown in the same age bins and trim mode.`
+                  : `${primaryMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort in the same age bins.`
+              )
         );
       } catch (error) {
         renderChartEmpty(refs.diseasePlot, "The disease explorer could not be loaded.");
@@ -4714,6 +4872,9 @@
         const conditionKey = event.target.closest("[data-select-condition]")?.dataset.selectCondition;
         if (conditionKey) {
           state.diseaseCondition = conditionKey;
+          if (state.diseaseCompareCondition === conditionKey) {
+            state.diseaseCompareCondition = "";
+          }
           state.diseaseBiomarkerId = "";
           trackEvent("select_disease_condition", { condition_key: conditionKey });
           renderDiseasePanel();
@@ -4743,6 +4904,14 @@
         const removeId = event.target.closest("[data-remove-compare]")?.dataset.removeCompare;
         if (removeId) {
           removeCompareMarker(removeId);
+        }
+
+        const feedbackPrompt = event.target.closest("[data-feedback-prompt]")?.dataset.feedbackPrompt;
+        if (feedbackPrompt) {
+          refs.feedbackSubject.value = "Biomarker dashboard feedback";
+          refs.feedbackMessage.value = `${feedbackPrompt}\n\n`;
+          setTab("feedback");
+          return;
         }
       });
 
@@ -4781,6 +4950,20 @@
       refs.exploreCollection.addEventListener("change", renderExploreList);
       refs.diseaseSearch.addEventListener("input", () => {
         renderDiseasePanel();
+      });
+      refs.diseaseCompareSelect.addEventListener("change", () => {
+        state.diseaseCompareCondition = refs.diseaseCompareSelect.value;
+        if (state.diseaseCompareCondition === state.diseaseCondition) {
+          state.diseaseCompareCondition = "";
+          refs.diseaseCompareSelect.value = "";
+        }
+        state.diseaseBiomarkerId = "";
+        trackEvent("select_disease_compare_condition", {
+          primary_condition: state.diseaseCondition,
+          compare_condition: state.diseaseCompareCondition || "healthy",
+        });
+        renderDiseasePanel();
+        writeHash();
       });
 
       document.querySelectorAll("[data-cohort-btn]").forEach((button) => {
@@ -4861,6 +5044,17 @@
         refs.rankingsCollection.value = state.rankingsCollection;
         refs.rankingsTopN.value = String(state.rankingsTopN);
         renderRankings();
+      });
+
+      refs.feedbackEmailBtn.addEventListener("click", () => {
+        const subject = refs.feedbackSubject.value.trim() || "Biomarker dashboard feedback";
+        const message = refs.feedbackMessage.value.trim() || "I have feedback about the biomarker dashboard.";
+        const mailtoUrl = `mailto:benshenhar@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+        window.location.href = mailtoUrl;
+        trackEvent("open_feedback_email", {
+          subject_length: subject.length,
+          message_length: message.length,
+        });
       });
 
       refs.compareMode.addEventListener("change", () => {
@@ -4956,6 +5150,7 @@
       refs.exploreTitle = $("explore-title");
       refs.exploreSubtitle = $("explore-subtitle");
       refs.diseaseConditionList = $("disease-condition-list");
+      refs.diseaseCompareSelect = $("disease-compare-select");
       refs.diseaseDefaultTitle = $("disease-default-title");
       refs.diseaseDefaultSummary = $("disease-default-summary");
       refs.diseaseDefaultChips = $("disease-default-chips");
@@ -5016,6 +5211,9 @@
       refs.bioageResultGap = $("bioage-result-gap");
       refs.bioageResultCopy = $("bioage-result-copy");
       refs.bioageConverted = $("bioage-converted");
+      refs.feedbackSubject = $("feedback-subject");
+      refs.feedbackMessage = $("feedback-message");
+      refs.feedbackEmailBtn = $("feedback-email-btn");
       refs.copyLinkBtn = $("copy-link-btn");
       refs.saveChartBtn = $("save-chart-btn");
       refs.toast = $("toast");
