@@ -6,6 +6,8 @@ simulation, and writes:
 
 - a combined survival + hazard PNG
 - a waterfall PNG of alive-only X distributions by age bin
+- a yearly alive-only mean / std / CV CSV
+- a yearly alive-only mean / std / CV PNG
 - a JSON file with the parameters used
 
 Example:
@@ -23,8 +25,8 @@ Example:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -256,6 +258,78 @@ def save_waterfall_figure(sim, args: argparse.Namespace, out_path: Path) -> None
     plt.close(fig)
 
 
+def calc_yearly_alive_stats(sim, tmax: float) -> list[dict]:
+    tspan = np.asarray(sim.tspan, dtype=float)
+    paths = np.asarray(sim.paths, dtype=float)
+    death_times = np.asarray(sim.death_times, dtype=float)
+
+    rows: list[dict] = []
+    max_year = int(np.floor(tmax))
+
+    for age in range(0, max_year + 1):
+        time_idx = int(np.argmin(np.abs(tspan - age)))
+        alive_mask = death_times > age
+        alive_n = int(np.sum(alive_mask))
+
+        if alive_n == 0:
+            rows.append(
+                {
+                    "age": age,
+                    "alive_n": 0,
+                    "mean_x": np.nan,
+                    "std_x": np.nan,
+                    "cv_x": np.nan,
+                }
+            )
+            continue
+
+        x_alive = np.asarray(paths[alive_mask, time_idx], dtype=float)
+        mean_x = float(np.mean(x_alive))
+        std_x = float(np.std(x_alive))
+        cv_x = float(std_x / mean_x) if mean_x > 0 else np.nan
+
+        rows.append(
+            {
+                "age": age,
+                "alive_n": alive_n,
+                "mean_x": mean_x,
+                "std_x": std_x,
+                "cv_x": cv_x,
+            }
+        )
+
+    return rows
+
+
+def save_yearly_alive_stats_csv(rows: list[dict], out_path: Path) -> None:
+    fieldnames = ["age", "alive_n", "mean_x", "std_x", "cv_x"]
+
+    with out_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def save_yearly_alive_stats_figure(rows: list[dict], args: argparse.Namespace, out_path: Path) -> None:
+    ages = np.asarray([row["age"] for row in rows], dtype=float)
+    mean_x = np.asarray([row["mean_x"] for row in rows], dtype=float)
+    std_x = np.asarray([row["std_x"] for row in rows], dtype=float)
+    cv_x = np.asarray([row["cv_x"] for row in rows], dtype=float)
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    ax.plot(ages, mean_x, color="#2166ac", linewidth=2.2, label=r"Mean $\langle X \rangle$")
+    ax.plot(ages, std_x, color="#b2182b", linewidth=2.2, label=r"Std $\sigma_X$")
+    ax.plot(ages, cv_x, color="#f4a259", linewidth=2.2, label=r"CV $= \sigma_X / \langle X \rangle$")
+    ax.set_xlabel("Age (years)")
+    ax.set_ylabel("Alive-only statistic")
+    ax.set_title(f"Alive-only X summary by age - {args.label}", fontsize=14, fontweight="bold")
+    ax.grid(alpha=0.25)
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=220, bbox_inches="tight")
+    plt.close(fig)
+
+
 def save_metadata(args: argparse.Namespace, out_path: Path) -> None:
     payload = {
         "label": args.label,
@@ -297,14 +371,21 @@ def main() -> None:
 
     survival_hazard_path = out_dir / f"{args.label}_survival_hazard.png"
     waterfall_path = out_dir / f"{args.label}_waterfall.png"
+    yearly_stats_csv_path = out_dir / f"{args.label}_yearly_alive_stats.csv"
+    yearly_stats_png_path = out_dir / f"{args.label}_yearly_alive_stats.png"
     metadata_path = out_dir / f"{args.label}_params.json"
+    yearly_stats_rows = calc_yearly_alive_stats(sim, args.tmax)
 
     save_survival_hazard_figure(sim, sr_plotting_cls, args, survival_hazard_path)
     save_waterfall_figure(sim, args, waterfall_path)
+    save_yearly_alive_stats_csv(yearly_stats_rows, yearly_stats_csv_path)
+    save_yearly_alive_stats_figure(yearly_stats_rows, args, yearly_stats_png_path)
     save_metadata(args, metadata_path)
 
     print(f"Saved -> {survival_hazard_path}")
     print(f"Saved -> {waterfall_path}")
+    print(f"Saved -> {yearly_stats_csv_path}")
+    print(f"Saved -> {yearly_stats_png_path}")
     print(f"Saved -> {metadata_path}")
 
 
