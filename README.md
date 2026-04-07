@@ -14,7 +14,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/build_sr_comparison.py` reruns or reuses a cached USA 2019 SR simulation, bins the SR-model `X` distribution on the NHANES 5-year age bins, and builds both the Q-Q and rank-based SR comparison payloads under `projects/sr_comparison/blood/`.
   - In rank mode, biomarker values are trimmed within each age bin before pooling and ranking, but the alive-only SR `X` values are not trimmed.
   - Rank mode now supports `0%`, `3%`, `5%`, and `10%` biomarker tail trimming.
-- `src/run_custom_sr_fit.py` runs a custom SR simulation through the external aging codebase and saves a combined survival/hazard PNG, a waterfall PNG, a yearly alive-only `X` summary CSV/PNG (`mean`, `std`, `cv`), and a parameter JSON under `output/sr_fits_results/`.
+- `src/run_custom_sr_fit.py` runs a custom SR simulation through the external aging codebase and saves a combined survival/hazard PNG, a waterfall PNG, a yearly alive-only `X` summary CSV/PNG (`mean`, `std`, `cv`, quantile-skewness), and a parameter JSON under `output/sr_fits_results/`.
 - `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
 - `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
   - It also writes disease-default metadata for the guided Disease Explorer and a small `surprising.json` payload for the shareable `What’s Surprising?` tab.
@@ -22,7 +22,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/templates/dashboard_template.html` is the shared dashboard UI template used by `src/build_dashboard.py` for both specimen outputs.
 - `src/templates/aging_biomarkers_dashboard_template.html` is the standalone editorial-science template used for the public-facing aging biomarkers explorer.
 - `dashboard/longevity-explorer.html` is the short GitHub Pages alias that redirects to the audience-facing aging biomarkers explorer.
-- `scripts/export_public_dashboard_site.py` exports only the audience-facing static site files into `output/public_dashboard_site/` for use in a separate public GitHub Pages repo.
+- `scripts/export_public_dashboard_site.py` exports only the audience-facing static site files into `../biomarker_dashboard/` for use in a separate public GitHub Pages repo.
 - `src/plot_km_kidney_liver.py` generates Kaplan-Meier survival plots for broad disease cohorts vs full cohort using linked mortality files (follow-up and age-timescale outputs).
 - `src/cluster_km_shapes.py` clusters disease KM curve shapes with multiple distances and algorithms, and writes visual diagnostics to `output/km_shape_clustering/`.
 - `src/fpca_km_shapes.py` runs functional-PCA style decomposition of disease KM curves, clusters in fPCA score space, and writes outputs to `output/fPCA/`.

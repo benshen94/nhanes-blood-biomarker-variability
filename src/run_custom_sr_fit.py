@@ -6,8 +6,8 @@ simulation, and writes:
 
 - a combined survival + hazard PNG
 - a waterfall PNG of alive-only X distributions by age bin
-- a yearly alive-only mean / std / CV CSV
-- a yearly alive-only mean / std / CV PNG
+- a yearly alive-only mean / std / CV / quantile-skewness CSV
+- a yearly alive-only mean / std / CV / quantile-skewness PNG
 - a JSON file with the parameters used
 
 Example:
@@ -279,6 +279,7 @@ def calc_yearly_alive_stats(sim, tmax: float) -> list[dict]:
                     "mean_x": np.nan,
                     "std_x": np.nan,
                     "cv_x": np.nan,
+                    "quantile_skewness": np.nan,
                 }
             )
             continue
@@ -287,6 +288,12 @@ def calc_yearly_alive_stats(sim, tmax: float) -> list[dict]:
         mean_x = float(np.mean(x_alive))
         std_x = float(np.std(x_alive))
         cv_x = float(std_x / mean_x) if mean_x > 0 else np.nan
+        q1, q2, q3 = np.quantile(x_alive, [0.25, 0.5, 0.75])
+        iqr = float(q3 - q1)
+        if iqr > 0:
+            quantile_skewness = float((q3 + q1 - 2.0 * q2) / iqr)
+        else:
+            quantile_skewness = np.nan
 
         rows.append(
             {
@@ -295,6 +302,7 @@ def calc_yearly_alive_stats(sim, tmax: float) -> list[dict]:
                 "mean_x": mean_x,
                 "std_x": std_x,
                 "cv_x": cv_x,
+                "quantile_skewness": quantile_skewness,
             }
         )
 
@@ -302,7 +310,7 @@ def calc_yearly_alive_stats(sim, tmax: float) -> list[dict]:
 
 
 def save_yearly_alive_stats_csv(rows: list[dict], out_path: Path) -> None:
-    fieldnames = ["age", "alive_n", "mean_x", "std_x", "cv_x"]
+    fieldnames = ["age", "alive_n", "mean_x", "std_x", "cv_x", "quantile_skewness"]
 
     with out_path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -315,11 +323,13 @@ def save_yearly_alive_stats_figure(rows: list[dict], args: argparse.Namespace, o
     mean_x = np.asarray([row["mean_x"] for row in rows], dtype=float)
     std_x = np.asarray([row["std_x"] for row in rows], dtype=float)
     cv_x = np.asarray([row["cv_x"] for row in rows], dtype=float)
+    quantile_skewness = np.asarray([row["quantile_skewness"] for row in rows], dtype=float)
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
     ax.plot(ages, mean_x, color="#2166ac", linewidth=2.2, label=r"Mean $\langle X \rangle$")
     ax.plot(ages, std_x, color="#b2182b", linewidth=2.2, label=r"Std $\sigma_X$")
     ax.plot(ages, cv_x, color="#f4a259", linewidth=2.2, label=r"CV $= \sigma_X / \langle X \rangle$")
+    ax.plot(ages, quantile_skewness, color="#542788", linewidth=2.2, label="Quantile skewness")
     ax.set_xlabel("Age (years)")
     ax.set_ylabel("Alive-only statistic")
     ax.set_title(f"Alive-only X summary by age - {args.label}", fontsize=14, fontweight="bold")
