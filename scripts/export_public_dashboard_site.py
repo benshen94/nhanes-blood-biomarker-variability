@@ -10,13 +10,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD_DIR = ROOT / "dashboard"
-OUTPUT_DIR = ROOT / "output" / "public_dashboard_site"
+AGING_DIR = ROOT.parent
+OUTPUT_DIR = AGING_DIR / "biomarker_dashboard"
 
 
-def ensure_clean_dir(path: Path) -> None:
-    if path.exists():
-        shutil.rmtree(path)
+def ensure_clean_export_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
+
+    for child in path.iterdir():
+        if child.name == ".git":
+            continue
+        if child.is_dir():
+            shutil.rmtree(child)
+            continue
+        child.unlink()
 
 
 def copy_file(src: Path, dst: Path) -> None:
@@ -38,7 +45,7 @@ def write_index_redirect(out_dir: Path) -> None:
 def write_export_readme(out_dir: Path) -> None:
     text = """# Public Dashboard Site Export
 
-This folder is ready to become a separate public GitHub Pages repository.
+This folder is the separate public GitHub Pages repository.
 
 ## Files included
 - `index.html`
@@ -47,11 +54,10 @@ This folder is ready to become a separate public GitHub Pages repository.
 - `aging_biomarkers_public/`
 - `data/series/` for the curated biomarker subset only
 
-## Suggested deployment
-1. Create a new GitHub repository for the public site only.
-2. Copy the contents of this folder into that repo root.
-3. Push the repo.
-4. Enable GitHub Pages from the repo root branch.
+## Suggested refresh flow
+1. Rebuild the audience-facing dashboard in `nhanes_dashboard`.
+2. Run `python3 scripts/export_public_dashboard_site.py` from the main repo.
+3. Commit and push the updated files in this repo.
 
 ## Notes
 - This export includes only the files needed by the audience-facing dashboard.
@@ -62,7 +68,7 @@ This folder is ready to become a separate public GitHub Pages repository.
 
 
 def export_site() -> Path:
-    ensure_clean_dir(OUTPUT_DIR)
+    ensure_clean_export_dir(OUTPUT_DIR)
 
     copy_file(DASHBOARD_DIR / "aging_biomarkers_dashboard.html", OUTPUT_DIR / "aging_biomarkers_dashboard.html")
     copy_file(DASHBOARD_DIR / "longevity-explorer.html", OUTPUT_DIR / "longevity-explorer.html")

@@ -13,8 +13,6 @@ __pycache__/
 data/raw/
 data/processed/
 output/*
-!output/public_dashboard_site/
-!output/public_dashboard_site/**
 projects/sr_comparison/blood/sr_usa_2019_trajectories.npz
 
 # OS/editor
