@@ -1,7 +1,5 @@
-# Filter Tab Redesign
+# Clalit Quartile Export
 
-- [completed] Replace the flat filter builder with a clause workshop and nested logical-expression stage.
-- [completed] Add expression editing helpers for insertion, grouping, reordering, and drag/drop.
-- [completed] Add CSV export for filtered results with clause metric columns.
-- [completed] Add filtered-test overlay plots for normalized median and normalized CV, plus row-level plot inclusion toggles.
-- [completed] Rebuild the dashboard, validate the new filter workflow with Playwright, review the diff, commit changes, and push.
+- [completed] Audit the Clalit ridgeline/statistics inputs, existing NHANES age-bin conventions, and available unit metadata.
+- [completed] Implement a reproducible builder that aggregates single-year Clalit densities into NHANES-style 5-year bins and writes quartiles.
+- [completed] Generate `data/clalit/clalit_quartiles.csv`, sanity-check coverage and units, update `README.md`, and commit/push the result.

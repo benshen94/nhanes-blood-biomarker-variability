@@ -16,6 +16,7 @@ Documentation rule: when dashboard features/metrics change, update this README i
   - Rank mode now supports `0%`, `3%`, `5%`, and `10%` biomarker tail trimming.
 - `src/run_custom_sr_fit.py` runs a custom SR simulation through the external aging codebase and saves a combined survival/hazard PNG, a waterfall PNG, a yearly alive-only `X` summary CSV/PNG (`mean`, `std`, `cv`, quantile-skewness), and a parameter JSON under `output/sr_fits_results/`.
 - `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared SR waterfall reference asset to `dashboard/data/sr_waterfall_reference.json` when the blood SR payload is available.
+- `src/build_clalit_quartiles.py` aggregates the Clalit single-year ridgeline densities into NHANES-style 5-year bins (`20-24` through `95-99`) and writes a combined female/male quartile export to `data/clalit/clalit_quartiles.csv`.
 - `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
   - It also writes disease-default metadata for the guided Disease Explorer and a small `surprising.json` payload for the shareable `What’s Surprising?` tab.
   - If `AGING_PUBLIC_GA4_ID` is set at build time, it injects Google Analytics 4 into the public dashboard HTML.
@@ -563,4 +564,10 @@ python3 -m http.server 8765 --directory .
 - `data/clalit_mapping.json` supports mapping one Clalit test code to multiple NHANES biomarker IDs (JSON array) when the same analyte appears under multiple NHANES pooled IDs (for example, CRP aliases).
 - `data/clalit_mapping.json` also supports object targets with `biomarker_id` and `scale_factor`, which are applied before plotting when the Clalit source unit differs from the pooled NHANES unit.
 - A post-build audit of mapping coverage/validity is written to `output/clalit_mapping_audit.csv` (`mapped_valid` vs `unmapped`).
+- `python3 src/build_clalit_quartiles.py` writes `data/clalit/clalit_quartiles.csv`.
+  - The export keeps one row per `sex x test x 5-year age_bin x scale_type`.
+  - Age bins follow the NHANES 5-year convention through `80-84`, then continue as `85-89`, `90-94`, and `95-99`.
+  - Quartiles are derived from weighted mixtures of the single-year ridgeline densities, using the per-age `n` from `data/clalit/females_all_statistics.csv` and `data/clalit/males_all_statistics.csv` when available, and equal-by-age fallback only when the statistics tables have no weights for that test.
+  - `scale_type=regular` stores quartiles on the raw biomarker scale; `scale_type=log` stores quartiles on the log scale and also includes `raw_q*` back-transformed to the original biomarker scale.
+  - The file also carries `unit`, `unit_source`, and `unit_confidence`; a small number of tests still have intentionally blank units where the current repo data do not support a defensible Clalit-specific label.
 - The search dropdown uses a browser `datalist`; if native browser history is enabled it can appear as a second block beneath the live biomarker matches, so dashboard search inputs now explicitly disable native autocomplete to avoid stale pre-merge biomarker suggestions.
