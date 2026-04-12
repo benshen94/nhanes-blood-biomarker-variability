@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script>
-    window.PUBLIC_GA4_MEASUREMENT_ID = "";
+    window.PUBLIC_GA4_MEASUREMENT_ID = "G-EG5VWPN3D8";
     window.dataLayer = window.dataLayer || [];
 
     window.gtag = window.gtag || function gtag() {
@@ -1600,10 +1600,12 @@
       }
 
       .hero h1 {
-        max-width: 8.2ch;
+        max-width: none;
+        font-size: clamp(3.2rem, 17vw, 5.6rem);
       }
 
       .lead-grid,
+      .tab-summary-grid,
       .summary-strip,
       .bioage-metrics,
       .bioage-form-grid,
@@ -1617,19 +1619,48 @@
         align-items: stretch;
       }
 
-      .tabbar,
       .toolbar-actions,
       .segmented,
       .bioage-action-row {
         width: 100%;
       }
 
-      .tab-btn,
+      .tabbar {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .tabbar::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tabbar .tab-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+
+      .toolbar-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .ghost-btn,
       .tone-btn,
       .mini-btn {
         flex: 1 1 calc(50% - 8px);
         justify-content: center;
+      }
+
+      .marker-list {
+        max-height: none;
+      }
+
+      .collection-card {
+        min-height: auto;
       }
 
       .chart-shell {
@@ -1643,6 +1674,61 @@
       #compare-plot {
         height: 420px;
         min-height: 400px;
+      }
+
+      .bioage-input-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .page-shell {
+        width: min(calc(100% - 14px), var(--page-max));
+      }
+
+      .hero {
+        padding: 18px 16px;
+      }
+
+      .hero-sub {
+        font-size: 1rem;
+      }
+
+      .slab,
+      .note-card,
+      .rail-block,
+      .stage-block,
+      .details-card {
+        padding: 16px;
+      }
+
+      .summary-card {
+        padding: 14px;
+      }
+
+      .summary-card strong {
+        font-size: 1.45rem;
+      }
+
+      .chart-shell {
+        min-height: 360px;
+        padding: 8px;
+      }
+
+      #explore-plot,
+      #disease-plot,
+      #rankings-plot,
+      #compare-plot {
+        height: 340px;
+        min-height: 320px;
+      }
+
+      .public-disclaimer {
+        justify-content: stretch;
+      }
+
+      .public-disclaimer > * {
+        width: 100%;
       }
     }
   </style>
@@ -2365,7 +2451,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1775570377";
+    const DATA_VERSION = "1776015814";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -2544,18 +2630,20 @@
     }
 
     function axisTitle(text) {
+      const compact = window.innerWidth <= 640;
       return {
         text,
         font: {
           family: "\"Instrument Sans\", sans-serif",
-          size: 18,
+          size: compact ? 15 : 18,
           color: COLORS.ink,
         },
-        standoff: 14,
+        standoff: compact ? 10 : 14,
       };
     }
 
     function chartTitle(text) {
+      const compact = window.innerWidth <= 640;
       return {
         text,
         x: 0,
@@ -2563,27 +2651,28 @@
         y: 0.98,
         font: {
           family: "\"Fraunces\", serif",
-          size: 18,
+          size: compact ? 16 : 18,
           color: COLORS.ink,
         },
       };
     }
 
     function buildPlotLayout(overrides = {}) {
+      const compact = window.innerWidth <= 640;
       const baseLayout = {
         paper_bgcolor: "rgba(0,0,0,0)",
         plot_bgcolor: "rgba(0,0,0,0)",
-        margin: { l: 76, r: 28, t: 118, b: 92 },
+        margin: compact ? { l: 56, r: 14, t: 78, b: 84 } : { l: 76, r: 28, t: 118, b: 92 },
         font: {
           family: "\"Instrument Sans\", sans-serif",
           color: COLORS.inkSoft,
-          size: 14,
+          size: compact ? 12 : 14,
         },
         xaxis: {
           gridcolor: "rgba(23, 36, 50, 0.08)",
           linecolor: "rgba(23, 36, 50, 0.16)",
           zeroline: false,
-          tickfont: { color: COLORS.inkSoft, size: 14 },
+          tickfont: { color: COLORS.inkSoft, size: compact ? 12 : 14 },
           automargin: true,
           title: axisTitle("Age (years)"),
         },
@@ -2591,20 +2680,20 @@
           gridcolor: "rgba(23, 36, 50, 0.08)",
           linecolor: "rgba(23, 36, 50, 0.16)",
           zeroline: false,
-          tickfont: { color: COLORS.inkSoft, size: 14 },
+          tickfont: { color: COLORS.inkSoft, size: compact ? 12 : 14 },
           automargin: true,
           title: axisTitle("Value"),
         },
         legend: {
           orientation: "h",
           yanchor: "top",
-          y: -0.22,
+          y: compact ? -0.16 : -0.22,
           xanchor: "left",
           x: 0,
           bgcolor: "rgba(0,0,0,0)",
           font: {
             family: "\"Instrument Sans\", sans-serif",
-            size: 13,
+            size: compact ? 11 : 13,
             color: COLORS.inkSoft,
           },
         },
