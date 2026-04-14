@@ -4,6 +4,6 @@
   "disease_condition_count": 9,
   "surprising_group_count": 3,
   "default_trim_mode": "trim_5_95",
-  "ga4_measurement_id": "",
-  "data_dir": "dashboard/aging_biomarkers_public"
+  "ga4_measurement_id": "G-EG5VWPN3D8",
+  "data_dir": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/dashboard/aging_biomarkers_public"
 }

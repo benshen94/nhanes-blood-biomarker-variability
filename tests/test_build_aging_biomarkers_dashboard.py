@@ -12,6 +12,8 @@ import pandas as pd
 sys.path.insert(0, str((Path(__file__).resolve().parents[1] / "src")))
 
 from build_aging_biomarkers_dashboard import (
+    _points_for_mode,
+    _select_disease_default_biomarker_ids,
     build_surprising_groups,
     build_disease_explorer_bundle,
     build_public_manifest,
@@ -25,6 +27,7 @@ def make_point(age_bin, age_mid, median, q25, q75, p10, p90, std, cv, qskew=0.0)
     return {
         "age_bin": age_bin,
         "age_mid": age_mid,
+        "n": 40,
         "median": median,
         "q25": q25,
         "q75": q75,
@@ -34,10 +37,104 @@ def make_point(age_bin, age_mid, median, q25, q75, p10, p90, std, cv, qskew=0.0)
         "std": std,
         "cv": cv,
         "quantile_skewness": qskew,
+        "passes_n_threshold": True,
     }
 
 
 class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
+    def test_points_for_mode_keeps_only_threshold_passing_points(self):
+        group = {
+            "points_by_filter": {
+                "trim_5_95": [
+                    {"age_bin": "20-24", "median": 1.0, "passes_n_threshold": True},
+                    {"age_bin": "25-29", "median": 2.0, "passes_n_threshold": False},
+                ]
+            }
+        }
+
+        filtered = _points_for_mode(group, "trim_5_95")
+
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0]["age_bin"], "20-24")
+
+    def test_select_disease_default_biomarker_ids_preserves_familiar_order(self):
+        def disease_points(start, end):
+            return {
+                "points_by_filter": {
+                    "trim_5_95": [
+                        {"age_bin": "20-24", "median": start, "passes_n_threshold": True},
+                        {"age_bin": "40-44", "median": (start + end) / 2.0, "passes_n_threshold": True},
+                        {"age_bin": "80-84", "median": end, "passes_n_threshold": True},
+                    ]
+                }
+            }
+
+        records = [
+            {
+                "biomarker_id": "glycohemoglobin",
+                "display_name": "HbA1c",
+                "groups": {
+                    "healthy": disease_points(5.2, 5.6),
+                    "condition": disease_points(6.3, 6.9),
+                },
+            },
+            {
+                "biomarker_id": "plasma glucose",
+                "display_name": "Glucose",
+                "groups": {
+                    "healthy": disease_points(90.0, 96.0),
+                    "condition": disease_points(118.0, 140.0),
+                },
+            },
+            {
+                "biomarker_id": "c-peptide",
+                "display_name": "C-peptide",
+                "groups": {
+                    "healthy": disease_points(1.0, 1.2),
+                    "condition": disease_points(1.4, 1.8),
+                },
+            },
+        ]
+
+        selected = _select_disease_default_biomarker_ids("diabetes", records, limit=3)
+
+        self.assertEqual(selected, ["glycohemoglobin", "plasma glucose", "c-peptide"])
+
+    def test_select_disease_default_biomarker_ids_does_not_pad_with_unrelated_fallbacks(self):
+        def disease_points():
+            return {
+                "points_by_filter": {
+                    "trim_5_95": [
+                        {"age_bin": "20-24", "median": 1.0, "passes_n_threshold": True},
+                        {"age_bin": "40-44", "median": 1.2, "passes_n_threshold": True},
+                        {"age_bin": "80-84", "median": 1.4, "passes_n_threshold": True},
+                    ]
+                }
+            }
+
+        records = [
+            {
+                "biomarker_id": "albumin",
+                "display_name": "Albumin",
+                "groups": {
+                    "healthy": disease_points(),
+                    "condition": disease_points(),
+                },
+            },
+            {
+                "biomarker_id": "random-marker",
+                "display_name": "Random marker",
+                "groups": {
+                    "healthy": disease_points(),
+                    "condition": disease_points(),
+                },
+            },
+        ]
+
+        selected = _select_disease_default_biomarker_ids("liver", records, limit=6)
+
+        self.assertEqual(selected, ["albumin"])
+
     def test_build_public_manifest_includes_context_metrics_and_catalog_copy(self):
         metadata = pd.DataFrame(
             [
@@ -190,12 +287,14 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         ]
         long_df = pd.DataFrame(
             [
+                {"seqn": 5, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 82, "value": 0.9, "sex": "female"},
+                {"seqn": 6, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 82, "value": 1.6, "sex": "male"},
                 {"seqn": 1, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 42, "value": 0.8, "sex": "female"},
                 {"seqn": 2, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 42, "value": 1.3, "sex": "female"},
                 {"seqn": 3, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 62, "value": 0.9, "sex": "male"},
                 {"seqn": 4, "cycle_start_year": 2001, "biomarker_id": "creatinine", "age_years": 62, "value": 1.5, "sex": "male"},
             ]
-            * 20
+            * 40
         )
         participant_flags = pd.DataFrame(
             [
@@ -203,6 +302,8 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
                 {"seqn": 2, "cycle_start_year": 2001, "sex": "female", "healthy_flag": False, "diabetes": True, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
                 {"seqn": 3, "cycle_start_year": 2001, "sex": "male", "healthy_flag": True, "diabetes": False, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
                 {"seqn": 4, "cycle_start_year": 2001, "sex": "male", "healthy_flag": False, "diabetes": True, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
+                {"seqn": 5, "cycle_start_year": 2001, "sex": "female", "healthy_flag": True, "diabetes": False, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
+                {"seqn": 6, "cycle_start_year": 2001, "sex": "male", "healthy_flag": False, "diabetes": True, "hypertension": False, "cvd": False, "kidney": False, "liver": False, "cancer": False, "asthma": False, "thyroid_problem": False, "stroke": False},
             ]
         )
 
@@ -223,8 +324,8 @@ class TestBuildAgingBiomarkersDashboard(unittest.TestCase):
         self.assertEqual(detail["condition"]["title"], "Diabetes")
         biomarker = detail["biomarkers"][0]
         self.assertEqual(biomarker["display_name"], "Creatinine")
-        self.assertEqual(biomarker["groups"]["healthy"]["raw_total_n"], 40)
-        self.assertEqual(biomarker["groups"]["condition"]["raw_total_n"], 40)
+        self.assertEqual(biomarker["groups"]["healthy"]["raw_total_n"], 120)
+        self.assertEqual(biomarker["groups"]["condition"]["raw_total_n"], 120)
         self.assertIn("trim_10_90", biomarker["groups"]["healthy"]["points_by_filter"])
         self.assertIn("female", biomarker["groups"]["condition"]["sex_points_by_filter"]["all"])
 

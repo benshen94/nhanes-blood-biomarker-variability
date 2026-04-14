@@ -2451,7 +2451,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1776150963";
+    const DATA_VERSION = "1776198521";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -3850,22 +3850,31 @@
         .join("");
     }
 
+    function diseaseRenderablePoints(points) {
+      return (points || []).filter((point) => {
+        if (!point?.passes_n_threshold) {
+          return false;
+        }
+        return Number.isFinite(point?.median);
+      });
+    }
+
     function getDiseaseGroupPoints(record, groupKey) {
       const mode = trimModeKey();
       const group = record?.groups?.[groupKey] || {};
       if (state.cohort === "pooled") {
-        return group?.points_by_filter?.[mode] || [];
+        return diseaseRenderablePoints(group?.points_by_filter?.[mode] || []);
       }
       if (state.cohort === "both") {
         return [];
       }
-      return group?.sex_points_by_filter?.[mode]?.[state.cohort] || [];
+      return diseaseRenderablePoints(group?.sex_points_by_filter?.[mode]?.[state.cohort] || []);
     }
 
     function getDiseaseGroupPointsForSex(record, groupKey, sex) {
       const mode = trimModeKey();
       const group = record?.groups?.[groupKey] || {};
-      return group?.sex_points_by_filter?.[mode]?.[sex] || [];
+      return diseaseRenderablePoints(group?.sex_points_by_filter?.[mode]?.[sex] || []);
     }
 
     function getDiseaseGroupCount(record, groupKey) {
@@ -3931,13 +3940,26 @@
       }
 
       const traces = [];
-      const bandPoints = points.filter((point) => Number.isFinite(point.q25) && Number.isFinite(point.q75));
+      const bandPoints = points
+        .map((point) => {
+          const spread = spreadMetricValue(point);
+          if (!Number.isFinite(point?.median) || !Number.isFinite(spread)) {
+            return null;
+          }
+          return {
+            age_mid: point.age_mid,
+            upper: point.median + spread,
+            lower: point.median - spread,
+          };
+        })
+        .filter(Boolean);
+
       if (bandPoints.length) {
         traces.push({
           type: "scatter",
           mode: "lines",
           x: bandPoints.map((point) => point.age_mid),
-          y: bandPoints.map((point) => point.q75),
+          y: bandPoints.map((point) => point.upper),
           line: { color: "rgba(0,0,0,0)" },
           hoverinfo: "skip",
           showlegend: false,
@@ -3946,7 +3968,7 @@
           type: "scatter",
           mode: "lines",
           x: bandPoints.map((point) => point.age_mid),
-          y: bandPoints.map((point) => point.q25),
+          y: bandPoints.map((point) => point.lower),
           fill: "tonexty",
           fillcolor: fillColor,
           line: { color: "rgba(0,0,0,0)" },
@@ -4056,7 +4078,9 @@
         ["Aging domain", record.aging_domain || "General aging"],
         ["Cohort", state.cohort],
         ["Trim mode", currentTrimLabel()],
-        ["Important caveat", "The disease cohort can include other comorbidities. This is a broad cross-sectional comparison, not an isolated causal effect."],
+        ["Disease plot bands", `${spreadMetricLabel()} around the age-bin median`],
+        ["Minimum age-bin size", "Only bins with n >= 30 are drawn"],
+        ["Important caveat", "The disease cohort can include other comorbidities, and some assays were only measured in NHANES subsamples. This is a broad cross-sectional comparison, not an isolated causal effect."],
       ];
 
       refs.diseaseTech.innerHTML = facts
@@ -4201,13 +4225,13 @@
           state.cohort === "both"
             ? (
                 secondaryMeta
-                  ? `${primaryMeta.summary} ${secondaryMeta.summary} Female curves are red and male curves are blue. Solid lines are ${comparison.firstLabel}; dashed lines are ${comparison.secondLabel}.`
-                  : `${primaryMeta.summary} Female curves are red and male curves are blue. Dotted lines are the healthy baseline; solid lines are the selected disease cohort.`
+                  ? `${primaryMeta.summary} ${secondaryMeta.summary} Female curves are red and male curves are blue. Solid lines are ${comparison.firstLabel}; dashed lines are ${comparison.secondLabel}. Only age bins with at least 30 observations are shown.`
+                  : `${primaryMeta.summary} Female curves are red and male curves are blue. Dotted lines are the healthy baseline; solid lines are the selected disease cohort. Only age bins with at least 30 observations are shown.`
               )
             : (
                 secondaryMeta
-                  ? `The teal line is ${comparison.firstLabel}; the rust line is ${comparison.secondLabel}. Both are shown in the same age bins and trim mode.`
-                  : `${primaryMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort in the same age bins.`
+                  ? `The teal line is ${comparison.firstLabel}; the rust line is ${comparison.secondLabel}. The shaded band is ${spreadMetricLabel()} around the age-bin median, and only age bins with at least 30 observations are shown.`
+                  : `${primaryMeta.summary} The teal line is the same healthy baseline that powers the main explorer; the rust line is the selected disease cohort. The shaded band is ${spreadMetricLabel()} around the age-bin median, and only age bins with at least 30 observations are shown.`
               )
         );
       } catch (error) {

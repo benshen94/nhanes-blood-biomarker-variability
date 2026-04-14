@@ -358,17 +358,20 @@ def _point_lookup(points: list[dict]) -> dict[str, dict]:
 def _points_for_mode(group: dict, trim_mode: str) -> list[dict]:
     points_by_filter = group.get("points_by_filter") or {}
     if trim_mode in points_by_filter:
-        return points_by_filter.get(trim_mode) or []
-    if trim_mode == DEFAULT_TRIM_MODE:
-        return points_by_filter.get("trim_10_90") or []
-    return []
+        points = points_by_filter.get(trim_mode) or []
+    elif trim_mode == DEFAULT_TRIM_MODE:
+        points = points_by_filter.get("trim_10_90") or []
+    else:
+        points = []
+
+    return [point for point in points if point.get("passes_n_threshold")]
 
 
 def _mean_relative_median_gap(healthy_points: list[dict], condition_points: list[dict]) -> float | None:
     healthy_lookup = _point_lookup(healthy_points)
     condition_lookup = _point_lookup(condition_points)
     shared_age_bins = sorted(set(healthy_lookup) & set(condition_lookup))
-    if not shared_age_bins:
+    if len(shared_age_bins) < 3:
         return None
 
     gaps: list[float] = []
@@ -782,7 +785,8 @@ def _select_disease_default_biomarker_ids(
     records_by_name = {str(record["display_name"]): record for record in condition_records}
     familiar_names = DISEASE_STARTER_SETS.get(condition_key, [])
 
-    ranked: list[tuple[float, str]] = []
+    selected_ids: list[str] = []
+    existing_ids: set[str] = set()
     for display_name in familiar_names:
         record = records_by_name.get(display_name)
         if record is None:
@@ -793,14 +797,17 @@ def _select_disease_default_biomarker_ids(
         separation = _mean_relative_median_gap(healthy_points, condition_points)
         if separation is None:
             continue
-        ranked.append((separation, str(record["biomarker_id"])))
+        biomarker_id = str(record["biomarker_id"])
+        if biomarker_id in existing_ids:
+            continue
+        selected_ids.append(biomarker_id)
+        existing_ids.add(biomarker_id)
+        if len(selected_ids) >= limit:
+            return selected_ids
 
-    ranked.sort(key=lambda item: (-item[0], item[1]))
-    selected_ids = [biomarker_id for _, biomarker_id in ranked[:limit]]
-    if len(selected_ids) >= limit:
+    if selected_ids:
         return selected_ids
 
-    existing_ids = set(selected_ids)
     fallback_rows: list[tuple[float, str]] = []
     for record in condition_records:
         biomarker_id = str(record["biomarker_id"])

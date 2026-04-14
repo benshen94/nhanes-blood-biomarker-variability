@@ -169,6 +169,8 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `dashboard/aging_biomarkers_public/surprising.json`
 - The public dashboard now includes:
   - a guided Disease Explorer with disease-specific starter biomarker chips
+  - disease comparisons that only draw age bins with \( n \ge 30 \) for the selected assay/cohort
+  - disease median plots shaded by \( \mathrm{SEM} \) or \( \mathrm{SD} \) around the age-bin median, using the same spread toggle as the main explorer
   - a `What’s Surprising?` tab for shareable counterintuitive aging patterns
   - `5-95 trimmed` as the default public trim mode
 - The redesign keeps the existing static single-page model and DOM IDs used by the inline dashboard logic, while modernizing:
