@@ -1884,8 +1884,8 @@
               </div>
               <label class="control-label">Spread uses</label>
               <div class="segmented">
+                <button class="mini-btn" data-spread-btn data-value="sem" type="button">SEM</button>
                 <button class="mini-btn" data-spread-btn data-value="std" type="button">SD</button>
-                <button class="mini-btn" data-spread-btn data-value="cv" type="button">CV</button>
               </div>
               <details class="fold-card">
                 <summary>Sex colors</summary>
@@ -2086,8 +2086,8 @@
               <select id="compare-mode">
                 <option value="median">Typical level</option>
                 <option value="iqr">Spread (IQR)</option>
+                <option value="sem">Spread (SEM)</option>
                 <option value="std">Spread (SD)</option>
-                <option value="cv">Spread (CV)</option>
                 <option value="upper_tail">Upper tail</option>
                 <option value="lower_tail">Lower tail</option>
               </select>
@@ -2429,7 +2429,7 @@
                 <div class="facts">
                   <div class="fact-row">
                     <span>Default public metric set</span>
-                    <div>Median change, IQR change, SD change, CV change, upper-tail change, lower-tail change, quantile-skewness change, and sex divergence score.</div>
+                    <div>Median change, IQR change, SEM change, SD change, upper-tail change, lower-tail change, quantile-skewness change, and sex divergence score.</div>
                   </div>
                   <div class="fact-row">
                     <span>Compare view</span>
@@ -2451,7 +2451,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const DATA_VERSION = "1776015814";
+    const DATA_VERSION = "1776150963";
     const DATA_BASE = "aging_biomarkers_public";
     const COLLECTION_COPY = {"inflammation": {"title": "Inflammation", "kicker": "Quiet background stress", "summary": "Low-grade immune activation often shows up as wider, higher, or more skewed distributions with age.", "accent": "rust"}, "metabolism": {"title": "Metabolism", "kicker": "Fuel handling and liver load", "summary": "Glucose control, triglycerides, and liver-linked markers reveal how metabolic regulation shifts across adulthood.", "accent": "amber"}, "kidney_reserve": {"title": "Kidney & Reserve", "kicker": "Organ reserve under pressure", "summary": "Creatinine, cystatin C, BUN, and related chemistry show how homeostatic reserve narrows over time.", "accent": "teal"}, "blood_oxygen": {"title": "Blood & Oxygen", "kicker": "Red-cell architecture", "summary": "Hemoglobin, RDW, ferritin, and blood-count markers capture oxygen transport and hematologic aging.", "accent": "rose"}, "hormones_nutrient": {"title": "Hormones & Nutrient Sensing", "kicker": "Signals that retune with age", "summary": "Sex hormones, thyroid markers, and vitamin-linked signals reflect endocrine remodeling and nutrient sensing.", "accent": "violet"}, "cardiovascular_stress": {"title": "Cardiovascular Stress", "kicker": "Strain, remodeling, risk", "summary": "Cardiac stress and vascular-risk markers highlight how the distribution shape can change before averages alone tell the story.", "accent": "blue"}};
     const DEFAULT_COMPARE_MARKERS = ["Albumin", "CRP", "Creatinine"];
@@ -2512,7 +2512,7 @@
       cohort: "both",
       trim: "trim_5_95",
       view: "typical",
-      spreadMetric: "std",
+      spreadMetric: "sem",
       rankingsMetric: "median_rise",
       rankingsCohort: "pooled",
       rankingsCollection: "all",
@@ -2745,6 +2745,28 @@
       return ((end - start) / Math.abs(start)) * 100;
     }
 
+    function semFromPoint(point) {
+      if (!Number.isFinite(point?.std) || !Number.isFinite(point?.n) || point.n <= 0) {
+        return null;
+      }
+      return point.std / Math.sqrt(point.n);
+    }
+
+    function spreadMetricValue(point, metric = state.spreadMetric) {
+      if (metric === "sem") {
+        return semFromPoint(point);
+      }
+      return Number.isFinite(point?.std) ? point.std : null;
+    }
+
+    function spreadMetricLabel(metric = state.spreadMetric) {
+      return metric === "sem" ? "SEM" : "SD";
+    }
+
+    function spreadMetricLongLabel(metric = state.spreadMetric) {
+      return metric === "sem" ? "standard error of the mean" : "standard deviation";
+    }
+
     function computePointMetrics(points, sampleCount, sexDivergence) {
       const lookup = pointLookup(points);
       const start = lookup.get("20-24");
@@ -2754,6 +2776,7 @@
           sample_count: sampleCount || 0,
           median_change_pct_20_24_to_80_84: null,
           iqr_change_pct_20_24_to_80_84: null,
+          sem_change_pct_20_24_to_80_84: null,
           sd_change_pct_20_24_to_80_84: null,
           cv_change_pct_20_24_to_80_84: null,
           upper_tail_change_pct: null,
@@ -2772,6 +2795,7 @@
         sample_count: sampleCount || 0,
         median_change_pct_20_24_to_80_84: percentChange(start.median, end.median),
         iqr_change_pct_20_24_to_80_84: percentChange(start.iqr, end.iqr),
+        sem_change_pct_20_24_to_80_84: percentChange(semFromPoint(start), semFromPoint(end)),
         sd_change_pct_20_24_to_80_84: percentChange(start.std, end.std),
         cv_change_pct_20_24_to_80_84: percentChange(start.cv, end.cv),
         upper_tail_change_pct: percentChange(startUpper, endUpper),
@@ -2895,10 +2919,10 @@
       if (view && ["typical", "spread", "tail", "sex"].includes(view)) {
         state.view = view;
       }
-      if (spread && ["std", "cv"].includes(spread)) {
+      if (spread && ["sem", "std"].includes(spread)) {
         state.spreadMetric = spread;
       }
-      if (compareMode && ["median", "iqr", "std", "cv", "upper_tail", "lower_tail"].includes(compareMode)) {
+      if (compareMode && ["median", "iqr", "sem", "std", "upper_tail", "lower_tail"].includes(compareMode)) {
         state.compareMode = compareMode;
       }
       if (compare) {
@@ -3288,10 +3312,10 @@
           getSexSampleCount(payload, "male"),
           entry.public_metrics?.sex_divergence_score || null
         );
-        const spreadKey = state.spreadMetric === "cv"
-          ? "cv_change_pct_20_24_to_80_84"
+        const spreadKey = state.spreadMetric === "sem"
+          ? "sem_change_pct_20_24_to_80_84"
           : "sd_change_pct_20_24_to_80_84";
-        const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
+        const spreadLabel = `${spreadMetricLabel()} change`;
 
         refs.exploreSummaryStrip.innerHTML = renderSummaryCards([
           {
@@ -3310,16 +3334,16 @@
             label: `Female ${spreadLabel}`,
             value: formatSignedPercent(femaleMetrics[spreadKey], 0),
             note: currentTrimLabel(),
-            help: state.spreadMetric === "cv"
-              ? "Percent change in the female coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+            help: state.spreadMetric === "sem"
+              ? "Percent change in the female standard error of the mean from ages 20-24 to 80-84. SEM is computed here as SD divided by the square root of n."
               : "Percent change in the female standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
           },
           {
             label: `Male ${spreadLabel}`,
             value: formatSignedPercent(maleMetrics[spreadKey], 0),
             note: currentTrimLabel(),
-            help: state.spreadMetric === "cv"
-              ? "Percent change in the male coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+            help: state.spreadMetric === "sem"
+              ? "Percent change in the male standard error of the mean from ages 20-24 to 80-84. SEM is computed here as SD divided by the square root of n."
               : "Percent change in the male standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
           },
           {
@@ -3336,10 +3360,10 @@
 
       const points = getSeriesPoints(payload);
       const metrics = computePointMetrics(points, getSampleCount(payload), entry.public_metrics?.sex_divergence_score || null);
-      const spreadKey = state.spreadMetric === "cv"
-        ? "cv_change_pct_20_24_to_80_84"
+      const spreadKey = state.spreadMetric === "sem"
+        ? "sem_change_pct_20_24_to_80_84"
         : "sd_change_pct_20_24_to_80_84";
-      const spreadLabel = state.spreadMetric === "cv" ? "CV change" : "SD change";
+      const spreadLabel = `${spreadMetricLabel()} change`;
 
       refs.exploreSummaryStrip.innerHTML = renderSummaryCards([
         {
@@ -3352,8 +3376,8 @@
           label: spreadLabel,
           value: formatSignedPercent(metrics[spreadKey], 0),
           note: `${state.cohort} cohort`,
-          help: state.spreadMetric === "cv"
-            ? "Percent change in coefficient of variation from ages 20-24 to 80-84. CV is standard deviation divided by the mean."
+          help: state.spreadMetric === "sem"
+            ? "Percent change in standard error of the mean from ages 20-24 to 80-84. SEM is computed here as SD divided by the square root of n."
             : "Percent change in standard deviation from ages 20-24 to 80-84. SD measures spread around the center.",
         },
         {
@@ -3437,14 +3461,25 @@
     }
 
     function lineTraceFromPoints(points, field, name, color, dash = "solid") {
-      const filtered = (points || []).filter((point) => Number.isFinite(point[field]));
+      const filtered = (points || [])
+        .map((point) => {
+          const value = field === "sem" ? spreadMetricValue(point, "sem") : point[field];
+          if (!Number.isFinite(value)) {
+            return null;
+          }
+          return {
+            point,
+            value,
+          };
+        })
+        .filter(Boolean);
       return {
         type: "scatter",
         mode: "lines+markers",
         name,
-        x: filtered.map((point) => point.age_mid),
-        y: filtered.map((point) => point[field]),
-        customdata: filtered.map((point) => [point.age_bin, point.n]),
+        x: filtered.map((item) => item.point.age_mid),
+        y: filtered.map((item) => item.value),
+        customdata: filtered.map((item) => [item.point.age_bin, item.point.n]),
         line: { color, width: 3, dash },
         marker: { size: 6, color },
         hovertemplate: `%{customdata[0]}<br>n=%{customdata[1]}<br>${name}: %{y:.2f}<extra></extra>`,
@@ -3533,7 +3568,7 @@
           if (!points.length) {
             return;
           }
-          traces.push(lineTraceFromPoints(points, field, `${cohortLabel(sex)} ${field.toUpperCase()}`, cohortColor(sex)));
+          traces.push(lineTraceFromPoints(points, field, `${cohortLabel(sex)} ${spreadMetricLabel(field)}`, cohortColor(sex)));
         });
         return traces;
       }
@@ -3544,7 +3579,7 @@
       }
 
       const field = state.spreadMetric;
-      const label = state.spreadMetric === "cv" ? "CV" : "SD";
+      const label = spreadMetricLabel();
       return [lineTraceFromPoints(points, field, `${state.cohort} ${label}`, COLORS.teal)];
     }
 
@@ -3705,14 +3740,14 @@
           });
         } else if (state.view === "spread") {
           traces = buildSpreadTraces(payload);
-          const label = state.spreadMetric === "cv" ? "coefficient of variation" : "standard deviation";
+          const label = spreadMetricLongLabel();
           annotation = state.cohort === "both"
-            ? `Female is shown in red and male in blue. This view asks whether the ${label} widens or narrows differently by sex.`
-            : `This view asks whether the ${label} widens or narrows with age.`;
+            ? `Female is shown in red and male in blue. This view tracks the age-bin ${label} for each sex. There is no shaded band here; the line itself is the uncertainty or spread summary.`
+            : `This view tracks the age-bin ${label}. There is no shaded band here; the line itself is the uncertainty or spread summary.`;
           layout = buildPlotLayout({
             title: chartTitle(entry.display_name),
             xaxis: { title: axisTitle("Age (years)") },
-            yaxis: { title: axisTitle(state.spreadMetric === "cv" ? "Coefficient of variation" : "Standard deviation") },
+            yaxis: { title: axisTitle(state.spreadMetric === "sem" ? "Standard error of the mean" : "Standard deviation") },
           });
         } else if (state.view === "tail") {
           traces = buildTailTraces(payload);
@@ -4347,8 +4382,8 @@
       if (state.compareMode === "std") {
         return point.std;
       }
-      if (state.compareMode === "cv") {
-        return point.cv;
+      if (state.compareMode === "sem") {
+        return spreadMetricValue(point, "sem");
       }
       if (state.compareMode === "upper_tail") {
         if (!Number.isFinite(point.p90) || !Number.isFinite(point.median)) {
