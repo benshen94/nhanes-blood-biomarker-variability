@@ -1,0 +1,57 @@
+{
+  "default_fit_key": "original",
+  "fits": [
+    {
+      "key": "original",
+      "label": "SR original fit",
+      "kind": "usa_2019_script",
+      "sr_script_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py",
+      "sr_package_root": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python",
+      "n_sim": 100000,
+      "tmax": 120,
+      "save_times": 1,
+      "reference_tail_policy": "alive_only_no_tail_trimming",
+      "reference_population_label": "alive-only reference",
+      "description": "Existing USA 2019 SR reference used by the original dashboard comparison."
+    },
+    {
+      "key": "alternative",
+      "label": "SR alternative fit",
+      "kind": "custom_params",
+      "sr_package_root": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python",
+      "n_sim": 100000,
+      "tmax": 120,
+      "dt": 0.0013698630136986301,
+      "save_times": 1,
+      "h_ext": 0.0,
+      "params": {
+        "eta": 1.3,
+        "beta": 173.9,
+        "kappa": 0.5,
+        "epsilon": 0.833,
+        "Xc": 1.23
+      },
+      "heterogeneity": {
+        "param": "Xc",
+        "std": 0.27,
+        "dist_type": "gaussian",
+        "family": "None"
+      },
+      "reference_tail_policy": "alive_only_no_tail_trimming",
+      "reference_population_label": "alive-only reference",
+      "description": "Alternative male-oriented SR fit with Xc heterogeneity and half-day internal timestep."
+    },
+    {
+      "key": "fi_hrs",
+      "label": "FI (HRS)",
+      "kind": "raw_reference_csv",
+      "source_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/HRS/outputs/frailty/FI_hrs_participant_values.csv.gz",
+      "value_column": "FI_hrs",
+      "age_column": "age",
+      "age_bin_column": "age_bin",
+      "reference_tail_policy": "participant_values_no_tail_trimming",
+      "reference_population_label": "participant reference",
+      "description": "HRS frailty index participant-level reference values, binned from the first available 5-year FI age bin onward."
+    }
+  ]
+}

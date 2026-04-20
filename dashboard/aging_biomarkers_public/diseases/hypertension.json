@@ -8,11 +8,11 @@
     "default_summary": "These defaults emphasize familiar inflammatory, kidney, and cardiovascular markers that often pull away from the healthy baseline.",
     "default_biomarker_ids": [
       "nt-probnp",
-      "high-sensitivity c-reactive protein hs-crp",
       "c-reactive protein",
+      "high-sensitivity c-reactive protein hs-crp",
+      "creatinine",
       "cystatin c",
-      "triglyceride",
-      "creatinine"
+      "triglyceride"
     ],
     "accent": "amber",
     "source": "BPQ020 == 1",

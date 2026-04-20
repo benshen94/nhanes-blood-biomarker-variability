@@ -7,12 +7,10 @@
     "default_title": "Start with familiar metabolic markers",
     "default_summary": "These biomarkers are the clearest familiar starting points for how diabetes separates from the healthy NHANES baseline across adulthood.",
     "default_biomarker_ids": [
-      "c-peptide",
-      "c-reactive protein",
-      "alt",
-      "plasma glucose",
+      "glycohemoglobin",
       "triglyceride",
-      "glycohemoglobin"
+      "c-reactive protein",
+      "alt"
     ],
     "accent": "rust",
     "source": "DIQ010 == 1",

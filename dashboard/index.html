@@ -1439,13 +1439,13 @@
             </select>
           </label>
           <label id="waterfall-compare-wrap">
-            SR reference
+            Comparison reference
             <div class="check-label">
               <input id="waterfall-compare-sr" type="checkbox" />
-              <span>Show SR model X side by side</span>
+              <span>Show comparison reference side by side</span>
             </div>
             <select id="waterfall-sr-fit"></select>
-            <div class="waterfall-caption">Switches the waterfall to the same 5-year age bins used by the SR comparison tab.</div>
+            <div class="waterfall-caption">Switches the waterfall to the same 5-year age bins used by the comparison tab for the selected reference.</div>
           </label>
           <label>Symmetric trim (% per tail)
             <input id="waterfall-trim-slider" type="range" min="0" max="25" step="5" value="10" />
@@ -1465,7 +1465,7 @@
         <div class="panel-header">
           <div>
             <h2 class="panel-title">SR Comparison</h2>
-            <p class="panel-copy">Compare pooled blood biomarkers against the alive-only SR-model `X` distribution in matching 5-year age bins.</p>
+            <p class="panel-copy">Compare pooled blood biomarkers against the selected reference distribution in matching 5-year age bins.</p>
           </div>
         </div>
         <div class="sr-controls">
@@ -1483,11 +1483,11 @@
             <select id="sr-biomarker"></select>
           </label>
           <label class="check-label"><input id="sr-include-env" type="checkbox" /> Include environmental/toxicant</label>
-          <label>SR fit
+          <label>Reference
             <select id="sr-fit"></select>
           </label>
           <label>Current selection
-            <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its SR Q-Q fit.</div>
+            <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its reference comparison fit.</div>
           </label>
           <label>Age bin
             <input id="sr-age-bin-slider" type="range" min="0" max="12" step="1" value="6" />
@@ -1550,12 +1550,12 @@
         </div>
         <div class="sr-section-head">
           <h3>Biomarker Ranking</h3>
-          <p>Click a row to switch the shared biomarker selection and refresh the SR plots.</p>
+          <p>Click a row to switch the shared biomarker selection and refresh the reference-comparison plots.</p>
         </div>
         <div class="table-wrap"><table id="sr-rank-table"></table></div>
         <div class="sr-section-head">
           <h3>Per-Bin Fit Details</h3>
-          <p>Inspect how `R²`, z-scored Wasserstein distance, slope `m`, and intercept `c` change across age bins for the selected biomarker.</p>
+          <p>Inspect how `R²`, z-scored Wasserstein distance, slope `m`, and intercept `c` change across age bins for the selected biomarker and reference.</p>
         </div>
         <div class="table-wrap"><table id="sr-bin-table"></table></div>
       </div>
@@ -1801,7 +1801,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1775570378';
+    const DATA_VERSION = '1776694651';
     const HAS_CLALIT = true;
     const HAS_SR_COMPARISON = true;
     const SPECIMEN_TITLE = 'Blood';
@@ -2085,13 +2085,29 @@
       return `${p}% each tail kept out -> using ${p}-${100 - p} percentile band`;
     }
 
-    function srAgeBinAt(index) {
-      const idx = Math.max(0, Math.min(SR_COMPARISON_AGE_BINS.length - 1, Number(index ?? state.srAgeBinIndex ?? 0)));
-      return SR_COMPARISON_AGE_BINS[idx];
+    function referenceAgeBinsForFit(fitKey = selectedSrFitKey()) {
+      const option = srFitOptions().find(item => item.key === fitKey);
+      const labels = Array.isArray(option?.available_age_bins) ? option.available_age_bins : [];
+      if (!labels.length) return SR_COMPARISON_AGE_BINS;
+      const bins = SR_COMPARISON_AGE_BINS.filter(bin => labels.includes(bin.label));
+      return bins.length ? bins : SR_COMPARISON_AGE_BINS;
+    }
+
+    function clampSrAgeBinIndex(fitKey = selectedSrFitKey()) {
+      const ageBins = referenceAgeBinsForFit(fitKey);
+      const idx = Math.max(0, Math.min(ageBins.length - 1, Number(state.srAgeBinIndex ?? 0)));
+      state.srAgeBinIndex = idx;
+      return idx;
+    }
+
+    function srAgeBinAt(index, fitKey = selectedSrFitKey()) {
+      const ageBins = referenceAgeBinsForFit(fitKey);
+      const idx = Math.max(0, Math.min(ageBins.length - 1, Number(index ?? state.srAgeBinIndex ?? 0)));
+      return ageBins[idx];
     }
 
     function selectedSrAgeBinLabel() {
-      return srAgeBinAt(state.srAgeBinIndex).label;
+      return srAgeBinAt(state.srAgeBinIndex, selectedSrFitKey()).label;
     }
 
     function srCurrentMethod() {
@@ -2123,7 +2139,12 @@
     function srFitLabel(fitKey) {
       const option = srFitOptions().find(item => item.key === fitKey);
       if (option?.label) return option.label;
-      return fitKey || 'SR fit';
+      return fitKey || 'Reference';
+    }
+
+    function referencePopulationLabel(fitKey = selectedSrFitKey()) {
+      const option = srFitOptions().find(item => item.key === fitKey);
+      return option?.reference_population_label || 'reference values';
     }
 
     function srActiveTrimMode() {
@@ -2192,6 +2213,18 @@
       state.waterfallSrFitKey = validWaterfallFit;
       if (srFitEl) srFitEl.value = validSrFit;
       if (waterfallSrFitEl) waterfallSrFitEl.value = validWaterfallFit;
+      renderSrAgeBinControl();
+    }
+
+    function renderSrAgeBinControl() {
+      if (!srAgeBinSliderEl || !srAgeBinLabelEl) return;
+      const fitKey = selectedSrFitKey();
+      const ageBins = referenceAgeBinsForFit(fitKey);
+      const idx = clampSrAgeBinIndex(fitKey);
+      srAgeBinSliderEl.min = '0';
+      srAgeBinSliderEl.max = String(Math.max(0, ageBins.length - 1));
+      srAgeBinSliderEl.value = String(idx);
+      srAgeBinLabelEl.textContent = ageBins[idx]?.label || '';
     }
 
     function renderSrTrimModeOptions() {
@@ -2431,7 +2464,7 @@
       if (tabName === 'sr-comparison') {
         return {
           title: `NHANES ${SPECIMEN_TITLE} SR Comparison`,
-          sub: `Match pooled ${SPECIMEN_LABEL} biomarker distributions against the SR-model X distribution across age bins.`,
+          sub: `Match pooled ${SPECIMEN_LABEL} biomarker distributions against the selected reference distribution across age bins.`,
         };
       }
       if (tabName === 'info') {
@@ -2989,7 +3022,7 @@
     }
 
     function currentWaterfallAgeBins() {
-      if (waterfallUsesSrReference()) return SR_COMPARISON_AGE_BINS;
+      if (waterfallUsesSrReference()) return referenceAgeBinsForFit(selectedWaterfallSrFitKey());
       return WATERFALL_AGE_BINS;
     }
 
@@ -4061,6 +4094,7 @@
       const srReference = wantsSrReference ? srWaterfallReferenceForFit(selectedFitKey) : null;
       const compareSr = Boolean(wantsSrReference && srReference);
       const srFitTitle = srFitLabel(selectedFitKey);
+      const referencePopulation = referencePopulationLabel(selectedFitKey);
       const ageBins = currentWaterfallAgeBins();
       setWaterfallPlotHeight(compareSr);
 
@@ -4122,7 +4156,7 @@
       const srRows = buildWaterfallRowsFromSrReference(srReference, ageBins, trimPct, minN);
       if (!srRows.length) {
         Plotly.newPlot('waterfall-plot', [], applyPlotTheme({
-          title: 'SR reference payload is unavailable for side-by-side waterfall mode',
+          title: 'Reference payload is unavailable for side-by-side waterfall mode',
           xaxis: { title: displayName },
           yaxis: { title: 'Age bin' },
         }, mobile), { responsive: true, displaylogo: false });
@@ -4169,7 +4203,7 @@
             x: 0.77,
             y: 1.04,
             showarrow: false,
-            text: `${srFitTitle} (alive-only reference)`,
+            text: `${srFitTitle} (${referencePopulation})`,
             font: { size: mobile ? 10 : 12, color: '#102a43' },
           },
           {
@@ -4178,7 +4212,7 @@
             x: 0.5,
             y: 1.11,
             showarrow: false,
-            text: `5-year bins used by SR comparison | Biomarker outliers: ${trimLabelFromPct(trimPct)} | ${srFitTitle}: alive-only, no tail clipping | min n/bin: ${minN}`,
+            text: `5-year bins used by comparison tab | Biomarker outliers: ${trimLabelFromPct(trimPct)} | ${srFitTitle}: ${referencePopulation}, no tail clipping | min n/bin: ${minN}`,
             font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
           },
         ],
@@ -4195,7 +4229,7 @@
         },
         xaxis2: {
           domain: [0.54, 1],
-          title: 'SR model X value',
+          title: `${srFitTitle} value`,
         },
         yaxis2: {
           domain: [0, 1],
@@ -4440,7 +4474,7 @@
       if (srCurrentMethod() === 'rank') {
         const currentRankRow = srBinRowForLabel(summary.wasserstein_rank_by_age_bin || [], currentBinLabel);
         cards = [
-          ['SR fit', fitLabel],
+          ['Reference', fitLabel],
           ['Selected bin', currentBinLabel],
           ['Per-bin trim', detail?.trim_label || summary.trim_label || srTrimLabel(trimMode)],
           ['Current rank-W', formatNum(currentDetailRow?.wasserstein_rank ?? currentRankRow?.wasserstein_rank, 4)],
@@ -4448,14 +4482,14 @@
           ['Min rank-W', formatNum(summary.min_wasserstein_rank, 4)],
           ['Median rank-W', formatNum(summary.median_wasserstein_rank, 4)],
           ['Current NHANES n', String(currentDetailRow?.nhanes_n ?? 'NA')],
-          ['Current SR n', String(currentDetailRow?.sr_n ?? 'NA')],
+          ['Current reference n', String(currentDetailRow?.sr_n ?? 'NA')],
           ['Valid bins', String(summary.valid_rank_bin_count ?? 'NA')],
         ];
       } else {
         const currentR2Row = srBinRowForLabel(summary.r2_by_age_bin || [], currentBinLabel);
         const currentWassersteinRow = srBinRowForLabel(summary.wasserstein_z_by_age_bin || [], currentBinLabel);
         cards = [
-          ['SR fit', fitLabel],
+          ['Reference', fitLabel],
           ['Selected bin', currentBinLabel],
           ['Biomarker trim', detail?.trim_label || summary.trim_label || srTrimLabel(trimMode)],
           ['Current R²', formatNum(currentDetailRow?.r2 ?? currentR2Row?.r2, 4)],
@@ -4488,7 +4522,7 @@
         plotNoData(
           'sr-qq-plot',
           `${displayName} — ${fitLabel} Q-Q plot`,
-          `No valid SR comparison data for age bin ${currentBinLabel}.`
+          `No valid comparison data for age bin ${currentBinLabel}.`
         );
         return;
       }
@@ -4527,10 +4561,10 @@
           x: 1,
           y: 1.08,
           showarrow: false,
-          text: `Trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | R²=${formatNum(row.r2, 4)} | z-W=${formatNum(row.wasserstein_z, 4)} | m=${formatNum(row.slope_m, 4)} | c=${formatNum(row.intercept_c, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | ${fitLabel} alive n=${row.sr_n ?? 'NA'}`,
+          text: `Trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | R²=${formatNum(row.r2, 4)} | z-W=${formatNum(row.wasserstein_z, 4)} | m=${formatNum(row.slope_m, 4)} | c=${formatNum(row.intercept_c, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | ${fitLabel} n=${row.sr_n ?? 'NA'}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
-        xaxis: { title: `${fitLabel} X values at matched quantiles` },
+        xaxis: { title: `${fitLabel} values at matched quantiles` },
         yaxis: { title: `${displayName} values at matched quantiles` },
       }, mobile), { responsive: true, displaylogo: false });
     }
@@ -4596,7 +4630,7 @@
           x: 1,
           y: 1.08,
           showarrow: false,
-          text: `Per-bin trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | rank-W=${formatNum(row.wasserstein_rank, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | ${fitLabel} alive n=${row.sr_n ?? 'NA'}`,
+          text: `Per-bin trim=${row.trim_label || srTrimLabel(detail?.active_trim_mode)} | rank-W=${formatNum(row.wasserstein_rank, 4)} | NHANES n=${row.nhanes_n ?? 'NA'} | ${fitLabel} n=${row.sr_n ?? 'NA'}`,
           font: { size: mobile ? 10 : 12, color: '#5f6b7a' },
         }],
         xaxis: { title: 'Normalized rank (1-100)' },
@@ -4858,9 +4892,9 @@
       const currentBinLabel = selectedSrAgeBinLabel();
       let html = '';
       if (srCurrentMethod() === 'rank') {
-        html = '<thead><tr><th>Age bin</th><th>Rank-W</th><th>NHANES n</th><th>SR n</th></tr></thead><tbody>';
+        html = '<thead><tr><th>Age bin</th><th>Rank-W</th><th>NHANES n</th><th>Reference n</th></tr></thead><tbody>';
       } else {
-        html = '<thead><tr><th>Age bin</th><th>R²</th><th>z-Wasserstein</th><th>m</th><th>c</th><th>NHANES n</th><th>SR n</th><th>NHANES Q1</th><th>NHANES median</th><th>NHANES Q3</th><th>SR Q1</th><th>SR median</th><th>SR Q3</th></tr></thead><tbody>';
+        html = '<thead><tr><th>Age bin</th><th>R²</th><th>z-Wasserstein</th><th>m</th><th>c</th><th>NHANES n</th><th>Reference n</th><th>NHANES Q1</th><th>NHANES median</th><th>NHANES Q3</th><th>Reference Q1</th><th>Reference median</th><th>Reference Q3</th></tr></thead><tbody>';
       }
       for (const row of rows) {
         const selectedAttr = row.age_bin === currentBinLabel ? ' style="background: rgba(15,118,110,0.12);"' : '';
@@ -4908,7 +4942,7 @@
         if (srSummaryStripEl) srSummaryStripEl.innerHTML = '';
         if (srRankTableEl) srRankTableEl.innerHTML = '';
         if (srBinTableEl) srBinTableEl.innerHTML = '';
-        plotNoData('sr-qq-plot', 'SR comparison unavailable', 'No SR biomarkers match the current category filter.');
+        plotNoData('sr-qq-plot', 'Comparison unavailable', 'No biomarkers match the current category filter for this reference.');
         plotNoData('sr-r2-plot', method === 'rank' ? 'Rank-Wasserstein across age bins' : 'R² across age bins', 'No SR biomarkers match the current category filter.');
         plotNoData('sr-coef-plot', method === 'rank' ? 'Rank mode summary' : 'QQ coefficients across age bins', 'No SR biomarkers match the current category filter.');
         return;
@@ -6302,8 +6336,6 @@
       compareIncludeEnvEl.checked = false;
       scatterIncludeEnvEl.checked = false;
       histIncludeEnvEl.checked = false;
-      if (srAgeBinSliderEl) srAgeBinSliderEl.value = String(state.srAgeBinIndex);
-      if (srAgeBinLabelEl) srAgeBinLabelEl.textContent = selectedSrAgeBinLabel();
       if (srSortDirectionEl) srSortDirectionEl.value = state.srSortDirection;
       if (srMethodModeEl) srMethodModeEl.value = state.srMethod;
       if (!HAS_CLALIT) {
@@ -6315,6 +6347,7 @@
         if (panelSrComparison) panelSrComparison.style.display = 'none';
       } else {
         renderSrFitOptions();
+        renderSrAgeBinControl();
       }
       if (waterfallCompareSrEl) {
         waterfallCompareSrEl.checked = false;
@@ -6812,7 +6845,7 @@
       });
       srAgeBinSliderEl?.addEventListener('input', async () => {
         state.srAgeBinIndex = Number(srAgeBinSliderEl.value || 0);
-        if (srAgeBinLabelEl) srAgeBinLabelEl.textContent = selectedSrAgeBinLabel();
+        renderSrAgeBinControl();
         await renderSRComparison(state.currentId);
       });
       srFitEl?.addEventListener('change', async () => {
@@ -6821,6 +6854,7 @@
           waterfallSrFitEl.value = state.srFitKey;
           state.waterfallSrFitKey = state.srFitKey;
         }
+        renderSrAgeBinControl();
         await renderSRComparison(srBiomarkerEl?.value || state.currentId);
       });
       srMethodModeEl?.addEventListener('change', async () => {

@@ -7,12 +7,11 @@
     "default_title": "Start with airway and inflammation markers",
     "default_summary": "These defaults prioritize familiar immune and inflammatory markers that are easier to interpret in a respiratory-disease contrast.",
     "default_biomarker_ids": [
-      "high-sensitivity c-reactive protein hs-crp",
-      "c-reactive protein",
-      "fibrinogen",
       "eosinophils percent",
-      "segmented neutrophils num",
-      "white blood cell count si"
+      "white blood cell count si",
+      "c-reactive protein",
+      "high-sensitivity c-reactive protein hs-crp",
+      "segmented neutrophils num"
     ],
     "accent": "violet",
     "source": "MCQ010 == 1",

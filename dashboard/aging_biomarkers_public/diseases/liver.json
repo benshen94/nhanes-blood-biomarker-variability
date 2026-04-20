@@ -7,12 +7,9 @@
     "default_title": "Start with liver-linked chemistry",
     "default_summary": "These markers emphasize familiar liver and metabolic chemistry for a cleaner first read of the condition contrast.",
     "default_biomarker_ids": [
-      "ggt",
-      "alt",
+      "albumin",
       "total bilirubin",
-      "ast",
-      "triglyceride",
-      "albumin"
+      "triglyceride"
     ],
     "accent": "amber",
     "source": "MCQ160L or MCQ500/MCQ510A-F == 1",

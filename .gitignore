@@ -15,6 +15,7 @@ data/processed/
 output/*
 projects/sr_comparison/blood/sr_usa_2019_trajectories.npz
 projects/sr_fits/*/trajectories.npz
+projects/comparison_references/*/trajectories.npz
 
 # OS/editor
 .DS_Store

@@ -13,11 +13,13 @@ from build_sr_comparison import (
     AGE_BIN_LABELS,
     AGE_BIN_MIDS,
     assign_age_bins,
+    build_reference_rows_from_distributions,
     build_sr_reference_rows,
     build_sr_waterfall_reference,
     build_rank_bin_distributions,
     compute_qq_fit,
     compute_rank_bin_rows,
+    extract_raw_reference_distributions,
     percentile_ranks_with_tie_breaks,
     summarize_biomarker_bins,
     summarize_rank_bins,
@@ -197,6 +199,42 @@ class TestBuildSrComparison(unittest.TestCase):
         self.assertEqual(len(payload["bins"]), len(AGE_BIN_LABELS))
         self.assertEqual(len(payload["sample_probabilities"]), len(payload["bins"][0]["values_sample"]))
         self.assertGreater(payload["bins"][0]["sr_n"], 0)
+
+    def test_extract_raw_reference_distributions_uses_existing_age_bin_labels(self):
+        frame = pd.DataFrame(
+            [
+                {"age": 44.0, "age_bin": np.nan, "FI_hrs": 0.10},
+                {"age": 52.0, "age_bin": "50-54", "FI_hrs": 0.20},
+                {"age": 53.0, "age_bin": "50-54", "FI_hrs": 0.30},
+                {"age": 67.0, "age_bin": "65-69", "FI_hrs": 0.40},
+                {"age": 88.0, "age_bin": "85-89", "FI_hrs": 0.50},
+            ]
+        )
+
+        distributions = extract_raw_reference_distributions(
+            frame,
+            value_column="FI_hrs",
+            age_column="age",
+            age_bin_column="age_bin",
+        )
+
+        self.assertEqual(distributions["50-54"].tolist(), [0.2, 0.3])
+        self.assertEqual(distributions["65-69"].tolist(), [0.4])
+        self.assertEqual(distributions["20-24"].tolist(), [])
+        self.assertEqual(distributions["80-84"].tolist(), [])
+
+    def test_build_reference_rows_from_distributions_keeps_empty_bins(self):
+        distributions = {age_bin: np.array([], dtype=float) for age_bin in AGE_BIN_LABELS}
+        distributions["50-54"] = np.array([0.2, 0.3, 0.4], dtype=float)
+
+        rows = build_reference_rows_from_distributions(distributions)
+
+        self.assertEqual([row["age_bin"] for row in rows], AGE_BIN_LABELS)
+        fifty_row = next(row for row in rows if row["age_bin"] == "50-54")
+        early_row = next(row for row in rows if row["age_bin"] == "20-24")
+        self.assertEqual(fifty_row["sr_n"], 3)
+        self.assertEqual(early_row["sr_n"], 0)
+        self.assertIsNone(early_row["sr_q1"])
 
 
 if __name__ == "__main__":

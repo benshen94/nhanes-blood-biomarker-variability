@@ -1,0 +1,28 @@
+{
+  "key": "original",
+  "label": "SR original fit",
+  "kind": "usa_2019_script",
+  "description": "Existing USA 2019 SR reference used by the original dashboard comparison.",
+  "sr_script_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py",
+  "sr_package_root": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python",
+  "n_sim": 100000,
+  "tmax": 120,
+  "save_times": 1,
+  "reference_tail_policy": "alive_only_no_tail_trimming",
+  "available_age_bins": [
+    "20-24",
+    "25-29",
+    "30-34",
+    "35-39",
+    "40-44",
+    "45-49",
+    "50-54",
+    "55-59",
+    "60-64",
+    "65-69",
+    "70-74",
+    "75-79",
+    "80-84"
+  ],
+  "reference_population_label": "alive-only reference"
+}

@@ -1,34 +1,49 @@
 {
-  "built_at_unix": 1775570214,
-  "duration_seconds": 686.43,
+  "built_at_unix": 1776694458,
+  "duration_seconds": 703.15,
   "long_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/data/processed/biomarker_long.parquet",
   "out_root": "projects/sr_comparison/blood",
-  "fit_library_root": "projects/sr_fits",
-  "fit_registry_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/projects/sr_fits/fit_registry.json",
+  "fit_library_root": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/projects/comparison_references",
+  "fit_registry_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/projects/comparison_references/reference_registry.json",
   "default_fit_key": "original",
   "fit_options": [
     {
       "key": "original",
       "label": "SR original fit",
       "description": "Existing USA 2019 SR reference used by the original dashboard comparison.",
+      "kind": "usa_2019_script",
       "reference_tail_policy": "alive_only_no_tail_trimming",
+      "reference_population_label": "alive-only reference",
       "is_default": true
     },
     {
       "key": "alternative",
       "label": "SR alternative fit",
       "description": "Alternative male-oriented SR fit with Xc heterogeneity and half-day internal timestep.",
+      "kind": "custom_params",
       "reference_tail_policy": "alive_only_no_tail_trimming",
+      "reference_population_label": "alive-only reference",
+      "is_default": false
+    },
+    {
+      "key": "fi_hrs",
+      "label": "FI (HRS)",
+      "description": "HRS frailty index participant-level reference values, binned from the first available 5-year FI age bin onward.",
+      "kind": "raw_reference_csv",
+      "reference_tail_policy": "participant_values_no_tail_trimming",
+      "reference_population_label": "participant reference",
       "is_default": false
     }
   ],
   "fit_sources": {
-    "original": "rerun",
-    "alternative": "rerun"
+    "original": "local_cache",
+    "alternative": "local_cache",
+    "fi_hrs": "source_file"
   },
   "fit_output_dirs": {
-    "original": "projects/sr_fits/original",
-    "alternative": "projects/sr_fits/alternative"
+    "original": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/projects/comparison_references/original",
+    "alternative": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/projects/comparison_references/alternative",
+    "fi_hrs": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/nhanes_dashboard/projects/comparison_references/fi_hrs"
   },
   "waterfall_reference_sample_n": 801,
   "age_bins": [
@@ -128,6 +143,13 @@
         "rank_summary_csv": "projects/sr_comparison/blood/fits/alternative/biomarker_rank_summary.csv",
         "rank_detail_csv": "projects/sr_comparison/blood/fits/alternative/biomarker_rank_detail.csv",
         "comparison_root": "projects/sr_comparison/blood/fits/alternative"
+      },
+      "fi_hrs": {
+        "qq_summary_csv": "projects/sr_comparison/blood/fits/fi_hrs/biomarker_qq_summary.csv",
+        "qq_detail_csv": "projects/sr_comparison/blood/fits/fi_hrs/biomarker_qq_detail.csv",
+        "rank_summary_csv": "projects/sr_comparison/blood/fits/fi_hrs/biomarker_rank_summary.csv",
+        "rank_detail_csv": "projects/sr_comparison/blood/fits/fi_hrs/biomarker_rank_detail.csv",
+        "comparison_root": "projects/sr_comparison/blood/fits/fi_hrs"
       }
     },
     "detail_by_biomarker_dir": "projects/sr_comparison/blood/detail_by_biomarker",

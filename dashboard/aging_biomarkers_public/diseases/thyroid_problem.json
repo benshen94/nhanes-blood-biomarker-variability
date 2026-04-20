@@ -7,12 +7,10 @@
     "default_title": "Start with endocrine and lipid markers",
     "default_summary": "These defaults keep the first view anchored in familiar thyroid-adjacent and metabolic biomarkers.",
     "default_biomarker_ids": [
-      "sex hormone binding globulin",
       "thyroid stimulating hormone",
-      "25-hydroxyvitamin d2 + d3",
       "triglyceride",
       "ldl-cholesterol",
-      "cd4 counts"
+      "25-hydroxyvitamin d2 + d3"
     ],
     "accent": "violet",
     "source": "MCQ160M == 1",

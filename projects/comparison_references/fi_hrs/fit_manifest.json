@@ -1,0 +1,21 @@
+{
+  "key": "fi_hrs",
+  "label": "FI (HRS)",
+  "kind": "raw_reference_csv",
+  "description": "HRS frailty index participant-level reference values, binned from the first available 5-year FI age bin onward.",
+  "source_path": "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/HRS/outputs/frailty/FI_hrs_participant_values.csv.gz",
+  "value_column": "FI_hrs",
+  "age_column": "age",
+  "age_bin_column": "age_bin",
+  "reference_tail_policy": "participant_values_no_tail_trimming",
+  "reference_population_label": "participant reference",
+  "available_age_bins": [
+    "50-54",
+    "55-59",
+    "60-64",
+    "65-69",
+    "70-74",
+    "75-79",
+    "80-84"
+  ]
+}

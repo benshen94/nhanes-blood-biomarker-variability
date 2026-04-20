@@ -11,12 +11,13 @@ Documentation rule: when dashboard features/metrics change, update this README i
 - `src/download_nhanes.py` downloads required NHANES XPT files (lab + demographics + questionnaire modules including `DIQ/MCQ/KIQ/BPQ/OSQ/VIQ/PFQ/HUQ`), with candidate selection controlled by `--candidate-column`.
 - `src/build_analysis_dataset.py` creates harmonized healthy-adult biomarker long data, with candidate selection controlled by `--candidate-column`.
 - `src/compute_cv_metrics.py` computes CV-by-age bins and decline metrics.
-- `src/build_sr_comparison.py` reruns or reuses cached SR fits from `projects/sr_fits/`, bins each SR-model `X` distribution on the NHANES 5-year age bins, and builds both the Q-Q and rank-based SR comparison payloads under `projects/sr_comparison/blood/`.
-  - In rank mode, biomarker values are trimmed within each age bin before pooling and ranking, but the alive-only SR `X` values are not trimmed.
+- `src/build_sr_comparison.py` reruns or reuses cached reference fits from `projects/comparison_references/`, bins each comparison reference on the NHANES 5-year age bins, and builds both the Q-Q and rank-based comparison payloads under `projects/sr_comparison/blood/`.
+  - The current registered references are `SR original fit`, `SR alternative fit`, and `FI (HRS)`.
+  - In rank mode, biomarker values are trimmed within each age bin before pooling and ranking, but the selected reference distribution is not trimmed.
   - Rank mode now supports `0%`, `3%`, `5%`, and `10%` biomarker tail trimming.
-- `projects/sr_fits/fit_registry.json` is the source of truth for the available SR reference fits shown in the dashboard. Each fit gets its own cached trajectories, manifest, and compact SR reference payloads under `projects/sr_fits/<fit_key>/`.
+- `projects/comparison_references/reference_registry.json` is the source of truth for the available comparison references shown in the dashboard. Each reference gets its own manifest and compact reference payloads under `projects/comparison_references/<fit_key>/`. Simulated SR references also cache their trajectories there.
 - `src/run_custom_sr_fit.py` runs a custom SR simulation through the external aging codebase and saves a combined survival/hazard PNG, a waterfall PNG, a yearly alive-only `X` summary CSV/PNG (`mean`, `std`, `cv`, quantile-skewness), and a parameter JSON under `output/sr_fits_results/`.
-- `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared SR fit manifest plus SR waterfall/rank reference assets into `dashboard/data/` when the blood SR payload is available.
+- `src/build_dashboard.py` builds the blood dashboard (`dashboard/index.html`), urinary dashboard (`dashboard/urinary.html`), and the public-facing aging biomarkers dashboard (`dashboard/aging_biomarkers_dashboard.html`), and writes the shared comparison-reference manifest plus waterfall/rank reference assets into `dashboard/data/` when the blood comparison payload is available.
 - `src/build_clalit_quartiles.py` aggregates the Clalit single-year ridgeline densities into NHANES-style 5-year bins (`20-24` through `95-99`) and writes a combined female/male quartile export to `data/clalit/clalit_quartiles.csv`.
 - `src/aging_biomarker_analysis.py` now prefers `data/clalit/clalit_quartiles.csv` for the Clalit summary-rho PCA branch, using quartile-derived median, \( \mathrm{IQR} / Q_{50} \) CV, and quantile skewness instead of the legacy Clalit standard-deviation features.
 - `src/build_aging_biomarkers_dashboard.py` builds the curated manifest and HTML bundle for the public-facing blood-only aging biomarkers explorer.
@@ -200,13 +201,13 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `dashboard/data/series/*.json`
   - `dashboard/data_urine/series/*.json`
 - Series are fetched ad hoc only when a biomarker is selected/searched.
-- The blood dashboard also lazy-loads shared SR fit payloads:
+- The blood dashboard also lazy-loads shared comparison-reference payloads:
   - `dashboard/data/sr_fit_manifest.json`
   - `dashboard/data/sr_waterfall_references.json`
-  - the fit manifest lists the available SR fit keys/labels, and the waterfall payload contains compact quantile-sampled SR-model `X` distributions for every registered fit
-- The blood dashboard also uses one shared SR rank reference payload for `Rank-Wasserstein` mode:
+  - the fit manifest lists the available reference keys/labels, and the waterfall payload contains compact quantile-sampled reference distributions for every registered reference
+- The blood dashboard also uses one shared rank-reference payload for `Rank-Wasserstein` mode:
   - `dashboard/data/sr_rank_references.json`
-  - it contains the SR normalized-rank distributions (`1` to `100`) for each registered SR fit, SR trim mode, and 5-year age bin, so those SR ranks are not duplicated inside every biomarker series file
+  - it contains the normalized-rank distributions (`1` to `100`) for each registered reference, trim mode, and 5-year age bin, so those reference ranks are not duplicated inside every biomarker series file
 
 ## Public aging biomarkers dashboard
 - Artifact:
@@ -328,8 +329,8 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - the left panel shows the selected biomarker
   - the right panel shows the selected cached SR-fit `X` reference
   - the biomarker panel still respects the trim slider, but the SR `X` panel always stays alive-only with no tail clipping
-  - the SR panel is pooled-only and is meant for visual diagnosis of the SR Q-Q score, not as a separate sex-specific reference
-  - the waterfall SR-fit selector lets you switch between `SR original fit`, `SR alternative fit`, and future registered fits
+  - the SR panel is pooled-only and is meant for visual diagnosis of the comparison score, not as a separate sex-specific reference
+  - the waterfall reference selector lets you switch between `SR original fit`, `SR alternative fit`, `FI (HRS)`, and future registered references
 
 ## SR comparison outputs
 - `src/build_sr_comparison.py` writes:
@@ -337,13 +338,15 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
   - `projects/sr_comparison/blood/fits/original/biomarker_qq_detail.csv`
   - `projects/sr_comparison/blood/fits/alternative/biomarker_qq_summary.csv`
   - `projects/sr_comparison/blood/fits/alternative/biomarker_qq_detail.csv`
+  - `projects/sr_comparison/blood/fits/fi_hrs/biomarker_qq_summary.csv`
+  - `projects/sr_comparison/blood/fits/fi_hrs/biomarker_qq_detail.csv`
   - `projects/sr_comparison/blood/dashboard_payload.json`
   - `projects/sr_comparison/blood/run_manifest.json`
 - `dashboard_payload.json` now includes:
-  - per-biomarker SR Q-Q summaries and detail rows for multiple biomarker trim modes (`0%`, `3%`, `5%`, `10%` per tail)
-  - fit-keyed summary/detail maps so the dashboard can switch between multiple SR reference fits without duplicating biomarker series payloads
-  - `sr_fit_manifest`, which lists the available SR fits and the default fit key
-  - `sr_reference_bins_by_fit`, `sr_waterfall_references`, and `sr_rank_references` for the shared fit-level SR caches
+  - per-biomarker Q-Q summaries and detail rows for multiple biomarker trim modes (`0%`, `3%`, `5%`, `10%` per tail)
+  - fit-keyed summary/detail maps so the dashboard can switch between multiple registered references without duplicating biomarker series payloads
+  - `sr_fit_manifest`, which lists the available references and the default reference key
+  - `sr_reference_bins_by_fit`, `sr_waterfall_references`, and `sr_rank_references` for the shared reference-level caches
 
 ## Filter Tests tab
 - Use `Filter Tests` (top tab) to build logical clause filters over trend metrics and return matching tests.
@@ -471,24 +474,26 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
 ## SR comparison tab
 - `SR comparison` is available on the blood dashboard only.
 - Purpose:
-  - compare pooled NHANES blood biomarkers against the SR-model `X` distribution by age-bin shape, not by shared units
-  - let the user switch between multiple registered SR reference fits
+  - compare pooled NHANES blood biomarkers against the selected reference distribution by age-bin shape, not by shared units
+  - let the user switch between multiple registered comparison references
   - support two comparison methods inside one tab:
     - `QQ / Shape`
     - `Rank-Wasserstein`
 - Build inputs:
   - NHANES blood long table: `data/processed/biomarker_long.parquet`
-  - SR fit registry: `projects/sr_fits/fit_registry.json`
+  - comparison reference registry: `projects/comparison_references/reference_registry.json`
   - external SR code rooted at the configured SR script / SR package paths stored in that registry
+  - HRS FI participant values at `/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/HRS/outputs/frailty/FI_hrs_participant_values.csv.gz`
   - cached local output root: `projects/sr_comparison/blood/`
 - Analysis contract:
-  - age bins are `20-24` through `80-84`
-  - SR `X` is sampled from the alive-only simulation cohort at each age-bin midpoint and is never tail-trimmed
+  - age bins follow the overlap between NHANES and the selected reference
+  - SR references use alive-only `X` sampled at each age-bin midpoint and are never tail-trimmed
+  - the FI reference uses raw participant FI values from its first available 5-year bin onward and is never tail-trimmed
   - pooled blood biomarkers only in v1
   - `QQ / Shape` mode:
     - NHANES biomarker values are evaluated under four symmetric tail-trim modes: `0%`, `3%`, `5%`, and `10%` per tail
-    - per-bin fit is \( \text{biomarker quantile} = m \cdot \text{SR quantile} + c \)
-    - z-scored Wasserstein distance is computed per age bin after z-scoring SR and biomarker values separately within that bin
+    - per-bin fit is \( \text{biomarker quantile} = m \cdot \text{reference quantile} + c \)
+    - z-scored Wasserstein distance is computed per age bin after z-scoring reference and biomarker values separately within that bin
   - `Rank-Wasserstein` mode:
     - trimming options are `0%`, `3%`, `5%`, and `10%` per tail
     - trimming is applied within each age bin first, then the trimmed values from all age bins are pooled and converted to normalized ranks from \(1\) to \(100\)
@@ -497,7 +502,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - Wasserstein distance is then computed on those normalized-rank distributions for each age bin
 - UI behavior:
   - one method switch between `QQ / Shape` and `Rank-Wasserstein`
-  - one SR-fit selector to switch between `SR original fit`, `SR alternative fit`, and future registered fits
+  - one reference selector to switch between `SR original fit`, `SR alternative fit`, `FI (HRS)`, and future registered references
   - in `QQ / Shape` mode:
     - one selected-bin Q-Q plot
     - one `R²(age)` plot
@@ -506,7 +511,7 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - one selected-bin percentile-rank CDF overlay
     - one `Rank-Wasserstein(age)` plot
     - one placeholder panel noting that rank mode does not use `m` or `c`
-  - searchable multi-select SR category picker with `Select all visible`, `Core clinical only`, and `Clear selection`
+  - searchable multi-select comparison category picker with `Select all visible`, `Core clinical only`, and `Clear selection`
   - `Specialized - Nutritional/Vitamin` is excluded from the SR comparison UI entirely
   - main sortable biomarker table changes columns and default sort by method:
     - `QQ / Shape`: selected-bin and aggregate `R²` and z-Wasserstein values, plus `mean/SD m`, `mean/SD c`, and valid-bin count
@@ -519,11 +524,11 @@ python3 src/fpca_km_shapes.py --participants data/processed/participant_health_f
     - `Rank-Wasserstein`: trims within each age bin before pooled percentile-ranking
 - Interpretation:
   - `QQ / Shape`:
-    - high `R²` means the biomarker and SR model share a similar distribution shape in that age bin
-    - lower z-Wasserstein means the z-scored biomarker and SR distributions are closer overall, especially in tail placement
+    - high `R²` means the biomarker and selected reference share a similar distribution shape in that age bin
+    - lower z-Wasserstein means the z-scored biomarker and reference distributions are closer overall, especially in tail placement
     - `m` and `c` capture age-dependent scaling and offset differences even when shape agreement remains strong
   - `Rank-Wasserstein`:
-    - lower rank-Wasserstein means the biomarker age bin occupies a similar relative percentile-rank region as the SR age bin inside each variable's own pooled lifespan distribution
+    - lower rank-Wasserstein means the biomarker age bin occupies a similar relative percentile-rank region as the selected reference age bin inside each variable's own pooled lifespan distribution
 
 ## Median mode interpretation
 - `Plot Median` displays the age-binned median and IQR band (25th-75th percentile).

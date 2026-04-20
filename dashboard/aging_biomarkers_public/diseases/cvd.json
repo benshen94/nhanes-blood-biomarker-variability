@@ -8,11 +8,11 @@
     "default_summary": "These markers give the quickest read on how cardiovascular disease shifts familiar blood patterns away from the healthy baseline.",
     "default_biomarker_ids": [
       "nt-probnp",
-      "high-sensitivity c-reactive protein hs-crp",
-      "c-reactive protein",
       "cardiac hs-troponin t",
-      "fibrinogen",
-      "homocysteine"
+      "homocysteine",
+      "c-reactive protein",
+      "high-sensitivity c-reactive protein hs-crp",
+      "fibrinogen"
     ],
     "accent": "blue",
     "source": "MCQ160B/C/D/E/F == 1",

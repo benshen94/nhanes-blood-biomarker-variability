@@ -7,10 +7,8 @@
     "default_title": "Start with broad systemic markers",
     "default_summary": "Because this group is heterogeneous, the defaults focus on familiar inflammation, reserve, and blood markers rather than one narrow mechanism.",
     "default_biomarker_ids": [
-      "high-sensitivity c-reactive protein hs-crp",
-      "nt-probnp",
       "c-reactive protein",
-      "fibrinogen",
+      "high-sensitivity c-reactive protein hs-crp",
       "albumin",
       "hemoglobin"
     ],

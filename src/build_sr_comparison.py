@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build SR-vs-NHANES QQ comparison payloads for the blood dashboard."""
+"""Build reference-vs-NHANES comparison payloads for the blood dashboard."""
 
 from __future__ import annotations
 
@@ -27,13 +27,16 @@ from nhanes_common import ensure_dir
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LONG = ROOT / "data" / "processed" / "biomarker_long.parquet"
 DEFAULT_OUT_ROOT = ROOT / "projects" / "sr_comparison" / "blood"
-DEFAULT_FIT_LIBRARY_ROOT = ROOT / "projects" / "sr_fits"
-DEFAULT_FIT_REGISTRY_PATH = DEFAULT_FIT_LIBRARY_ROOT / "fit_registry.json"
+DEFAULT_FIT_LIBRARY_ROOT = ROOT / "projects" / "comparison_references"
+DEFAULT_FIT_REGISTRY_PATH = DEFAULT_FIT_LIBRARY_ROOT / "reference_registry.json"
 DEFAULT_SR_SCRIPT = Path(
     "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python/notebooks/SR_general/usa_2019_waterfall.py"
 )
 DEFAULT_SR_PACKAGE_ROOT = Path(
     "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/python"
+)
+DEFAULT_FI_HRS_VALUES = Path(
+    "/Users/benshenhar/Library/CloudStorage/GoogleDrive-benshenhar@gmail.com/My Drive/Weizmann/Alon Lab/Aging/HRS/outputs/frailty/FI_hrs_participant_values.csv.gz"
 )
 
 AGE_BIN_EDGES = list(np.arange(20, 90, 5))
@@ -179,9 +182,21 @@ def fit_option_payload(fit_def: dict[str, Any], default_fit_key: str) -> dict[st
         "key": fit_key,
         "label": str(fit_def.get("label") or fit_key),
         "description": str(fit_def.get("description") or ""),
+        "kind": str(fit_def.get("kind") or "usa_2019_script"),
         "reference_tail_policy": str(fit_def.get("reference_tail_policy") or "alive_only_no_tail_trimming"),
+        "reference_population_label": str(fit_def.get("reference_population_label") or "reference values"),
         "is_default": fit_key == default_fit_key,
     }
+
+
+def age_bin_labels_with_data(values_by_age_bin: dict[str, np.ndarray]) -> list[str]:
+    labels: list[str] = []
+    for age_bin in AGE_BIN_LABELS:
+        values = values_by_age_bin.get(age_bin, np.array([], dtype=float))
+        if np.asarray(values).size == 0:
+            continue
+        labels.append(age_bin)
+    return labels
 
 
 def stable_seed(seed_key: str) -> int:
@@ -661,6 +676,80 @@ def load_or_build_fit_cache(
     return tspan, paths, death_times, "rerun", fit_manifest, fit_dir
 
 
+def load_raw_reference_fit(
+    fit_def: dict[str, Any],
+    fit_library_root: Path,
+) -> tuple[dict[str, np.ndarray], str, dict[str, Any], Path]:
+    fit_key = str(fit_def["key"])
+    fit_dir = fit_output_dir(fit_library_root, fit_key)
+    ensure_dir(fit_dir)
+
+    source_path = Path(str(fit_def.get("source_path") or DEFAULT_FI_HRS_VALUES))
+    value_column = str(fit_def.get("value_column") or "FI_hrs")
+    age_column = fit_def.get("age_column")
+    age_bin_column = fit_def.get("age_bin_column")
+    requested_columns = list(dict.fromkeys([col for col in [value_column, age_column, age_bin_column] if col]))
+    frame = pd.read_csv(source_path, compression="infer", usecols=requested_columns)
+    distributions = extract_raw_reference_distributions(
+        frame,
+        value_column=value_column,
+        age_column=str(age_column) if age_column else None,
+        age_bin_column=str(age_bin_column) if age_bin_column else None,
+    )
+    fit_manifest = {
+        "key": fit_key,
+        "label": str(fit_def.get("label") or fit_key),
+        "kind": str(fit_def.get("kind") or "raw_reference_csv"),
+        "description": str(fit_def.get("description") or ""),
+        "source_path": str(source_path),
+        "value_column": value_column,
+        "age_column": str(age_column) if age_column else None,
+        "age_bin_column": str(age_bin_column) if age_bin_column else None,
+        "reference_tail_policy": str(fit_def.get("reference_tail_policy") or "participant_values_no_tail_trimming"),
+        "reference_population_label": str(fit_def.get("reference_population_label") or "participant values"),
+        "available_age_bins": age_bin_labels_with_data(distributions),
+    }
+    write_json(fit_dir / "fit_manifest.json", fit_manifest, pretty=True)
+    return distributions, "source_file", fit_manifest, fit_dir
+
+
+def load_or_build_reference_fit(
+    fit_def: dict[str, Any],
+    fit_library_root: Path,
+    force_rerun: bool,
+) -> tuple[list[dict[str, Any]], dict[str, np.ndarray], dict[str, Any], str, dict[str, Any], Path]:
+    fit_kind = str(fit_def.get("kind") or "usa_2019_script")
+    if fit_kind == "raw_reference_csv":
+        distributions, fit_source, fit_manifest, fit_dir = load_raw_reference_fit(
+            fit_def=fit_def,
+            fit_library_root=fit_library_root,
+        )
+        reference_rows = build_reference_rows_from_distributions(distributions)
+        waterfall_reference = build_reference_waterfall(distributions)
+        return reference_rows, distributions, waterfall_reference, fit_source, fit_manifest, fit_dir
+
+    tspan, paths, death_times, fit_source, fit_manifest, fit_dir = load_or_build_fit_cache(
+        fit_def=fit_def,
+        fit_library_root=fit_library_root,
+        force_rerun=force_rerun,
+    )
+    reference_rows, distributions = build_sr_reference_rows(tspan, paths, death_times)
+    waterfall_reference = build_sr_waterfall_reference(tspan, paths, death_times)
+    fit_manifest["available_age_bins"] = age_bin_labels_with_data(distributions)
+    fit_manifest["reference_population_label"] = str(
+        fit_manifest.get("reference_population_label")
+        or fit_def.get("reference_population_label")
+        or "alive-only reference"
+    )
+    fit_manifest["reference_tail_policy"] = str(
+        fit_manifest.get("reference_tail_policy")
+        or fit_def.get("reference_tail_policy")
+        or "alive_only_no_tail_trimming"
+    )
+    write_json(fit_dir / "fit_manifest.json", fit_manifest, pretty=True)
+    return reference_rows, distributions, waterfall_reference, fit_source, fit_manifest, fit_dir
+
+
 def extract_sr_alive_distributions(
     tspan: np.ndarray,
     paths: np.ndarray,
@@ -678,32 +767,64 @@ def extract_sr_alive_distributions(
     return distributions
 
 
-def build_sr_reference_rows(
-    tspan: np.ndarray,
-    paths: np.ndarray,
-    death_times: np.ndarray,
-) -> tuple[list[dict[str, Any]], dict[str, np.ndarray]]:
+def build_reference_rows_from_distributions(
+    values_by_age_bin: dict[str, np.ndarray],
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    distributions: dict[str, np.ndarray] = {}
-    alive_distributions = extract_sr_alive_distributions(tspan, paths, death_times)
 
     for age_bin in AGE_BIN_LABELS:
         age_mid = AGE_BIN_MIDS[age_bin]
-        alive_values = alive_distributions[age_bin]
-        q1, median, q3 = quartiles(alive_values)
-        distributions[age_bin] = alive_values
+        values = clean_sorted_values(values_by_age_bin.get(age_bin, np.array([], dtype=float)))
+        q1, median, q3 = quartiles(values)
         rows.append(
             {
                 "age_bin": age_bin,
                 "age_mid": age_mid,
-                "sr_n": int(alive_values.size),
+                "sr_n": int(values.size),
                 "sr_q1": q1,
                 "sr_median": median,
                 "sr_q3": q3,
             }
         )
 
-    return rows, distributions
+    return rows
+
+
+def build_sr_reference_rows(
+    tspan: np.ndarray,
+    paths: np.ndarray,
+    death_times: np.ndarray,
+) -> tuple[list[dict[str, Any]], dict[str, np.ndarray]]:
+    distributions = extract_sr_alive_distributions(tspan, paths, death_times)
+    return build_reference_rows_from_distributions(distributions), distributions
+
+
+def build_reference_waterfall(
+    values_by_age_bin: dict[str, np.ndarray],
+) -> dict[str, Any]:
+    bins: list[dict[str, Any]] = []
+
+    for age_bin in AGE_BIN_LABELS:
+        age_mid = AGE_BIN_MIDS[age_bin]
+        values = clean_sorted_values(values_by_age_bin.get(age_bin, np.array([], dtype=float)))
+        q1, median, q3 = quartiles(values)
+        bins.append(
+            {
+                "age_bin": age_bin,
+                "age_mid": age_mid,
+                "sr_n": int(values.size),
+                "sr_q1": q1,
+                "sr_median": median,
+                "sr_q3": q3,
+                "values_sample": build_quantile_sample(values),
+            }
+        )
+
+    return {
+        "age_bins": age_bin_labels_with_data(values_by_age_bin),
+        "sample_probabilities": rounded_list(WATERFALL_SAMPLE_PROBABILITIES),
+        "bins": bins,
+    }
 
 
 def build_sr_waterfall_reference(
@@ -711,36 +832,48 @@ def build_sr_waterfall_reference(
     paths: np.ndarray,
     death_times: np.ndarray,
 ) -> dict[str, Any]:
-    alive_distributions = extract_sr_alive_distributions(tspan, paths, death_times)
-    bins: list[dict[str, Any]] = []
+    distributions = extract_sr_alive_distributions(tspan, paths, death_times)
+    return build_reference_waterfall(distributions)
 
-    for age_bin in AGE_BIN_LABELS:
-        age_mid = AGE_BIN_MIDS[age_bin]
-        alive_values = alive_distributions[age_bin]
-        q1, median, q3 = quartiles(alive_values)
-        bins.append(
-            {
-                "age_bin": age_bin,
-                "age_mid": age_mid,
-                "sr_n": int(alive_values.size),
-                "sr_q1": q1,
-                "sr_median": median,
-                "sr_q3": q3,
-                "values_sample": build_quantile_sample(alive_values),
-            }
-        )
 
-    return {
-        "age_bins": AGE_BIN_LABELS,
-        "sample_probabilities": rounded_list(WATERFALL_SAMPLE_PROBABILITIES),
-        "bins": bins,
-    }
+def extract_raw_reference_distributions(
+    frame: pd.DataFrame,
+    value_column: str,
+    *,
+    age_column: str | None = None,
+    age_bin_column: str | None = None,
+) -> dict[str, np.ndarray]:
+    use = frame.copy()
+    use = use.dropna(subset=[value_column])
+
+    if age_bin_column and age_bin_column in use.columns:
+        use[age_bin_column] = use[age_bin_column].astype(str)
+        use = use[use[age_bin_column].isin(AGE_BIN_LABELS)].copy()
+        age_bin_series = use[age_bin_column]
+    else:
+        if age_column is None or age_column not in use.columns:
+            raise ValueError("Raw reference fit needs either age_column or age_bin_column")
+        use = use.dropna(subset=[age_column]).copy()
+        age_bin_series, _ = assign_age_bins(use[age_column].astype(float))
+        use = use.assign(_age_bin=age_bin_series)
+        use = use.dropna(subset=["_age_bin"]).copy()
+        age_bin_series = use["_age_bin"].astype(str)
+
+    distributions = {age_bin: np.array([], dtype=float) for age_bin in AGE_BIN_LABELS}
+    use = use.assign(_age_bin_str=age_bin_series.astype(str))
+    grouped = use.groupby("_age_bin_str", observed=True)
+    for age_bin, group in grouped:
+        if age_bin not in distributions:
+            continue
+        distributions[age_bin] = clean_sorted_values(group[value_column].to_numpy(dtype=float))
+    return distributions
 
 
 def build_single_fit_payload(
     long_df: pd.DataFrame,
     fit_key: str,
     fit_label: str,
+    fit_manifest: dict[str, Any],
     sr_reference_rows: list[dict[str, Any]],
     sr_distributions: dict[str, np.ndarray],
     sr_waterfall_reference: dict[str, Any],
@@ -1001,13 +1134,14 @@ def build_single_fit_payload(
         "meta": {
             "fit_key": fit_key,
             "fit_label": fit_label,
-            "age_bins": AGE_BIN_LABELS,
+            "age_bins": age_bin_labels_with_data(sr_distributions),
             "age_mids": AGE_BIN_MIDS,
             "default_trim_mode": DEFAULT_SR_TRIM_MODE,
             "default_rank_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
             "trim_modes": rounded_trim_modes(),
             "rank_trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
-            "sr_reference_tail_policy": "alive_only_no_tail_trimming",
+            "sr_reference_tail_policy": str(fit_manifest.get("reference_tail_policy") or "alive_only_no_tail_trimming"),
+            "reference_population_label": str(fit_manifest.get("reference_population_label") or "reference values"),
             "min_bin_n": MIN_BIN_N,
             "qq_probabilities": rounded_list(QQ_PROBABILITIES),
             "rank_tail_policy": "trim_biomarker_each_age_bin_then_pool_for_percentile_ranking__sr_untrimmed_alive_only",
@@ -1100,6 +1234,7 @@ def build_multi_fit_dashboard_payload(
     detail_frames: dict[str, pd.DataFrame] = {}
     rank_summary_frames: dict[str, pd.DataFrame] = {}
     rank_detail_frames: dict[str, pd.DataFrame] = {}
+    fit_option_by_key = {str(option["key"]): dict(option) for option in fit_options}
 
     for fit_build in fit_builds:
         fit_key = str(fit_build["fit_key"])
@@ -1115,6 +1250,7 @@ def build_multi_fit_dashboard_payload(
             long_df=long_df,
             fit_key=fit_key,
             fit_label=fit_label,
+            fit_manifest=fit_build["fit_manifest"],
             sr_reference_rows=fit_build["sr_reference_rows"],
             sr_distributions=fit_build["sr_distributions"],
             sr_waterfall_reference=fit_build["sr_waterfall_reference"],
@@ -1122,10 +1258,15 @@ def build_multi_fit_dashboard_payload(
         fit_payload["detail_payloads"] = detail_payloads
         fit_payload["fit_manifest"] = fit_build["fit_manifest"]
         fit_payloads[fit_key] = fit_payload
+        if fit_key in fit_option_by_key:
+            fit_option_by_key[fit_key]["available_age_bins"] = fit_payload["meta"]["age_bins"]
+            fit_option_by_key[fit_key]["reference_population_label"] = fit_payload["meta"]["reference_population_label"]
         summary_frames[fit_key] = summary_df
         detail_frames[fit_key] = detail_df
         rank_summary_frames[fit_key] = rank_summary_df
         rank_detail_frames[fit_key] = rank_detail_df
+
+    enriched_fit_options = [fit_option_by_key[str(option["key"])] for option in fit_options]
 
     default_payload = fit_payloads[default_fit_key]
     summary_by_biomarker_by_fit = merge_fit_summaries_by_biomarker(fit_payloads, "summary_by_biomarker")
@@ -1140,7 +1281,7 @@ def build_multi_fit_dashboard_payload(
         "meta": {
             **(default_payload.get("meta") or {}),
             "default_fit_key": default_fit_key,
-            "fit_options": fit_options,
+            "fit_options": enriched_fit_options,
         },
         "summary_by_biomarker": default_payload.get("summary_by_biomarker") or {},
         "rank_summary_by_biomarker": default_payload.get("rank_summary_by_biomarker") or {},
@@ -1149,7 +1290,7 @@ def build_multi_fit_dashboard_payload(
         "detail_index_by_biomarker": detail_index_by_biomarker,
         "sr_fit_manifest": {
             "default_fit_key": default_fit_key,
-            "fit_options": fit_options,
+            "fit_options": enriched_fit_options,
         },
         "sr_reference_bins": default_payload.get("sr_reference_bins") or [],
         "sr_reference_bins_by_fit": {
@@ -1159,7 +1300,7 @@ def build_multi_fit_dashboard_payload(
         "sr_waterfall_reference": default_payload.get("sr_waterfall_reference"),
         "sr_waterfall_references": {
             "default_fit_key": default_fit_key,
-            "fit_options": fit_options,
+            "fit_options": enriched_fit_options,
             "fits": {
                 fit_key: fit_payload.get("sr_waterfall_reference")
                 for fit_key, fit_payload in fit_payloads.items()
@@ -1168,7 +1309,7 @@ def build_multi_fit_dashboard_payload(
         "sr_rank_reference": default_payload.get("sr_rank_reference"),
         "sr_rank_references": {
             "default_fit_key": default_fit_key,
-            "fit_options": fit_options,
+            "fit_options": enriched_fit_options,
             "fits": {
                 fit_key: fit_payload.get("sr_rank_reference")
                 for fit_key, fit_payload in fit_payloads.items()
@@ -1215,13 +1356,11 @@ def main() -> None:
     for fit_def in fit_defs:
         fit_key = str(fit_def["key"])
         fit_label = str(fit_def.get("label") or fit_key)
-        tspan, paths, death_times, fit_source, fit_manifest, fit_dir = load_or_build_fit_cache(
+        sr_reference_rows, sr_distributions, sr_waterfall_reference, fit_source, fit_manifest, fit_dir = load_or_build_reference_fit(
             fit_def=fit_def,
             fit_library_root=fit_library_root,
             force_rerun=args.force_rerun,
         )
-        sr_reference_rows, sr_distributions = build_sr_reference_rows(tspan, paths, death_times)
-        sr_waterfall_reference = build_sr_waterfall_reference(tspan, paths, death_times)
         write_json(fit_dir / "sr_reference_bins.json", sr_reference_rows, pretty=True)
         write_json(fit_dir / "sr_waterfall_reference.json", sr_waterfall_reference)
         fit_builds.append(
@@ -1307,12 +1446,12 @@ def main() -> None:
     write_json(manifest_path, manifest, pretty=True)
 
     for fit_key, outputs in fit_output_manifest.items():
-        print(f"[{fit_key}] Wrote SR summary CSV: {outputs['qq_summary_csv']}")
-        print(f"[{fit_key}] Wrote SR detail CSV: {outputs['qq_detail_csv']}")
-        print(f"[{fit_key}] Wrote SR rank summary CSV: {outputs['rank_summary_csv']}")
-        print(f"[{fit_key}] Wrote SR rank detail CSV: {outputs['rank_detail_csv']}")
-    print(f"Wrote SR dashboard payload: {payload_path}")
-    print(f"Wrote SR run manifest: {manifest_path}")
+        print(f"[{fit_key}] Wrote reference QQ summary CSV: {outputs['qq_summary_csv']}")
+        print(f"[{fit_key}] Wrote reference QQ detail CSV: {outputs['qq_detail_csv']}")
+        print(f"[{fit_key}] Wrote reference rank summary CSV: {outputs['rank_summary_csv']}")
+        print(f"[{fit_key}] Wrote reference rank detail CSV: {outputs['rank_detail_csv']}")
+    print(f"Wrote reference dashboard payload: {payload_path}")
+    print(f"Wrote reference run manifest: {manifest_path}")
 
 
 if __name__ == "__main__":

@@ -3635,7 +3635,7 @@ def render_dashboard_html(
         <div class="panel-header">
           <div>
             <h2 class="panel-title">SR Comparison</h2>
-            <p class="panel-copy">Compare pooled blood biomarkers against the alive-only SR-model `X` distribution in matching 5-year age bins.</p>
+            <p class="panel-copy">Compare pooled blood biomarkers against the selected reference distribution in matching 5-year age bins.</p>
           </div>
         </div>
         <div class="sr-controls">
@@ -3653,11 +3653,11 @@ def render_dashboard_html(
             <select id="sr-biomarker"></select>
           </label>
           <label class="check-label"><input id="sr-include-env" type="checkbox" /> Include environmental/toxicant</label>
-          <label>SR fit
+          <label>Reference
             <select id="sr-fit"></select>
           </label>
           <label>Current selection
-            <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its SR Q-Q fit.</div>
+            <div id="sr-selected-biomarker" class="sr-selected">Choose a biomarker to inspect its reference comparison fit.</div>
           </label>
           <label>Age bin
             <input id="sr-age-bin-slider" type="range" min="0" max="12" step="1" value="6" />
@@ -3720,12 +3720,12 @@ def render_dashboard_html(
         </div>
         <div class="sr-section-head">
           <h3>Biomarker Ranking</h3>
-          <p>Click a row to switch the shared biomarker selection and refresh the SR plots.</p>
+          <p>Click a row to switch the shared biomarker selection and refresh the reference-comparison plots.</p>
         </div>
         <div class="table-wrap"><table id="sr-rank-table"></table></div>
         <div class="sr-section-head">
           <h3>Per-Bin Fit Details</h3>
-          <p>Inspect how `R²`, z-scored Wasserstein distance, slope `m`, and intercept `c` change across age bins for the selected biomarker.</p>
+          <p>Inspect how `R²`, z-scored Wasserstein distance, slope `m`, and intercept `c` change across age bins for the selected biomarker and reference.</p>
         </div>
         <div class="table-wrap"><table id="sr-bin-table"></table></div>
       </div>
