@@ -588,3 +588,15 @@ python3 -m http.server 8765 --directory .
   - `scale_type=regular` stores quartiles on the raw biomarker scale; `scale_type=log` stores quartiles on the log scale and also includes `raw_q*` back-transformed to the original biomarker scale.
   - The file also carries `unit`, `unit_source`, and `unit_confidence`; a small number of tests still have intentionally blank units where the current repo data do not support a defensible Clalit-specific label.
 - The search dropdown uses a browser `datalist`; if native browser history is enabled it can appear as a second block beneath the live biomarker matches, so dashboard search inputs now explicitly disable native autocomplete to avoid stale pre-merge biomarker suggestions.
+
+## NHANES Frailty Index
+- `src/build_frailty_index.py` builds a participant-level frailty index from local NHANES raw questionnaire and lab files and writes outputs to `output/frailty/`.
+- The main NHANES FI is deliberately cross-sectional by cycle, not longitudinal like HRS, because NHANES does not repeatedly follow the same participants across waves.
+- The current primary FI window is `2005-2017` in adults aged `60+`, which is the cleanest locally available span with stable function questions plus common chemistry/CBC labs.
+- Main outputs:
+  - `output/frailty/frailty_panel.csv.gz`
+  - `output/frailty/deficit_catalog.csv`
+  - `output/frailty/screening_log.csv`
+  - `output/frailty/variant_summary.csv`
+  - `output/frailty/trajectory_by_cycle.csv`
+  - `output/frailty/distribution_by_age_bin.csv`
