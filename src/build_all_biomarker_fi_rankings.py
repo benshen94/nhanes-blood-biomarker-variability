@@ -1,19 +1,40 @@
 #!/usr/bin/env python3
-"""Rank NHANES biomarkers by pooled percentile correlation with the HRS-overlap FI."""
+"""Rank NHANES biomarkers by pooled percentile correlation with the HRS-overlap FI.
+
+This version uses the largest relevant cohort for the FI analysis:
+- start from the FI participant panel
+- read raw NHANES blood lab files for those FI participants only
+- harmonize biomarkers with the existing pooling rules
+- do not apply the healthy-only biomarker exclusion
+- compute within-age-bin percentiles, then pool dots across eligible age bins
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from scipy.stats import pearsonr
+
+from build_analysis_dataset import (
+    build_pooling_map,
+    is_comment_or_code_variable,
+    is_continuous_numeric,
+    normalize_seqn,
+    read_xpt_columns,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
+RAW_DIR = ROOT / "data" / "raw"
+LAB_MANIFEST_PATH = ROOT / "data" / "processed" / "lab_variable_manifest.parquet"
 FRAILTY_PANEL_PATH = ROOT / "output" / "frailty" / "frailty_panel.csv.gz"
-BIOMARKER_LONG_PATH = ROOT / "data" / "processed" / "biomarker_long.parquet"
 OUTPUT_DIR = ROOT / "output" / "frailty_all_biomarker_scan"
+CACHE_PATH = OUTPUT_DIR / "fi_biomarker_long_all_participants.parquet"
 
 MIN_POINTS_PER_AGE_BIN = 200
 MIN_AGE_BINS_FOR_RANKING = 3
@@ -26,7 +47,7 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     fi_panel = load_fi_panel()
-    biomarker_long = load_biomarker_long()
+    biomarker_long = load_or_build_biomarker_long(fi_panel)
     merged = merge_fi_and_biomarkers(fi_panel, biomarker_long)
     merged = add_biomarker_percentiles(merged)
 
@@ -50,19 +71,173 @@ def load_fi_panel() -> pd.DataFrame:
     )
     panel = panel.loc[panel[FI_COLUMN].notna()].copy()
     panel[f"{FI_COLUMN}_pct"] = age_bin_percentile(panel, FI_COLUMN)
+    panel["seqn"] = pd.to_numeric(panel["seqn"], errors="coerce").astype("Int64")
+    panel["cycle_start_year"] = pd.to_numeric(panel["cycle_start_year"], errors="coerce").astype("Int64")
     return panel
 
 
-def load_biomarker_long() -> pd.DataFrame:
-    columns = [
-        "seqn",
-        "cycle_start_year",
-        "biomarker_id",
-        "biomarker_name",
-        "value",
-        "unit",
+def load_or_build_biomarker_long(fi_panel: pd.DataFrame) -> pd.DataFrame:
+    if CACHE_PATH.exists():
+        return pd.read_parquet(CACHE_PATH)
+
+    lab_manifest = pd.read_parquet(LAB_MANIFEST_PATH)
+    biomarker_long = build_biomarker_long_for_fi(fi_panel, lab_manifest)
+    return biomarker_long
+
+
+def build_biomarker_long_for_fi(fi_panel: pd.DataFrame, lab_manifest: pd.DataFrame) -> pd.DataFrame:
+    fi_cycles = sorted(fi_panel["cycle_start_year"].dropna().astype(int).unique().tolist())
+    fi_people_by_cycle = build_fi_people_lookup(fi_panel)
+
+    selected = lab_manifest.loc[lab_manifest["is_blood_candidate"].fillna(False)].copy()
+    selected["cycle_start_year"] = pd.to_numeric(selected["cycle_start_year"], errors="coerce")
+    selected = selected.loc[selected["cycle_start_year"].isin(fi_cycles)].copy()
+    selected = selected.drop_duplicates(subset=["xpt_url", "variable_name"]).reset_index(drop=True)
+
+    file_meta = (
+        selected[
+            ["data_file_name", "cycle_start_year", "cycle_end_year", "xpt_url"]
+        ]
+        .drop_duplicates(subset=["xpt_url"])
+        .set_index("xpt_url")
+    )
+    vars_by_url = {
+        url: frame[["variable_name", "variable_desc"]].drop_duplicates().reset_index(drop=True)
+        for url, frame in selected.groupby("xpt_url")
+    }
+
+    pooling_map_df = build_pooling_map(lab_manifest, raw_dir=RAW_DIR, candidate_column="is_blood_candidate")
+    pooling_map = pooling_map_df.set_index(["variable_name", "variable_desc"]).to_dict(orient="index")
+
+    writer: Optional[pq.ParquetWriter] = None
+
+    for url, vars_df in vars_by_url.items():
+        meta = file_meta.loc[url]
+        cycle_start_year = int(meta["cycle_start_year"])
+        fi_people = fi_people_by_cycle.get(cycle_start_year)
+        if fi_people is None or fi_people.empty:
+            continue
+
+        xpt_path = raw_path_from_url(url)
+        if not xpt_path.exists():
+            continue
+
+        try:
+            data = read_xpt_columns(xpt_path)
+        except Exception:
+            continue
+
+        if "SEQN" not in data.columns:
+            continue
+
+        data["seqn"] = normalize_seqn(data)
+        data = data[data["seqn"].isin(fi_people["seqn"])].copy()
+        if data.empty:
+            continue
+
+        for _, variable_row in vars_df.iterrows():
+            long_frame = build_variable_long_frame(
+                data=data,
+                variable_name=str(variable_row["variable_name"]),
+                variable_desc=str(variable_row["variable_desc"]),
+                cycle_start_year=cycle_start_year,
+                cycle_end_year=meta["cycle_end_year"],
+                data_file_name=str(meta["data_file_name"]),
+                pooling_map=pooling_map,
+            )
+            if long_frame is None or long_frame.empty:
+                continue
+
+            table = pa.Table.from_pandas(long_frame, preserve_index=False)
+            if writer is None:
+                writer = pq.ParquetWriter(CACHE_PATH, table.schema)
+            writer.write_table(table)
+
+    if writer is not None:
+        writer.close()
+
+    if not CACHE_PATH.exists():
+        return pd.DataFrame(
+            columns=["seqn", "cycle_start_year", "biomarker_id", "biomarker_name", "unit", "value"]
+        )
+
+    return pd.read_parquet(CACHE_PATH)
+
+
+def build_fi_people_lookup(fi_panel: pd.DataFrame) -> dict[int, pd.DataFrame]:
+    lookup: dict[int, pd.DataFrame] = {}
+
+    for cycle_start_year, frame in fi_panel.groupby("cycle_start_year", observed=True):
+        year = int(cycle_start_year)
+        lookup[year] = frame.loc[:, ["seqn"]].drop_duplicates().copy()
+
+    return lookup
+
+
+def raw_path_from_url(url: str) -> Path:
+    year = int(url.split("/Public/")[1].split("/")[0])
+    filename = Path(url).name
+    return RAW_DIR / str(year) / filename
+
+
+def build_variable_long_frame(
+    data: pd.DataFrame,
+    variable_name: str,
+    variable_desc: str,
+    cycle_start_year: int,
+    cycle_end_year: object,
+    data_file_name: str,
+    pooling_map: dict[tuple[str, str], dict[str, object]],
+) -> Optional[pd.DataFrame]:
+    if variable_name not in data.columns:
+        return None
+    if variable_name == "SEQN" or variable_name.startswith("WT"):
+        return None
+    if is_comment_or_code_variable(variable_name, variable_desc):
+        return None
+
+    pooling_key = (variable_name, variable_desc)
+    pool = pooling_map.get(pooling_key)
+    if pool is None:
+        return None
+    if not is_continuous_numeric(data[variable_name]):
+        return None
+
+    frame = pd.DataFrame(
+        {
+            "seqn": data["seqn"],
+            "value": pd.to_numeric(data[variable_name], errors="coerce"),
+        }
+    )
+    frame = frame.dropna(subset=["seqn", "value"]).copy()
+    if frame.empty:
+        return None
+
+    factor = float(pool.get("conversion_factor_to_pooled_unit", 1.0))
+    if factor != 1.0:
+        frame["value"] = frame["value"] * factor
+
+    frame["cycle_start_year"] = cycle_start_year
+    frame["cycle_end_year"] = cycle_end_year
+    frame["biomarker_id"] = str(pool["pooled_id"])
+    frame["biomarker_name"] = str(pool["pooled_name"])
+    frame["unit"] = str(pool["pooled_unit"] or "")
+    frame["variable_name"] = variable_name
+    frame["source_data_file"] = data_file_name
+
+    return frame[
+        [
+            "seqn",
+            "cycle_start_year",
+            "cycle_end_year",
+            "biomarker_id",
+            "variable_name",
+            "biomarker_name",
+            "source_data_file",
+            "unit",
+            "value",
+        ]
     ]
-    return pd.read_parquet(BIOMARKER_LONG_PATH, columns=columns)
 
 
 def merge_fi_and_biomarkers(fi_panel: pd.DataFrame, biomarker_long: pd.DataFrame) -> pd.DataFrame:
@@ -127,12 +302,7 @@ def keep_eligible_age_bins(merged: pd.DataFrame, age_bin_stats: pd.DataFrame) ->
         return merged.iloc[0:0].copy()
 
     eligible_bins = age_bin_stats.loc[:, ["biomarker_id", "age_bin"]].drop_duplicates()
-    eligible_merged = merged.merge(
-        eligible_bins,
-        on=["biomarker_id", "age_bin"],
-        how="inner",
-    )
-    return eligible_merged
+    return merged.merge(eligible_bins, on=["biomarker_id", "age_bin"], how="inner")
 
 
 def build_biomarker_summary(
@@ -208,9 +378,10 @@ def write_markdown_report(biomarker_summary: pd.DataFrame) -> None:
         "",
         "This report ranks harmonized NHANES blood biomarkers by pooled Pearson correlation with the HRS-overlap FI percentile.",
         "",
-        f"Step 1: keep only biomarker age bins with \\(n > {MIN_POINTS_PER_AGE_BIN}\\).",
-        "Step 2: within each remaining age bin, convert FI and biomarker values to percentiles.",
-        "Step 3: stack all of those percentile dots across age bins for each biomarker and compute one pooled Pearson correlation.",
+        f"Step 1: read raw NHANES blood lab files for all FI participants, without the healthy-only filter.",
+        f"Step 2: keep only biomarker age bins with \\(n > {MIN_POINTS_PER_AGE_BIN}\\).",
+        "Step 3: within each remaining age bin, convert FI and biomarker values to percentiles.",
+        "Step 4: stack all of those percentile dots across age bins for each biomarker and compute one pooled Pearson correlation.",
         f"Ranked markdown list includes only biomarkers with at least \\({MIN_AGE_BINS_FOR_RANKING}\\) eligible age bins.",
         "",
         "Columns:",
@@ -321,6 +492,8 @@ def write_markdown_report(biomarker_summary: pd.DataFrame) -> None:
         lines.append(f"- `{OUTPUT_DIR / 'biomarker_rankings_multibin.csv'}`")
         lines.append("Full age-bin correlation CSV:")
         lines.append(f"- `{OUTPUT_DIR / 'biomarker_age_bin_correlations.csv'}`")
+        lines.append("Cached all-participant FI biomarker long table:")
+        lines.append(f"- `{CACHE_PATH}`")
 
     (OUTPUT_DIR / "FI_HRS_overlap_all_biomarkers_ranked.md").write_text("\n".join(lines))
 
