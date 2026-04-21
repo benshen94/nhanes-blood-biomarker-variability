@@ -21,11 +21,7 @@ OUTPUT_DIR = ROOT / "output" / "frailty_percentile_report"
 FIGURE_DIR = OUTPUT_DIR / "figures"
 
 MIN_POINTS_PER_PANEL = 200
-FI_COLUMNS = [
-    "fi_hrs_overlap_22",
-    "fi_hrs_overlap_memory_23",
-    "fi_screened_19",
-]
+FI_COLUMNS = ["fi_hrs_overlap_22"]
 
 
 @dataclass(frozen=True)
@@ -45,17 +41,9 @@ TEST_SPECS = [
     TestSpec("eosinophils", "Eosinophils", "eosinophils_abs_1000_uL", "1000 cells/uL"),
 ]
 
-FI_LABELS = {
-    "fi_hrs_overlap_22": "FI HRS-overlap 22",
-    "fi_hrs_overlap_memory_23": "FI HRS-overlap+memory 23",
-    "fi_screened_19": "FI screened 19",
-}
+FI_LABELS = {"fi_hrs_overlap_22": "FI HRS-overlap 22"}
 
-FI_COLORS = {
-    "fi_hrs_overlap_22": "#1f77b4",
-    "fi_hrs_overlap_memory_23": "#d62728",
-    "fi_screened_19": "#2ca02c",
-}
+FI_COLORS = {"fi_hrs_overlap_22": "#1f77b4"}
 
 
 def main() -> None:
@@ -185,18 +173,11 @@ def make_test_figure(
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(6.0 * n_cols, 5.2 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
 
-    mean_r_map = (
-        summary.loc[summary["panel_included"]]
-        .groupby("fi_label")["pearson_r"]
-        .mean()
-        .to_dict()
-    )
-    subtitle = " | ".join(
-        f"{fi_label} mean $r$={mean_r_map.get(fi_label, float('nan')):.3f}"
-        for fi_label in [FI_LABELS[col] for col in FI_COLUMNS]
-    )
+    mean_r = float(summary.loc[summary["panel_included"], "pearson_r"].mean())
+    median_p = float(summary.loc[summary["panel_included"], "p_value"].median())
     fig.suptitle(
-        f"{test_spec.label} percentile vs FI percentile within age bins\n{subtitle}",
+        f"{test_spec.label} percentile vs FI HRS-overlap 22 percentile within age bins\n"
+        f"mean $r$={mean_r:.3f} | median p={format_p_value(median_p)}",
         fontsize=16,
         y=0.98,
     )
@@ -208,15 +189,15 @@ def make_test_figure(
 
         axis.plot([0, 100], [0, 100], linestyle="--", color="black", linewidth=1, alpha=0.7)
 
-        text_lines = []
-        for fi_column in FI_COLUMNS:
-            fi_pct_column = f"{fi_column}_pct"
-            pair = age_frame[[fi_pct_column, biomarker_pct_column]].dropna()
-            n_points = int(pair.shape[0])
-            if n_points <= MIN_POINTS_PER_PANEL:
-                text_lines.append(f"{FI_LABELS[fi_column]}: n={n_points}")
-                continue
+        fi_column = FI_COLUMNS[0]
+        fi_pct_column = f"{fi_column}_pct"
+        pair = age_frame[[fi_pct_column, biomarker_pct_column]].dropna()
+        n_points = int(pair.shape[0])
 
+        text_lines = []
+        if n_points <= MIN_POINTS_PER_PANEL:
+            text_lines.append(f"{FI_LABELS[fi_column]}: n={n_points}")
+        else:
             axis.scatter(
                 pair[fi_pct_column],
                 pair[biomarker_pct_column],
@@ -231,7 +212,7 @@ def make_test_figure(
                 (summary["age_bin"] == age_bin) & (summary["fi_column"] == fi_column)
             ].iloc[0]
             text_lines.append(
-                f"{FI_LABELS[fi_column]}: n={n_points}, $r$={row['pearson_r']:.3f}, p={format_p_value(row['p_value'])}"
+                f"n={n_points}, $r$={row['pearson_r']:.3f}, p={format_p_value(row['p_value'])}"
             )
 
         axis.set_title(f"Age {age_bin}")
@@ -253,12 +234,7 @@ def make_test_figure(
     for axis in axes_flat[n_panels:]:
         axis.axis("off")
 
-    handles = [
-        plt.Line2D([], [], linestyle="", marker="o", color=FI_COLORS[fi_column], markersize=6, label=FI_LABELS[fi_column])
-        for fi_column in FI_COLUMNS
-    ]
-    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.01))
-    fig.tight_layout(rect=[0.02, 0.05, 1.0, 0.94])
+    fig.tight_layout(rect=[0.02, 0.02, 1.0, 0.94])
     fig.savefig(figure_path, dpi=220)
     plt.close(fig)
 
@@ -267,11 +243,11 @@ def build_markdown_header() -> list[str]:
     return [
         "# FI Percentile Mapping Report",
         "",
-        "This report compares within-age-bin frailty-index percentiles against within-age-bin biomarker percentiles.",
+        "This report compares within-age-bin HRS-overlap frailty-index percentiles against within-age-bin biomarker percentiles.",
         "",
         "Interpretation:",
         "- Each dot is one person.",
-        "- The x-axis is that person's FI percentile within their age bin.",
+        "- The x-axis is that person's `fi_hrs_overlap_22` percentile within their age bin.",
         "- The y-axis is that person's biomarker percentile within the same age bin.",
         "- Perfect percentile mapping would place points on the diagonal \\(x=y\\).",
         "- `r` here is the Pearson correlation between FI percentile and biomarker percentile within each age bin.",
@@ -299,7 +275,6 @@ def build_markdown_section(test_spec: TestSpec, summary: pd.DataFrame, figure_pa
             mean_abs_distance_from_diagonal=("mean_abs_distance_from_diagonal", "mean"),
             age_bins_used=("age_bin", "nunique"),
         )
-        .sort_values("fi_label")
     )
 
     lines.extend(
