@@ -5,12 +5,12 @@ This script is intentionally conservative and easy to audit.
 
 Main design choices:
 - Use NHANES 2005-2017 for the primary FI because local files contain a stable
-  mix of chronic conditions, self-rated health, function, and common labs.
+  set of HRS-overlap chronic conditions, self-rated health, and function items.
 - Treat NHANES as repeated cross-sectional. Each row is one participant in one
   exam cycle, not a longitudinal person-wave panel as in HRS.
-- Build a broad candidate FI first, then a screened FI using simple quality
+- Build HRS-overlap FI variants first, then a screened FI using simple quality
   checks inspired by the Rockwood / Theou guidance.
-+"""
+"""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pyreadstat
+from scipy.stats import gaussian_kde
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,56 +43,65 @@ class DeficitSpec:
     variant_group: str
 
 
-CLINICAL_DEFINITIONS = [
+FI_DEFINITIONS = [
     DeficitSpec("hypertension", "BPQ020", "Ever told you had high blood pressure", "disease", "1=yes, 2=no", "clinical"),
     DeficitSpec("diabetes", "DIQ010", "Doctor told you have diabetes", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("asthma", "MCQ010", "Ever been told you have asthma", "disease", "1=yes, 2=no", "clinical"),
     DeficitSpec("cancer", "MCQ220", "Ever told you had cancer or malignancy", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("kidney", "KIQ022", "Weak or failing kidneys in the past 12 months", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("arthritis", "MCQ160A", "Doctor ever said you had arthritis", "disease", "1=yes, 2=no", "clinical"),
+    DeficitSpec("emphysema", "MCQ160G", "Ever told you had emphysema", "disease", "1=yes, 2=no", "clinical"),
+    DeficitSpec("chronic_bronchitis_ever", "MCQ160K", "Ever told you had chronic bronchitis", "disease", "1=yes, 2=no", "clinical"),
+    DeficitSpec("lung_disease_any", "MCQ160G|MCQ160K", "Any chronic lung disease proxy", "disease", "1 if emphysema or chronic bronchitis", "clinical"),
     DeficitSpec("heart_failure", "MCQ160B", "Ever told had congestive heart failure", "disease", "1=yes, 2=no", "clinical"),
     DeficitSpec("coronary_heart_disease", "MCQ160C", "Ever told had coronary heart disease", "disease", "1=yes, 2=no", "clinical"),
     DeficitSpec("angina", "MCQ160D", "Ever told had angina", "disease", "1=yes, 2=no", "clinical"),
     DeficitSpec("heart_attack", "MCQ160E", "Ever told had heart attack", "disease", "1=yes, 2=no", "clinical"),
+    DeficitSpec("heart_disease_any", "MCQ160B|MCQ160C|MCQ160D|MCQ160E", "Any major heart disease proxy", "disease", "1 if CHF, CHD, angina, or MI", "clinical"),
     DeficitSpec("stroke", "MCQ160F", "Ever told had stroke", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("emphysema", "MCQ160G", "Ever told you had emphysema", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("chronic_bronchitis", "MCQ170K", "Still have chronic bronchitis", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("liver_condition", "MCQ170L", "Still have a liver condition", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("thyroid_problem", "MCQ170M", "Still have thyroid problem", "disease", "1=yes, 2=no", "clinical"),
-    DeficitSpec("osteoporosis", "OSQ060", "Ever told had osteoporosis", "disease", "1=yes, 2=no", "clinical"),
+    DeficitSpec("arthritis", "MCQ160A", "Doctor ever said you had arthritis", "disease", "1=yes, 2=no", "clinical"),
     DeficitSpec("general_health", "HUQ010", "General health condition", "global_health", r"\(1=\) excellent to \(5=\) poor, recoded to \(0\) to \(1\)", "clinical"),
-    DeficitSpec("memory_problem", "PFQ057", "Experience confusion or memory problems", "symptom", "1=yes, 2=no", "clinical"),
-    DeficitSpec("special_equipment_walk", "PFQ054", "Need special equipment to walk", "function", "1=yes, 2=no", "clinical"),
-    DeficitSpec("special_healthcare_equipment", "PFQ090", "Require special healthcare equipment", "function", "1=yes, 2=no", "clinical"),
+    DeficitSpec("memory_problem", "PFQ057", "Experience confusion or memory problems", "cognition", "1=yes, 2=no", "clinical"),
     DeficitSpec("manage_money", "PFQ061A", "Managing money difficulty", "iadl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("house_chore", "PFQ061F", "House chore difficulty", "iadl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("prepare_meals", "PFQ061G", "Preparing meals difficulty", "iadl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("walk_room", "PFQ061H", "Walking between rooms on same floor", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("chair_rise", "PFQ061I", "Standing up from armless chair difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("bed_transfer", "PFQ061J", "Getting in and out of bed difficulty", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("eat_utensils", "PFQ061K", "Using fork, knife, or cup difficulty", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("dress_self", "PFQ061L", "Dressing yourself difficulty", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
     DeficitSpec("walk_quarter_mile", "PFQ061B", "Walking for a quarter mile difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
     DeficitSpec("walk_up_steps", "PFQ061C", "Walking up ten steps difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
     DeficitSpec("stoop", "PFQ061D", "Stooping, crouching, kneeling difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
     DeficitSpec("lift_carry", "PFQ061E", "Lifting or carrying difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("prepare_meals", "PFQ061G", "Preparing meals difficulty", "iadl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("walk_room", "PFQ061H", "Walking between rooms on same floor", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("chair_rise", "PFQ061I", "Standing up from armless chair difficulty", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("bed_transfer", "PFQ061J", "Getting in and out of bed difficulty", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("eat_utensils", "PFQ061K", "Using fork, knife, or cup difficulty", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("dress_self", "PFQ061L", "Dressing yourself difficulty", "adl", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("stand_long", "PFQ061M", "Standing for long periods difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("sit_long", "PFQ061N", "Sitting for long periods difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
     DeficitSpec("reach_overhead", "PFQ061O", "Reaching up over head difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("grasp_small_objects", "PFQ061P", "Grasping or holding small objects difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
-    DeficitSpec("social_attend", "PFQ061R", "Attending social event difficulty", "social_function", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
     DeficitSpec("push_pull", "PFQ061T", "Push or pull large objects difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
+    DeficitSpec("grasp_small_objects", "PFQ061P", "Grasping or holding small objects difficulty", "mobility", r"\(1=\) no, \(2-4=\) deficit, \(5=\) does not do", "clinical"),
 ]
 
-LAB_DEFINITIONS = [
-    DeficitSpec("albumin_low", "LBXSAL", "Serum albumin low", "lab", "1 if albumin < 3.5 g/dL", "lab"),
-    DeficitSpec("bun_high", "LBXSBU", "Blood urea nitrogen high", "lab", "1 if BUN > 20 mg/dL", "lab"),
-    DeficitSpec("creatinine_high", "LBXSCR", "Serum creatinine high", "lab", "1 if creatinine > 1.3 mg/dL", "lab"),
-    DeficitSpec("glucose_high", "LBXSGL", "Serum glucose high", "lab", "1 if glucose >= 126 mg/dL", "lab"),
-    DeficitSpec("hemoglobin_low", "LBXHGB", "Hemoglobin low", "lab", "1 if < 13 g/dL in men or < 12 g/dL in women", "lab"),
-    DeficitSpec("rdw_high", "LBXRDW", "Red cell distribution width high", "lab", "1 if RDW > 14.5%", "lab"),
-    DeficitSpec("wbc_abnormal", "LBXWBCSI", "White blood cell count abnormal", "lab", "1 if WBC < 4 or > 11 (1000 cells/uL)", "lab"),
-    DeficitSpec("uric_acid_high", "LBXSUA", "Uric acid high", "lab", "1 if > 7.0 mg/dL in men or > 6.0 mg/dL in women", "lab"),
+HRS_OVERLAP_ITEMS = [
+    "def_hypertension",
+    "def_diabetes",
+    "def_cancer",
+    "def_lung_disease_any",
+    "def_heart_disease_any",
+    "def_stroke",
+    "def_arthritis",
+    "def_general_health",
+    "def_walk_room",
+    "def_bed_transfer",
+    "def_eat_utensils",
+    "def_dress_self",
+    "def_manage_money",
+    "def_house_chore",
+    "def_prepare_meals",
+    "def_chair_rise",
+    "def_walk_quarter_mile",
+    "def_walk_up_steps",
+    "def_stoop",
+    "def_lift_carry",
+    "def_push_pull",
+    "def_reach_overhead",
 ]
+
+HRS_OVERLAP_MEMORY_ITEMS = [*HRS_OVERLAP_ITEMS, "def_memory_problem"]
 
 
 def main() -> None:
@@ -103,11 +113,13 @@ def main() -> None:
 
     variant_map, screening_log = build_variant_map(panel)
     fi_panel = add_frailty_scores(panel, variant_map)
+    primary_variant = "fi_hrs_overlap_22"
 
     catalog = build_deficit_catalog(variant_map)
     variant_summary = build_variant_summary(fi_panel, variant_map)
     cycle_summary = build_cycle_summary(fi_panel)
     age_bin_summary = build_age_bin_summary(fi_panel)
+    biomarker_overlap = build_biomarker_overlap_counts(fi_panel, primary_variant)
 
     fi_panel.to_csv(OUTPUT_DIR / "frailty_panel.csv.gz", index=False)
     catalog.to_csv(OUTPUT_DIR / "deficit_catalog.csv", index=False)
@@ -115,10 +127,12 @@ def main() -> None:
     variant_summary.to_csv(OUTPUT_DIR / "variant_summary.csv", index=False)
     cycle_summary.to_csv(OUTPUT_DIR / "trajectory_by_cycle.csv", index=False)
     age_bin_summary.to_csv(OUTPUT_DIR / "distribution_by_age_bin.csv", index=False)
+    biomarker_overlap.to_csv(OUTPUT_DIR / "biomarker_overlap_counts.csv", index=False)
 
-    write_readme(variant_summary)
+    write_readme(variant_summary, primary_variant, biomarker_overlap)
     make_cycle_plot(cycle_summary)
     make_age_plot(age_bin_summary)
+    make_age_bin_kde_plot(fi_panel, primary_variant)
 
 
 def build_panel() -> pd.DataFrame:
@@ -172,12 +186,16 @@ def build_cycle_panel(cycle_year: int) -> pd.DataFrame:
     merge_into(panel, cycle_year, "BPQ*.xpt", ["BPQ020"])
     merge_into(panel, cycle_year, "DIQ*.xpt", ["DIQ010"])
     merge_into(panel, cycle_year, "KIQ_U*.xpt", ["KIQ022"])
-    merge_into(panel, cycle_year, "MCQ*.xpt", ["MCQ010", "MCQ160A", "MCQ160B", "MCQ160C", "MCQ160D", "MCQ160E", "MCQ160F", "MCQ160G", "MCQ170K", "MCQ170L", "MCQ170M", "MCQ220"])
+    merge_into(panel, cycle_year, "MCQ*.xpt", ["MCQ010", "MCQ160A", "MCQ160B", "MCQ160C", "MCQ160D", "MCQ160E", "MCQ160F", "MCQ160G", "MCQ160K", "MCQ170K", "MCQ170L", "MCQ170M", "MCQ220"])
     merge_into(panel, cycle_year, "OSQ*.xpt", ["OSQ060"])
     merge_into(panel, cycle_year, "HUQ*.xpt", ["HUQ010"])
-    merge_into(panel, cycle_year, "PFQ*.xpt", ["PFQ054", "PFQ057", "PFQ090", "PFQ061A", "PFQ061B", "PFQ061C", "PFQ061D", "PFQ061E", "PFQ061G", "PFQ061H", "PFQ061I", "PFQ061J", "PFQ061K", "PFQ061L", "PFQ061M", "PFQ061N", "PFQ061O", "PFQ061P", "PFQ061R", "PFQ061T"])
-    merge_into(panel, cycle_year, "BIOPRO*.xpt", ["LBXSAL", "LBXSBU", "LBXSCR", "LBXSGL", "LBXSUA"])
-    merge_into(panel, cycle_year, "CBC*.xpt", ["LBXHGB", "LBXRDW", "LBXWBCSI"])
+    merge_into(panel, cycle_year, "PFQ*.xpt", ["PFQ057", "PFQ061A", "PFQ061B", "PFQ061C", "PFQ061D", "PFQ061E", "PFQ061F", "PFQ061G", "PFQ061H", "PFQ061I", "PFQ061J", "PFQ061K", "PFQ061L", "PFQ061M", "PFQ061N", "PFQ061O", "PFQ061P", "PFQ061T"])
+    merge_into(panel, cycle_year, "CRP*.xpt", ["LBXCRP"], {"LBXCRP": "crp_mg_dl"})
+    merge_into(panel, cycle_year, "HSCRP*.xpt", ["LBXHSCRP"], {"LBXHSCRP": "hscrp_mg_l"})
+    merge_into(panel, cycle_year, "INS*.xpt", ["LBXIN"], {"LBXIN": "insulin_uU_ml"})
+    merge_into(panel, cycle_year, "GLU*.xpt", ["LBXGLU"], {"LBXGLU": "fasting_glucose_mg_dl"})
+    merge_into(panel, cycle_year, "TRIGLY*.xpt", ["LBXTR"], {"LBXTR": "triglycerides_mg_dl"})
+    merge_into(panel, cycle_year, "CBC*.xpt", ["LBDEONO", "LBXHGB", "LBXRDW", "LBXWBCSI"], {"LBDEONO": "eosinophils_abs_1000_uL"})
 
     panel = panel.drop_duplicates(subset=["seqn", "cycle_start_year"], keep="last")
     return panel
@@ -196,7 +214,13 @@ def find_first(cycle_year: int, patterns: list[str]) -> Path | None:
     return None
 
 
-def merge_into(panel: pd.DataFrame, cycle_year: int, pattern: str, columns: list[str]) -> None:
+def merge_into(
+    panel: pd.DataFrame,
+    cycle_year: int,
+    pattern: str,
+    columns: list[str],
+    rename_map: dict[str, str] | None = None,
+) -> None:
     path = find_first(cycle_year, [pattern])
     if path is None:
         return
@@ -204,6 +228,9 @@ def merge_into(panel: pd.DataFrame, cycle_year: int, pattern: str, columns: list
     frame = read_xpt(path, ["SEQN", *columns])
     if frame.empty:
         return
+
+    if rename_map:
+        frame = frame.rename(columns=rename_map)
 
     frame = frame.rename(columns={"SEQN": "seqn"})
     frame["seqn"] = to_int_series(frame["seqn"])
@@ -244,9 +271,7 @@ def add_recoded_deficits(panel: pd.DataFrame) -> pd.DataFrame:
     binary_yes_no = [
         "hypertension",
         "diabetes",
-        "asthma",
         "cancer",
-        "kidney",
         "arthritis",
         "heart_failure",
         "coronary_heart_disease",
@@ -254,13 +279,8 @@ def add_recoded_deficits(panel: pd.DataFrame) -> pd.DataFrame:
         "heart_attack",
         "stroke",
         "emphysema",
-        "chronic_bronchitis",
-        "liver_condition",
-        "thyroid_problem",
-        "osteoporosis",
+        "chronic_bronchitis_ever",
         "memory_problem",
-        "special_equipment_walk",
-        "special_healthcare_equipment",
     ]
     difficulty_items = [
         "manage_money",
@@ -268,26 +288,22 @@ def add_recoded_deficits(panel: pd.DataFrame) -> pd.DataFrame:
         "walk_up_steps",
         "stoop",
         "lift_carry",
+        "house_chore",
         "prepare_meals",
         "walk_room",
         "chair_rise",
         "bed_transfer",
         "eat_utensils",
         "dress_self",
-        "stand_long",
-        "sit_long",
         "reach_overhead",
         "grasp_small_objects",
-        "social_attend",
         "push_pull",
     ]
 
     source_map = {
         "hypertension": "BPQ020",
         "diabetes": "DIQ010",
-        "asthma": "MCQ010",
         "cancer": "MCQ220",
-        "kidney": "KIQ022",
         "arthritis": "MCQ160A",
         "heart_failure": "MCQ160B",
         "coronary_heart_disease": "MCQ160C",
@@ -295,29 +311,22 @@ def add_recoded_deficits(panel: pd.DataFrame) -> pd.DataFrame:
         "heart_attack": "MCQ160E",
         "stroke": "MCQ160F",
         "emphysema": "MCQ160G",
-        "chronic_bronchitis": "MCQ170K",
-        "liver_condition": "MCQ170L",
-        "thyroid_problem": "MCQ170M",
-        "osteoporosis": "OSQ060",
+        "chronic_bronchitis_ever": "MCQ160K",
         "memory_problem": "PFQ057",
-        "special_equipment_walk": "PFQ054",
-        "special_healthcare_equipment": "PFQ090",
         "manage_money": "PFQ061A",
         "walk_quarter_mile": "PFQ061B",
         "walk_up_steps": "PFQ061C",
         "stoop": "PFQ061D",
         "lift_carry": "PFQ061E",
+        "house_chore": "PFQ061F",
         "prepare_meals": "PFQ061G",
         "walk_room": "PFQ061H",
         "chair_rise": "PFQ061I",
         "bed_transfer": "PFQ061J",
         "eat_utensils": "PFQ061K",
         "dress_self": "PFQ061L",
-        "stand_long": "PFQ061M",
-        "sit_long": "PFQ061N",
         "reach_overhead": "PFQ061O",
         "grasp_small_objects": "PFQ061P",
-        "social_attend": "PFQ061R",
         "push_pull": "PFQ061T",
     }
 
@@ -328,14 +337,12 @@ def add_recoded_deficits(panel: pd.DataFrame) -> pd.DataFrame:
         panel[f"def_{name}"] = recode_difficulty(panel.get(source_map[name]))
 
     panel["def_general_health"] = recode_self_rated_health(panel.get("HUQ010"))
-    panel["def_albumin_low"] = make_binary_threshold(panel.get("LBXSAL"), low=3.5)
-    panel["def_bun_high"] = make_binary_threshold(panel.get("LBXSBU"), high=20.0)
-    panel["def_creatinine_high"] = make_binary_threshold(panel.get("LBXSCR"), high=1.3)
-    panel["def_glucose_high"] = make_binary_threshold(panel.get("LBXSGL"), high=126.0, high_inclusive=True)
-    panel["def_hemoglobin_low"] = recode_low_hemoglobin(panel.get("LBXHGB"), panel.get("sex"))
-    panel["def_rdw_high"] = make_binary_threshold(panel.get("LBXRDW"), high=14.5)
-    panel["def_wbc_abnormal"] = recode_wbc(panel.get("LBXWBCSI"))
-    panel["def_uric_acid_high"] = recode_uric_acid(panel.get("LBXSUA"), panel.get("sex"))
+    panel["def_lung_disease_any"] = recode_any_yes_no(
+        [panel.get("MCQ160G"), panel.get("MCQ160K")]
+    )
+    panel["def_heart_disease_any"] = recode_any_yes_no(
+        [panel.get("MCQ160B"), panel.get("MCQ160C"), panel.get("MCQ160D"), panel.get("MCQ160E")]
+    )
 
     return panel
 
@@ -362,6 +369,22 @@ def recode_difficulty(series: pd.Series | None) -> pd.Series:
     return out
 
 
+def recode_any_yes_no(series_list: list[pd.Series | None]) -> pd.Series:
+    valid_series = [pd.to_numeric(series, errors="coerce") for series in series_list if series is not None]
+    if not valid_series:
+        return pd.Series(dtype=float)
+
+    frame = pd.concat(valid_series, axis=1)
+    out = pd.Series(np.nan, index=frame.index, dtype=float)
+    any_observed = frame.notna().any(axis=1)
+    any_yes = frame.eq(1).any(axis=1)
+    all_no = ((frame == 2) | frame.isna()).all(axis=1)
+
+    out.loc[any_observed & all_no] = 0.0
+    out.loc[any_observed & any_yes] = 1.0
+    return out
+
+
 def recode_self_rated_health(series: pd.Series | None) -> pd.Series:
     if series is None:
         return pd.Series(dtype=float)
@@ -371,85 +394,11 @@ def recode_self_rated_health(series: pd.Series | None) -> pd.Series:
     return (numeric - 1.0) / 4.0
 
 
-def make_binary_threshold(
-    series: pd.Series | None,
-    low: float | None = None,
-    high: float | None = None,
-    high_inclusive: bool = False,
-) -> pd.Series:
-    if series is None:
-        return pd.Series(dtype=float)
-
-    numeric = pd.to_numeric(series, errors="coerce")
-    out = pd.Series(0.0, index=numeric.index, dtype=float)
-    out.loc[numeric.isna()] = np.nan
-
-    if low is not None:
-        out.loc[numeric < low] = 1.0
-
-    if high is not None and high_inclusive:
-        out.loc[numeric >= high] = 1.0
-    elif high is not None:
-        out.loc[numeric > high] = 1.0
-
-    return out
-
-
-def recode_low_hemoglobin(series: pd.Series | None, sex: pd.Series | None) -> pd.Series:
-    if series is None or sex is None:
-        return pd.Series(dtype=float)
-
-    numeric = pd.to_numeric(series, errors="coerce")
-    out = pd.Series(np.nan, index=numeric.index, dtype=float)
-
-    male_mask = sex.eq("Male") & numeric.notna()
-    female_mask = sex.eq("Female") & numeric.notna()
-
-    out.loc[male_mask] = 0.0
-    out.loc[female_mask] = 0.0
-    out.loc[male_mask & (numeric < 13.0)] = 1.0
-    out.loc[female_mask & (numeric < 12.0)] = 1.0
-    return out
-
-
-def recode_wbc(series: pd.Series | None) -> pd.Series:
-    if series is None:
-        return pd.Series(dtype=float)
-
-    numeric = pd.to_numeric(series, errors="coerce")
-    out = pd.Series(np.nan, index=numeric.index, dtype=float)
-    valid = numeric.notna()
-    out.loc[valid] = 0.0
-    out.loc[valid & ((numeric < 4.0) | (numeric > 11.0))] = 1.0
-    return out
-
-
-def recode_uric_acid(series: pd.Series | None, sex: pd.Series | None) -> pd.Series:
-    if series is None or sex is None:
-        return pd.Series(dtype=float)
-
-    numeric = pd.to_numeric(series, errors="coerce")
-    out = pd.Series(np.nan, index=numeric.index, dtype=float)
-
-    male_mask = sex.eq("Male") & numeric.notna()
-    female_mask = sex.eq("Female") & numeric.notna()
-
-    out.loc[male_mask] = 0.0
-    out.loc[female_mask] = 0.0
-    out.loc[male_mask & (numeric > 7.0)] = 1.0
-    out.loc[female_mask & (numeric > 6.0)] = 1.0
-    return out
-
-
 def build_variant_map(panel: pd.DataFrame) -> tuple[dict[str, list[str]], pd.DataFrame]:
-    clinical_items = [f"def_{definition.name}" for definition in CLINICAL_DEFINITIONS]
-    lab_items = [f"def_{definition.name}" for definition in LAB_DEFINITIONS]
-    broad_items = [*clinical_items, *lab_items]
-
-    screened_items, screening_log = run_screening(panel, broad_items)
+    screened_items, screening_log = run_screening(panel, HRS_OVERLAP_MEMORY_ITEMS)
     variant_map = {
-        f"fi_clinical_{len(clinical_items)}": clinical_items,
-        f"fi_broad_{len(broad_items)}": broad_items,
+        f"fi_hrs_overlap_{len(HRS_OVERLAP_ITEMS)}": HRS_OVERLAP_ITEMS,
+        f"fi_hrs_overlap_memory_{len(HRS_OVERLAP_MEMORY_ITEMS)}": HRS_OVERLAP_MEMORY_ITEMS,
         f"fi_screened_{len(screened_items)}": screened_items,
     }
     return variant_map, screening_log
@@ -535,8 +484,7 @@ def add_frailty_scores(panel: pd.DataFrame, variant_map: dict[str, list[str]]) -
 
 
 def build_deficit_catalog(variant_map: dict[str, list[str]]) -> pd.DataFrame:
-    all_definitions = [*CLINICAL_DEFINITIONS, *LAB_DEFINITIONS]
-    by_name = {f"def_{definition.name}": definition for definition in all_definitions}
+    by_name = {f"def_{definition.name}": definition for definition in FI_DEFINITIONS}
     rows = []
 
     for variant_name, columns in variant_map.items():
@@ -632,7 +580,49 @@ def build_age_bin_summary(panel: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def write_readme(variant_summary: pd.DataFrame) -> None:
+def build_biomarker_overlap_counts(panel: pd.DataFrame, primary_variant: str) -> pd.DataFrame:
+    subset = panel.loc[panel[primary_variant].notna()].copy()
+    rows = [
+        {
+            "marker": "fi_total",
+            "column": primary_variant,
+            "n_with_marker": int(subset.shape[0]),
+        }
+    ]
+
+    marker_map = {
+        "crp": "crp_mg_dl",
+        "hscrp": "hscrp_mg_l",
+        "insulin": "insulin_uU_ml",
+        "glucose": "fasting_glucose_mg_dl",
+        "triglycerides": "triglycerides_mg_dl",
+        "eosinophils": "eosinophils_abs_1000_uL",
+    }
+
+    for marker, column in marker_map.items():
+        rows.append(
+            {
+                "marker": marker,
+                "column": column,
+                "n_with_marker": int(subset[column].notna().sum()),
+            }
+        )
+
+    rows.append(
+        {
+            "marker": "all_requested_markers",
+            "column": "|".join(marker_map.values()),
+            "n_with_marker": int(subset.dropna(subset=list(marker_map.values())).shape[0]),
+        }
+    )
+    return pd.DataFrame(rows)
+
+
+def write_readme(
+    variant_summary: pd.DataFrame,
+    primary_variant: str,
+    biomarker_overlap: pd.DataFrame,
+) -> None:
     lines = [
         "# NHANES Frailty Index Outputs",
         "",
@@ -653,7 +643,15 @@ def write_readme(variant_summary: pd.DataFrame) -> None:
         "",
         "## Cycles used",
         "",
-        "Primary FI construction uses NHANES 2005 through 2017, because that is the cleanest local span with stable function questions plus common chemistry and CBC measures.",
+        "Primary FI construction uses NHANES 2005 through 2017 in adults aged \\(60+\\).",
+        "",
+        "The aligned FI variants are built only from domains that NHANES can match reasonably well to HRS over this span:",
+        "- chronic disease burden",
+        "- self-rated health",
+        "- ADL limitations",
+        "- IADL limitations",
+        "- mobility limitations",
+        "- one simple cognition proxy for the broader variant",
         "",
         "## Scoring rule",
         "",
@@ -671,6 +669,8 @@ def write_readme(variant_summary: pd.DataFrame) -> None:
         "- `variant_summary.csv`: high-level validation summaries",
         "- `trajectory_by_cycle.csv`: mean FI by NHANES cycle",
         "- `distribution_by_age_bin.csv`: mean FI by age bin",
+        "- `biomarker_overlap_counts.csv`: counts of FI-scored participants with requested biomarkers",
+        "- `figures/kde_by_age_bin_fi_hrs_overlap_22.png`: KDE curves for the primary aligned FI by age bin",
         "",
         "## Variant summary",
         "",
@@ -685,6 +685,14 @@ def write_readme(variant_summary: pd.DataFrame) -> None:
     lines.extend(
         [
             "",
+            "## Primary variant",
+            "",
+            f"The main HRS-aligned NHANES FI is `{primary_variant}`.",
+            "",
+            "This is the closest local analog to the HRS morbidity-function FI because it stays inside shared questionnaire domains rather than adding NHANES-specific lab deficits.",
+            "",
+            "## Biomarker overlap counts",
+            "",
             "## Interpretation",
             "",
             "This is useful as an NHANES frailty phenotype in the deficit-accumulation sense, and it should work for downstream cross-sectional and mortality-linked analyses.",
@@ -693,6 +701,13 @@ def write_readme(variant_summary: pd.DataFrame) -> None:
             "",
         ]
     )
+
+    insertion_index = lines.index("## Interpretation")
+    biomarker_lines = [
+        f"- `{row.marker}`: \\(n = {row.n_with_marker}\\)"
+        for row in biomarker_overlap.itertuples(index=False)
+    ]
+    lines[insertion_index:insertion_index] = biomarker_lines + [""]
 
     (OUTPUT_DIR / "README.md").write_text("\n".join(lines))
 
@@ -727,6 +742,35 @@ def make_age_plot(summary: pd.DataFrame) -> None:
     plt.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(FIGURE_DIR / "distribution_by_age_bin.png", dpi=200)
+    plt.close()
+
+
+def make_age_bin_kde_plot(panel: pd.DataFrame, variant_name: str) -> None:
+    subset = panel.loc[panel[variant_name].notna()].copy()
+    if subset.empty:
+        return
+
+    x_max = max(0.8, float(subset[variant_name].quantile(0.995)))
+    xs = np.linspace(0.0, x_max, 300)
+
+    plt.figure(figsize=(9, 5.5))
+    for age_bin, frame in subset.groupby("age_bin", observed=False):
+        if pd.isna(age_bin):
+            continue
+
+        values = frame[variant_name].dropna().to_numpy()
+        if values.size < 20 or np.unique(values).size < 2:
+            continue
+
+        density = gaussian_kde(values)
+        plt.plot(xs, density(xs), linewidth=2, label=f"{age_bin} (n={values.size})")
+
+    plt.xlabel("Frailty index")
+    plt.ylabel("Density")
+    plt.title(f"KDE of {variant_name} by age bin")
+    plt.legend(frameon=False, fontsize=8)
+    plt.tight_layout()
+    plt.savefig(FIGURE_DIR / f"kde_by_age_bin_{variant_name}.png", dpi=200)
     plt.close()
 
 
