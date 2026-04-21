@@ -3530,10 +3530,6 @@ def build_outputs(
                     "quantile_skewness": sex_metrics_qskew,
                 },
                 "clalit_trends": c_trends,
-                "sr_comparison_summary": sr_summary_by_id.get(bid),
-                "sr_rank_comparison_summary": sr_rank_summary_by_id.get(bid),
-                "sr_comparison_summary_by_fit": sr_summary_by_fit_by_id.get(bid),
-                "sr_rank_comparison_summary_by_fit": sr_rank_summary_by_fit_by_id.get(bid),
             }
         )
 
@@ -3816,6 +3812,11 @@ def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, di
     sr_rank_reference = sr_comparison_bundle.get("sr_rank_reference")
     sr_rank_references = sr_comparison_bundle.get("sr_rank_references")
     sr_reference_peers = sr_comparison_bundle.get("reference_peer_records")
+    sr_metric_summaries = {
+        "default_fit_key": (sr_comparison_bundle.get("sr_fit_manifest") or {}).get("default_fit_key"),
+        "summary_by_biomarker_by_fit": sr_comparison_bundle.get("summary_by_biomarker_by_fit") or {},
+        "rank_summary_by_biomarker_by_fit": sr_comparison_bundle.get("rank_summary_by_biomarker_by_fit") or {},
+    }
     payloads: dict[str, dict] = {}
     if sr_fit_manifest:
         payloads["sr_fit_manifest.json"] = sr_fit_manifest
@@ -3829,6 +3830,7 @@ def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, di
         payloads["sr_rank_references.json"] = sr_rank_references
     if sr_reference_peers:
         payloads["sr_reference_peers.json"] = sr_reference_peers
+    payloads["sr_metric_summaries.json"] = sr_metric_summaries
     return payloads
 
 
@@ -3870,6 +3872,7 @@ def write_dashboard_bundle(
         "sr_rank_reference.json",
         "sr_rank_references.json",
         "sr_reference_peers.json",
+        "sr_metric_summaries.json",
     ]
     for file_name in shared_file_names:
         shared_path = data_dir / file_name

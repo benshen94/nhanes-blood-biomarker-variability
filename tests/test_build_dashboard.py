@@ -358,11 +358,10 @@ class TestBuildDashboard(unittest.TestCase):
             sr_comparison_bundle=sr_bundle,
         )
 
-        self.assertEqual(metrics[0]["sr_comparison_summary"]["mean_r2"], 0.91)
-        self.assertEqual(metrics[0]["sr_comparison_summary"]["trim_summaries"]["trim_3_97"]["mean_wasserstein_z"], 0.14)
-        self.assertEqual(metrics[0]["sr_rank_comparison_summary"]["trim_summaries"]["all"]["mean_wasserstein_rank"], 0.08)
-        self.assertEqual(metrics[0]["sr_comparison_summary_by_fit"]["alternative"]["mean_r2"], 0.82)
-        self.assertEqual(metrics[0]["sr_rank_comparison_summary_by_fit"]["alternative"]["mean_wasserstein_rank"], 0.12)
+        self.assertNotIn("sr_comparison_summary", metrics[0])
+        self.assertNotIn("sr_rank_comparison_summary", metrics[0])
+        self.assertNotIn("sr_comparison_summary_by_fit", metrics[0])
+        self.assertNotIn("sr_rank_comparison_summary_by_fit", metrics[0])
         payload = next(iter(series_payloads.values()))
         self.assertIn("sr_comparison", payload)
         self.assertIn("sr_rank_comparison", payload)
@@ -404,19 +403,27 @@ class TestBuildDashboard(unittest.TestCase):
                             "original": {"age_bins": ["20-24"], "bins": [{"age_bin": "20-24", "sr_n": 100}]}
                         },
                     },
+                    "sr_metric_summaries.json": {
+                        "default_fit_key": "original",
+                        "summary_by_biomarker_by_fit": {"marker-a": {"original": {"mean_r2": 0.9}}},
+                        "rank_summary_by_biomarker_by_fit": {"marker-a": {"original": {"mean_wasserstein_rank": 0.1}}},
+                    },
                 },
             )
 
             fit_manifest_path = out_html.parent / "data" / "sr_fit_manifest.json"
             shared_path = out_html.parent / "data" / "sr_waterfall_reference.json"
             shared_multi_path = out_html.parent / "data" / "sr_waterfall_references.json"
+            metric_summary_path = out_html.parent / "data" / "sr_metric_summaries.json"
             fit_manifest = json.loads(fit_manifest_path.read_text())
             payload = json.loads(shared_path.read_text())
             payload_multi = json.loads(shared_multi_path.read_text())
+            metric_summaries = json.loads(metric_summary_path.read_text())
             self.assertEqual(fit_manifest["default_fit_key"], "original")
             self.assertEqual(payload["bins"][0]["age_bin"], "20-24")
             self.assertEqual(payload["bins"][0]["sr_n"], 100)
             self.assertEqual(payload_multi["fits"]["original"]["bins"][0]["sr_n"], 100)
+            self.assertEqual(metric_summaries["summary_by_biomarker_by_fit"]["marker-a"]["original"]["mean_r2"], 0.9)
 
     def test_build_outputs_drops_85_plus_age_bin(self):
         rows = []

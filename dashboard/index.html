@@ -1801,7 +1801,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1776759564';
+    const DATA_VERSION = '1776763065';
     const HAS_CLALIT = true;
     const HAS_SR_COMPARISON = true;
     const SPECIMEN_TITLE = 'Blood';
@@ -2024,6 +2024,9 @@
       srReferencePeers: null,
       srReferencePeersLoaded: false,
       srReferencePeersPromise: null,
+      srMetricSummaries: null,
+      srMetricSummariesLoaded: false,
+      srMetricSummariesPromise: null,
     };
 
     const WATERFALL_AGE_BINS = [
@@ -2393,6 +2396,23 @@
       return await state.srReferencePeersPromise;
     }
 
+    async function ensureSrMetricSummaries() {
+      if (!HAS_SR_COMPARISON) return null;
+      if (state.srMetricSummariesLoaded) return state.srMetricSummaries;
+      if (state.srMetricSummariesPromise) return await state.srMetricSummariesPromise;
+
+      state.srMetricSummariesPromise = fetchOptionalJson(`${DATA_BASE}/sr_metric_summaries.json`)
+        .then((payload) => {
+          state.srMetricSummaries = payload;
+          state.srMetricSummariesLoaded = true;
+          return payload;
+        })
+        .finally(() => {
+          state.srMetricSummariesPromise = null;
+        });
+      return await state.srMetricSummariesPromise;
+    }
+
     function isReferenceRecordId(id) {
       return String(id || '').startsWith('__reference__::');
     }
@@ -2634,6 +2654,12 @@
       } else if (resolved === 'waterfall') {
         await renderWaterfallPlot(state.waterfallId);
       } else if (resolved === 'sr-comparison') {
+        await ensureSrMetricSummaries();
+        await ensureSrReferencePeers();
+        if (srCategoryMultiEl && (!srCategoryMultiEl.options || srCategoryMultiEl.options.length === 0)) {
+          renderSrCategoryOptions(false);
+        }
+        renderSrBiomarkerOptions();
         await renderSRComparison(state.currentId);
       }
     }
@@ -4321,12 +4347,14 @@
     }
 
     function srSummaryRootForFit(record, fitKey) {
-      const byFit = record?.sr_comparison_summary_by_fit || {};
+      const lazyByFit = state.srMetricSummaries?.summary_by_biomarker_by_fit?.[record?.biomarker_id] || {};
+      const byFit = record?.sr_comparison_summary_by_fit || lazyByFit;
       return byFit[fitKey] || record?.sr_comparison_summary || null;
     }
 
     function srRankSummaryRootForFit(record, fitKey) {
-      const byFit = record?.sr_rank_comparison_summary_by_fit || {};
+      const lazyByFit = state.srMetricSummaries?.rank_summary_by_biomarker_by_fit?.[record?.biomarker_id] || {};
+      const byFit = record?.sr_rank_comparison_summary_by_fit || lazyByFit;
       return byFit[fitKey] || record?.sr_rank_comparison_summary || null;
     }
 
@@ -4991,6 +5019,7 @@
 
     async function renderSRComparison(biomarkerId = null) {
       if (!HAS_SR_COMPARISON) return;
+      await ensureSrMetricSummaries();
       await ensureSrReferencePeers();
       const trimMode = srActiveTrimMode();
       const method = srCurrentMethod();
@@ -6441,16 +6470,11 @@
       setAllTrimSliders(10);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
-      await ensureSrReferencePeers();
-      if (srCategoryMultiEl) {
-        renderSrCategoryOptions(false);
-      }
       renderSrTrimModeOptions();
       renderSrSortFieldOptions();
       renderScatterCategoryOptions(false);
       renderHistogramCategoryOptions(false);
       renderWaterfallOptions();
-      renderSrBiomarkerOptions();
       filterTestsCohortEl.value = 'both';
       filterTestsIncludeEnvEl.checked = false;
       renderFilterTestsBiomarkerOptions(false);
