@@ -148,14 +148,14 @@ def build_panel() -> pd.DataFrame:
         raise RuntimeError("No NHANES frailty data could be assembled from local raw files.")
 
     panel = pd.concat(rows, ignore_index=True)
-    panel = panel.loc[panel["age_years"] >= 60].copy()
+    panel = panel.loc[panel["age_years"] >= 20].copy()
 
     panel["is_female"] = np.where(panel["sex"] == "Female", 1.0, 0.0)
     panel["age_bin"] = pd.cut(
         panel["age_years"],
-        bins=[60, 65, 70, 75, 80, 85, 90, math.inf],
+        bins=[20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, math.inf],
         right=False,
-        labels=["60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90+"],
+        labels=["20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90+"],
     )
     return panel
 

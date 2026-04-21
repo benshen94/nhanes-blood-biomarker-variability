@@ -593,7 +593,7 @@ python3 -m http.server 8765 --directory .
 - `src/build_frailty_index.py` builds a participant-level frailty index from local NHANES raw questionnaire and lab files and writes outputs to `output/frailty/`.
 - `src/build_fi_percentile_report.py` compares within-age-bin FI percentiles against within-age-bin biomarker percentiles, writes per-test scatter-panel PNGs, panel summary CSVs, and a shareable markdown report to `output/frailty_percentile_report/`.
 - The main NHANES FI is deliberately cross-sectional by cycle, not longitudinal like HRS, because NHANES does not repeatedly follow the same participants across waves.
-- The current primary FI window is `2005-2017` in adults aged `60+`.
+- The current primary FI window is `2005-2017` in adults aged `20+`, with item coverage handled by the FI observed-items rule.
 - The primary variant is now an HRS-overlap questionnaire FI, centered on overlapping HRS-like domains: chronic disease burden, self-rated health, ADL, IADL, mobility, plus a memory-proxy sensitivity variant.
 - Main outputs:
   - `output/frailty/frailty_panel.csv.gz`
