@@ -79,6 +79,10 @@ def main() -> None:
 
     if all_summary_frames:
         combined_summary = pd.concat(all_summary_frames, ignore_index=True)
+        combined_summary["age_bin_lower"] = combined_summary["age_bin"].map(age_bin_lower_bound)
+        combined_summary = combined_summary.sort_values(
+            ["age_bin_lower", "test_label", "fi_label"]
+        ).reset_index(drop=True)
         combined_summary.to_csv(OUTPUT_DIR / "all_tests_panel_summary.csv", index=False)
         make_age_bin_correlation_plot(combined_summary, FIGURE_DIR / "age_bin_correlation_by_test.png")
         markdown_lines.extend(build_markdown_overall_section(combined_summary))
@@ -119,11 +123,23 @@ def age_bin_percentile(panel: pd.DataFrame, value_column: str) -> pd.Series:
     return out
 
 
+def ordered_age_bins(values: pd.Series | list[str]) -> list[str]:
+    unique_bins = [value for value in pd.Series(values).dropna().unique().tolist()]
+    return sorted(unique_bins, key=age_bin_lower_bound)
+
+
+def age_bin_lower_bound(age_bin: str) -> int:
+    text = str(age_bin)
+    if "+" in text:
+        return int(text.replace("+", ""))
+    return int(text.split("-")[0])
+
+
 def build_test_summary(panel: pd.DataFrame, test_spec: TestSpec) -> pd.DataFrame:
     rows = []
     biomarker_pct_column = f"{test_spec.column}_pct"
 
-    for age_bin in sorted(panel["age_bin"].dropna().unique()):
+    for age_bin in ordered_age_bins(panel["age_bin"]):
         age_frame = panel.loc[panel["age_bin"] == age_bin].copy()
 
         for fi_column in FI_COLUMNS:
@@ -166,6 +182,8 @@ def build_test_summary(panel: pd.DataFrame, test_spec: TestSpec) -> pd.DataFrame
 
     summary = summary.loc[summary["age_bin"].isin(relevant_age_bins)].copy()
     summary["panel_included"] = summary["n_points"] > MIN_POINTS_PER_PANEL
+    summary["age_bin_lower"] = summary["age_bin"].map(age_bin_lower_bound)
+    summary = summary.sort_values(["age_bin_lower", "fi_label"]).reset_index(drop=True)
     return summary
 
 
@@ -175,7 +193,7 @@ def make_test_figure(
     test_spec: TestSpec,
     figure_path: Path,
 ) -> None:
-    age_bins = summary["age_bin"].drop_duplicates().tolist()
+    age_bins = ordered_age_bins(summary["age_bin"])
     n_panels = len(age_bins)
     n_cols = min(3, n_panels)
     n_rows = math.ceil(n_panels / n_cols)
@@ -254,7 +272,7 @@ def make_age_bin_correlation_plot(summary: pd.DataFrame, figure_path: Path) -> N
     if plot_data.empty:
         return
 
-    age_bin_order = list(dict.fromkeys(plot_data["age_bin"].tolist()))
+    age_bin_order = ordered_age_bins(plot_data["age_bin"])
     x_positions = np.arange(len(age_bin_order))
     age_to_x = {age_bin: index for index, age_bin in enumerate(age_bin_order)}
 
@@ -347,7 +365,17 @@ def build_markdown_section(test_spec: TestSpec, summary: pd.DataFrame, figure_pa
             "Panel-level summary:",
             "",
             dataframe_to_markdown(
-                summary.loc[:, ["age_bin", "fi_label", "n_points", "pearson_r", "p_value", "mean_abs_distance_from_diagonal"]]
+                summary.loc[
+                    :,
+                    [
+                        "age_bin",
+                        "fi_label",
+                        "n_points",
+                        "pearson_r",
+                        "p_value",
+                        "mean_abs_distance_from_diagonal",
+                    ],
+                ]
                 .rename(columns={
                     "age_bin": "age_bin",
                     "fi_label": "FI",
@@ -356,7 +384,6 @@ def build_markdown_section(test_spec: TestSpec, summary: pd.DataFrame, figure_pa
                     "p_value": "p",
                     "mean_abs_distance_from_diagonal": "mean_abs_distance",
                 })
-                .sort_values(["age_bin", "FI"])
             ),
             "",
         ]
