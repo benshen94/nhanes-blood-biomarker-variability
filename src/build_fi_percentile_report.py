@@ -11,6 +11,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.stats import pearsonr
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -135,8 +136,7 @@ def build_test_summary(panel: pd.DataFrame, test_spec: TestSpec) -> pd.DataFrame
             if n_points <= 1:
                 continue
 
-            pearson_r = float(pair[fi_pct_column].corr(pair[biomarker_pct_column], method="pearson"))
-            r_squared = pearson_r**2 if not math.isnan(pearson_r) else np.nan
+            pearson_r, p_value = pearsonr(pair[fi_pct_column], pair[biomarker_pct_column])
 
             rows.append(
                 {
@@ -147,7 +147,7 @@ def build_test_summary(panel: pd.DataFrame, test_spec: TestSpec) -> pd.DataFrame
                     "fi_label": FI_LABELS[fi_column],
                     "n_points": n_points,
                     "pearson_r": pearson_r,
-                    "r_squared": r_squared,
+                    "p_value": p_value,
                     "mean_abs_distance_from_diagonal": float(
                         np.abs(pair[fi_pct_column] - pair[biomarker_pct_column]).mean()
                     ),
@@ -185,14 +185,14 @@ def make_test_figure(
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(6.0 * n_cols, 5.2 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
 
-    mean_r2_map = (
+    mean_r_map = (
         summary.loc[summary["panel_included"]]
-        .groupby("fi_label")["r_squared"]
+        .groupby("fi_label")["pearson_r"]
         .mean()
         .to_dict()
     )
     subtitle = " | ".join(
-        f"{fi_label} mean $R^2$={mean_r2_map.get(fi_label, float('nan')):.3f}"
+        f"{fi_label} mean $r$={mean_r_map.get(fi_label, float('nan')):.3f}"
         for fi_label in [FI_LABELS[col] for col in FI_COLUMNS]
     )
     fig.suptitle(
@@ -231,7 +231,7 @@ def make_test_figure(
                 (summary["age_bin"] == age_bin) & (summary["fi_column"] == fi_column)
             ].iloc[0]
             text_lines.append(
-                f"{FI_LABELS[fi_column]}: n={n_points}, $R^2$={row['r_squared']:.3f}"
+                f"{FI_LABELS[fi_column]}: n={n_points}, $r$={row['pearson_r']:.3f}, p={format_p_value(row['p_value'])}"
             )
 
         axis.set_title(f"Age {age_bin}")
@@ -274,7 +274,8 @@ def build_markdown_header() -> list[str]:
         "- The x-axis is that person's FI percentile within their age bin.",
         "- The y-axis is that person's biomarker percentile within the same age bin.",
         "- Perfect percentile mapping would place points on the diagonal \\(x=y\\).",
-        "- \\(R^2\\) here is Pearson correlation squared between FI percentile and biomarker percentile within each age bin.",
+        "- `r` here is the Pearson correlation between FI percentile and biomarker percentile within each age bin.",
+        "- `p` is the corresponding two-sided significance test for non-zero Pearson correlation.",
         "",
         f"Panels are shown only for age bins where at least \\(n > {MIN_POINTS_PER_PANEL}\\) people have both FI and biomarker data.",
         "",
@@ -293,7 +294,8 @@ def build_markdown_section(test_spec: TestSpec, summary: pd.DataFrame, figure_pa
         summary.loc[summary["panel_included"]]
         .groupby("fi_label", as_index=False)
         .agg(
-            mean_r_squared=("r_squared", "mean"),
+            mean_pearson_r=("pearson_r", "mean"),
+            median_p_value=("p_value", "median"),
             mean_abs_distance_from_diagonal=("mean_abs_distance_from_diagonal", "mean"),
             age_bins_used=("age_bin", "nunique"),
         )
@@ -306,7 +308,8 @@ def build_markdown_section(test_spec: TestSpec, summary: pd.DataFrame, figure_pa
             "",
             dataframe_to_markdown(mean_table.rename(columns={
                 "fi_label": "FI",
-                "mean_r_squared": "mean_R2",
+                "mean_pearson_r": "mean_r",
+                "median_p_value": "median_p",
                 "mean_abs_distance_from_diagonal": "mean_abs_distance",
                 "age_bins_used": "age_bins_used",
             })),
@@ -314,12 +317,13 @@ def build_markdown_section(test_spec: TestSpec, summary: pd.DataFrame, figure_pa
             "Panel-level summary:",
             "",
             dataframe_to_markdown(
-                summary.loc[:, ["age_bin", "fi_label", "n_points", "r_squared", "mean_abs_distance_from_diagonal"]]
+                summary.loc[:, ["age_bin", "fi_label", "n_points", "pearson_r", "p_value", "mean_abs_distance_from_diagonal"]]
                 .rename(columns={
                     "age_bin": "age_bin",
                     "fi_label": "FI",
                     "n_points": "n",
-                    "r_squared": "R2",
+                    "pearson_r": "r",
+                    "p_value": "p",
                     "mean_abs_distance_from_diagonal": "mean_abs_distance",
                 })
                 .sort_values(["age_bin", "FI"])
@@ -335,7 +339,8 @@ def build_markdown_overall_section(summary: pd.DataFrame) -> list[str]:
         summary.loc[summary["panel_included"]]
         .groupby(["test_label", "fi_label"], as_index=False)
         .agg(
-            mean_r_squared=("r_squared", "mean"),
+            mean_pearson_r=("pearson_r", "mean"),
+            median_p_value=("p_value", "median"),
             mean_abs_distance_from_diagonal=("mean_abs_distance_from_diagonal", "mean"),
             age_bins_used=("age_bin", "nunique"),
         )
@@ -348,7 +353,8 @@ def build_markdown_overall_section(summary: pd.DataFrame) -> list[str]:
         dataframe_to_markdown(overall.rename(columns={
             "test_label": "test",
             "fi_label": "FI",
-            "mean_r_squared": "mean_R2",
+            "mean_pearson_r": "mean_r",
+            "median_p_value": "median_p",
             "mean_abs_distance_from_diagonal": "mean_abs_distance",
             "age_bins_used": "age_bins_used",
         })),
@@ -361,9 +367,20 @@ def dataframe_to_markdown(frame: pd.DataFrame) -> str:
 
     for column in formatted.columns:
         if pd.api.types.is_float_dtype(formatted[column]):
-            formatted[column] = formatted[column].map(lambda value: f"{value:.3f}")
+            if "p" in column.lower():
+                formatted[column] = formatted[column].map(format_p_value)
+            else:
+                formatted[column] = formatted[column].map(lambda value: f"{value:.3f}")
 
     return formatted.to_markdown(index=False)
+
+
+def format_p_value(value: float) -> str:
+    if pd.isna(value):
+        return "nan"
+    if value < 1e-4:
+        return f"{value:.1e}"
+    return f"{value:.4f}"
 
 
 if __name__ == "__main__":
