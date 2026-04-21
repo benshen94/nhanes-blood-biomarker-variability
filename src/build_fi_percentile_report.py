@@ -315,21 +315,23 @@ def build_markdown_overall_section(summary: pd.DataFrame) -> list[str]:
         .groupby(["test_label", "fi_label"], as_index=False)
         .agg(
             mean_pearson_r=("pearson_r", "mean"),
-            median_p_value=("p_value", "median"),
+            mean_p_value=("p_value", "mean"),
             mean_abs_distance_from_diagonal=("mean_abs_distance_from_diagonal", "mean"),
             age_bins_used=("age_bin", "nunique"),
         )
-        .sort_values(["test_label", "fi_label"])
+        .sort_values(["mean_pearson_r", "test_label"], ascending=[False, True])
     )
 
     return [
         "## Overall Summary",
         "",
+        "Tests ranked in descending order by mean Pearson correlation across included age bins.",
+        "",
         dataframe_to_markdown(overall.rename(columns={
             "test_label": "test",
             "fi_label": "FI",
             "mean_pearson_r": "mean_r",
-            "median_p_value": "median_p",
+            "mean_p_value": "mean_p",
             "mean_abs_distance_from_diagonal": "mean_abs_distance",
             "age_bins_used": "age_bins_used",
         })),
