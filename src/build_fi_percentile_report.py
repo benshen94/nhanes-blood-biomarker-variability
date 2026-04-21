@@ -41,6 +41,15 @@ TEST_SPECS = [
     TestSpec("eosinophils", "Eosinophils", "eosinophils_abs_1000_uL", "1000 cells/uL"),
 ]
 
+TEST_COLORS = {
+    "CRP": "#d62728",
+    "hs-CRP": "#1f77b4",
+    "Insulin": "#2ca02c",
+    "Glucose": "#ff7f0e",
+    "Triglycerides": "#9467bd",
+    "Eosinophils": "#8c564b",
+}
+
 FI_LABELS = {"fi_hrs_overlap_22": "FI HRS-overlap 22"}
 
 FI_COLORS = {"fi_hrs_overlap_22": "#1f77b4"}
@@ -71,6 +80,7 @@ def main() -> None:
     if all_summary_frames:
         combined_summary = pd.concat(all_summary_frames, ignore_index=True)
         combined_summary.to_csv(OUTPUT_DIR / "all_tests_panel_summary.csv", index=False)
+        make_age_bin_correlation_plot(combined_summary, FIGURE_DIR / "age_bin_correlation_by_test.png")
         markdown_lines.extend(build_markdown_overall_section(combined_summary))
 
     report_path = OUTPUT_DIR / "FI_percentile_mapping_report.md"
@@ -236,6 +246,51 @@ def make_test_figure(
 
     fig.tight_layout(rect=[0.02, 0.02, 1.0, 0.94])
     fig.savefig(figure_path, dpi=220)
+    plt.close(fig)
+
+
+def make_age_bin_correlation_plot(summary: pd.DataFrame, figure_path: Path) -> None:
+    plot_data = summary.loc[summary["panel_included"]].copy()
+    if plot_data.empty:
+        return
+
+    age_bin_order = list(dict.fromkeys(plot_data["age_bin"].tolist()))
+    x_positions = np.arange(len(age_bin_order))
+    age_to_x = {age_bin: index for index, age_bin in enumerate(age_bin_order)}
+
+    fig, axis = plt.subplots(figsize=(11, 6))
+    fig.patch.set_facecolor("#fbfbfd")
+    axis.set_facecolor("#ffffff")
+
+    for test_label, frame in plot_data.groupby("test_label", sort=False):
+        frame = frame.copy()
+        frame["x"] = frame["age_bin"].map(age_to_x)
+        frame = frame.sort_values("x")
+
+        color = TEST_COLORS.get(test_label, "#333333")
+        axis.plot(
+            frame["x"],
+            frame["pearson_r"],
+            color=color,
+            linewidth=2.5,
+            marker="o",
+            markersize=6,
+            label=test_label,
+        )
+
+    axis.axhline(0.0, color="#999999", linewidth=1, linestyle="--", alpha=0.8)
+    axis.set_xticks(x_positions)
+    axis.set_xticklabels(age_bin_order, rotation=35, ha="right")
+    axis.set_ylabel("Pearson correlation (r)")
+    axis.set_xlabel("Age bin")
+    axis.set_title("FI HRS-overlap percentile correlation with biomarkers by age bin")
+    axis.grid(axis="y", color="#d9dbe7", linewidth=0.8, alpha=0.8)
+    axis.spines["top"].set_visible(False)
+    axis.spines["right"].set_visible(False)
+    axis.legend(frameon=False, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.12))
+
+    fig.tight_layout()
+    fig.savefig(figure_path, dpi=220, bbox_inches="tight")
     plt.close(fig)
 
 
