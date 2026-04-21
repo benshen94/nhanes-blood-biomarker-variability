@@ -189,6 +189,14 @@ def fit_option_payload(fit_def: dict[str, Any], default_fit_key: str) -> dict[st
     }
 
 
+def reference_record_id(fit_key: str) -> str:
+    return f"__reference__::{fit_key}"
+
+
+def reference_record_category() -> str:
+    return "User distributions"
+
+
 def age_bin_labels_with_data(values_by_age_bin: dict[str, np.ndarray]) -> list[str]:
     labels: list[str] = []
     for age_bin in AGE_BIN_LABELS:
@@ -439,6 +447,230 @@ def build_sr_rank_reference_payload(
         "trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
         "bins": default_detail["bins"],
         "trim_details": trim_details,
+    }
+
+
+def compute_rank_rows_from_bins(
+    candidate_id: str,
+    candidate_name: str,
+    candidate_rank_bins: dict[str, np.ndarray],
+    reference_rank_bins: dict[str, np.ndarray],
+    trim_mode_key: str,
+) -> list[dict[str, Any]]:
+    trim_mode = sr_trim_mode(trim_mode_key)
+    rows: list[dict[str, Any]] = []
+    for age_bin in AGE_BIN_LABELS:
+        age_mid = float(AGE_BIN_MIDS[age_bin])
+        candidate_ranks = candidate_rank_bins.get(age_bin, np.array([], dtype=float))
+        reference_ranks = reference_rank_bins.get(age_bin, np.array([], dtype=float))
+        wasserstein_rank = None
+        if candidate_ranks.size >= MIN_BIN_N and reference_ranks.size >= MIN_BIN_N:
+            wasserstein_rank = safe_float(wasserstein_distance(reference_ranks, candidate_ranks))
+
+        rows.append(
+            {
+                "biomarker_id": candidate_id,
+                "biomarker_name": candidate_name,
+                "age_bin": age_bin,
+                "age_mid": age_mid,
+                "trim_mode": trim_mode_key,
+                "trim_label": str(trim_mode["label"]),
+                "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+                "wasserstein_rank": wasserstein_rank,
+                "nhanes_n": int(candidate_ranks.size),
+                "sr_n": int(reference_ranks.size),
+                "nhanes_rank_values": integer_list(candidate_ranks),
+            }
+        )
+    return rows
+
+
+def compress_rank_rows_for_payload(
+    rows: list[dict[str, Any]],
+    max_values: int = 101,
+) -> list[dict[str, Any]]:
+    compressed: list[dict[str, Any]] = []
+    sample_probabilities = np.linspace(0.0, 1.0, max_values)
+    for row in rows:
+        next_row = dict(row)
+        rank_values = np.asarray(row.get("nhanes_rank_values") or [], dtype=float)
+        if rank_values.size > max_values:
+            sampled = np.quantile(rank_values, sample_probabilities)
+            next_row["nhanes_rank_values"] = integer_list(np.round(sampled).astype(int))
+        compressed.append(next_row)
+    return compressed
+
+
+def build_reference_peer_records(
+    fit_builds: list[dict[str, Any]],
+    fit_options: list[dict[str, Any]],
+    default_fit_key: str,
+) -> dict[str, Any]:
+    fit_option_by_key = {str(option["key"]): option for option in fit_options}
+    rank_bins_by_fit_and_trim: dict[str, dict[str, dict[str, np.ndarray]]] = {}
+    for fit_build in fit_builds:
+        fit_key = str(fit_build["fit_key"])
+        fit_distributions = fit_build["sr_distributions"]
+        rank_bins_by_fit_and_trim[fit_key] = {}
+        for trim_mode in SR_RANK_TRIM_MODES:
+            trim_key = str(trim_mode["key"])
+            rank_bins_by_fit_and_trim[fit_key][trim_key] = build_rank_bin_distributions(
+                fit_distributions,
+                trim_mode_key=trim_key,
+                seed_key=f"reference_candidate:{fit_key}:{trim_key}",
+            )
+
+    records: list[dict[str, Any]] = []
+    detail_by_reference_id: dict[str, dict[str, Any]] = {}
+    for candidate_fit in fit_builds:
+        candidate_fit_key = str(candidate_fit["fit_key"])
+        candidate_fit_label = str(candidate_fit["fit_label"])
+        candidate_id = reference_record_id(candidate_fit_key)
+        qq_summary_by_fit: dict[str, Any] = {}
+        qq_detail_by_fit: dict[str, Any] = {}
+        rank_summary_by_fit: dict[str, Any] = {}
+        rank_detail_by_fit: dict[str, Any] = {}
+        candidate_values_by_age_bin = candidate_fit["sr_distributions"]
+
+        for selected_fit in fit_builds:
+            selected_fit_key = str(selected_fit["fit_key"])
+            if selected_fit_key == candidate_fit_key:
+                continue
+
+            selected_reference_rows = selected_fit["sr_reference_rows"]
+            selected_reference_by_bin = {row["age_bin"]: row for row in selected_reference_rows}
+            selected_distributions = selected_fit["sr_distributions"]
+            trim_summaries: dict[str, dict[str, Any]] = {}
+            trim_details: dict[str, dict[str, Any]] = {}
+            rank_trim_summaries: dict[str, dict[str, Any]] = {}
+            rank_trim_details: dict[str, dict[str, Any]] = {}
+
+            for trim_mode in SR_TRIM_MODES:
+                trim_key = str(trim_mode["key"])
+                per_bin_rows: list[dict[str, Any]] = []
+                for age_bin in AGE_BIN_LABELS:
+                    age_mid = float(AGE_BIN_MIDS[age_bin])
+                    fit = compute_qq_fit(
+                        selected_distributions.get(age_bin, np.array([], dtype=float)),
+                        candidate_values_by_age_bin.get(age_bin, np.array([], dtype=float)),
+                        trim_mode_key=trim_key,
+                    )
+                    selected_row = selected_reference_by_bin[age_bin]
+                    per_bin_rows.append(
+                        {
+                            "biomarker_id": candidate_id,
+                            "biomarker_name": candidate_fit_label,
+                            "age_bin": age_bin,
+                            "age_mid": age_mid,
+                            **fit,
+                            "sr_n": selected_row["sr_n"],
+                            "sr_q1": selected_row["sr_q1"],
+                            "sr_median": selected_row["sr_median"],
+                            "sr_q3": selected_row["sr_q3"],
+                        }
+                    )
+
+                summary = summarize_biomarker_bins(per_bin_rows)
+                summary["trim_mode"] = trim_key
+                summary["trim_label"] = str(trim_mode["label"])
+                summary["trim_rule"] = {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])}
+                trim_summaries[trim_key] = summary
+                trim_details[trim_key] = {
+                    "trim_mode": trim_key,
+                    "trim_label": str(trim_mode["label"]),
+                    "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+                    "bins": per_bin_rows,
+                }
+
+            for trim_mode in SR_RANK_TRIM_MODES:
+                trim_key = str(trim_mode["key"])
+                rank_rows = compute_rank_rows_from_bins(
+                    candidate_id=candidate_id,
+                    candidate_name=candidate_fit_label,
+                    candidate_rank_bins=rank_bins_by_fit_and_trim[candidate_fit_key][trim_key],
+                    reference_rank_bins=rank_bins_by_fit_and_trim[selected_fit_key][trim_key],
+                    trim_mode_key=trim_key,
+                )
+                payload_rank_rows = compress_rank_rows_for_payload(rank_rows)
+                rank_summary = summarize_rank_bins(rank_rows)
+                rank_summary["trim_mode"] = trim_key
+                rank_summary["trim_label"] = str(trim_mode["label"])
+                rank_summary["trim_rule"] = {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])}
+                rank_trim_summaries[trim_key] = rank_summary
+                rank_trim_details[trim_key] = {
+                    "trim_mode": trim_key,
+                    "trim_label": str(trim_mode["label"]),
+                    "trim_rule": {"lo": float(trim_mode["lo"]), "hi": float(trim_mode["hi"])},
+                    "bins": payload_rank_rows,
+                }
+
+            qq_summary_by_fit[selected_fit_key] = {
+                **trim_summaries[DEFAULT_SR_TRIM_MODE],
+                "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+                "trim_modes": rounded_trim_modes(),
+                "trim_summaries": trim_summaries,
+            }
+            qq_detail_by_fit[selected_fit_key] = {
+                "biomarker_id": candidate_id,
+                "biomarker_name": candidate_fit_label,
+                "age_bins": AGE_BIN_LABELS,
+                "default_trim_mode": DEFAULT_SR_TRIM_MODE,
+                "trim_modes": rounded_trim_modes(),
+                "trim_rule": trim_details[DEFAULT_SR_TRIM_MODE]["trim_rule"],
+                "trim_label": trim_details[DEFAULT_SR_TRIM_MODE]["trim_label"],
+                "quantile_grid": rounded_list(QQ_PROBABILITIES),
+                "reference_bins": selected_reference_rows,
+                "bins": trim_details[DEFAULT_SR_TRIM_MODE]["bins"],
+                "trim_details": trim_details,
+            }
+            rank_summary_by_fit[selected_fit_key] = {
+                **rank_trim_summaries[DEFAULT_SR_RANK_TRIM_MODE],
+                "default_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
+                "trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
+                "trim_summaries": rank_trim_summaries,
+            }
+            rank_detail_by_fit[selected_fit_key] = {
+                "biomarker_id": candidate_id,
+                "biomarker_name": candidate_fit_label,
+                "age_bins": AGE_BIN_LABELS,
+                "default_trim_mode": DEFAULT_SR_RANK_TRIM_MODE,
+                "trim_modes": rounded_trim_modes(SR_RANK_TRIM_MODES),
+                "trim_rule": rank_trim_details[DEFAULT_SR_RANK_TRIM_MODE]["trim_rule"],
+                "trim_label": rank_trim_details[DEFAULT_SR_RANK_TRIM_MODE]["trim_label"],
+                "reference_bins": selected_reference_rows,
+                "bins": rank_trim_details[DEFAULT_SR_RANK_TRIM_MODE]["bins"],
+                "trim_details": rank_trim_details,
+            }
+
+        records.append(
+            {
+                "biomarker_id": candidate_id,
+                "biomarker_name": candidate_fit_label,
+                "display_name": candidate_fit_label,
+                "category": reference_record_category(),
+                "is_environmental": False,
+                "is_core_clinical": False,
+                "reference_key": candidate_fit_key,
+                "reference_kind": str(fit_option_by_key[candidate_fit_key].get("kind") or ""),
+                "reference_population_label": str(fit_option_by_key[candidate_fit_key].get("reference_population_label") or "reference values"),
+                "available_age_bins": age_bin_labels_with_data(candidate_values_by_age_bin),
+                "sr_comparison_summary_by_fit": qq_summary_by_fit,
+                "sr_rank_comparison_summary_by_fit": rank_summary_by_fit,
+            }
+        )
+        detail_by_reference_id[candidate_id] = {
+            "default_fit_key": default_fit_key,
+            "sr_comparison": qq_detail_by_fit.get(default_fit_key),
+            "sr_rank_comparison": rank_detail_by_fit.get(default_fit_key),
+            "sr_comparison_by_fit": qq_detail_by_fit,
+            "sr_rank_comparison_by_fit": rank_detail_by_fit,
+        }
+
+    return {
+        "default_fit_key": default_fit_key,
+        "category": reference_record_category(),
+        "records": records,
+        "detail_by_reference_id": detail_by_reference_id,
     }
 
 
@@ -1267,6 +1499,11 @@ def build_multi_fit_dashboard_payload(
         rank_detail_frames[fit_key] = rank_detail_df
 
     enriched_fit_options = [fit_option_by_key[str(option["key"])] for option in fit_options]
+    reference_peer_records = build_reference_peer_records(
+        fit_builds=fit_builds,
+        fit_options=enriched_fit_options,
+        default_fit_key=default_fit_key,
+    )
 
     default_payload = fit_payloads[default_fit_key]
     summary_by_biomarker_by_fit = merge_fit_summaries_by_biomarker(fit_payloads, "summary_by_biomarker")
@@ -1315,6 +1552,7 @@ def build_multi_fit_dashboard_payload(
                 for fit_key, fit_payload in fit_payloads.items()
             },
         },
+        "reference_peer_records": reference_peer_records,
     }
     return (
         payload,

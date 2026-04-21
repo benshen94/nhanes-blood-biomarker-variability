@@ -13,6 +13,8 @@ from build_sr_comparison import (
     AGE_BIN_LABELS,
     AGE_BIN_MIDS,
     assign_age_bins,
+    compress_rank_rows_for_payload,
+    build_reference_peer_records,
     build_reference_rows_from_distributions,
     build_sr_reference_rows,
     build_sr_waterfall_reference,
@@ -235,6 +237,60 @@ class TestBuildSrComparison(unittest.TestCase):
         self.assertEqual(fifty_row["sr_n"], 3)
         self.assertEqual(early_row["sr_n"], 0)
         self.assertIsNone(early_row["sr_q1"])
+
+    def test_build_reference_peer_records_excludes_identity_fit(self):
+        fit_builds = [
+            {
+                "fit_key": "original",
+                "fit_label": "SR original fit",
+                "sr_reference_rows": build_reference_rows_from_distributions({
+                    age_bin: np.linspace(0.0, 1.0, 40, dtype=float) for age_bin in AGE_BIN_LABELS
+                }),
+                "sr_distributions": {
+                    age_bin: np.linspace(0.0, 1.0, 40, dtype=float) for age_bin in AGE_BIN_LABELS
+                },
+            },
+            {
+                "fit_key": "fi_hrs",
+                "fit_label": "FI (HRS)",
+                "sr_reference_rows": build_reference_rows_from_distributions({
+                    age_bin: np.linspace(1.0, 2.0, 40, dtype=float) for age_bin in AGE_BIN_LABELS
+                }),
+                "sr_distributions": {
+                    age_bin: np.linspace(1.0, 2.0, 40, dtype=float) for age_bin in AGE_BIN_LABELS
+                },
+            },
+        ]
+        fit_options = [
+            {"key": "original", "kind": "usa_2019_script", "reference_population_label": "alive-only reference"},
+            {"key": "fi_hrs", "kind": "raw_reference_csv", "reference_population_label": "participant reference"},
+        ]
+
+        payload = build_reference_peer_records(
+            fit_builds=fit_builds,
+            fit_options=fit_options,
+            default_fit_key="original",
+        )
+
+        self.assertEqual(payload["category"], "User distributions")
+        self.assertEqual(len(payload["records"]), 2)
+        original_record = next(record for record in payload["records"] if record["reference_key"] == "original")
+        self.assertNotIn("original", original_record["sr_comparison_summary_by_fit"])
+        self.assertIn("fi_hrs", original_record["sr_comparison_summary_by_fit"])
+
+    def test_compress_rank_rows_for_payload_limits_rank_array_size(self):
+        rows = [
+            {
+                "age_bin": "50-54",
+                "age_mid": 52.5,
+                "nhanes_rank_values": list(range(1, 501)),
+            }
+        ]
+
+        compressed = compress_rank_rows_for_payload(rows, max_values=51)
+
+        self.assertEqual(len(compressed), 1)
+        self.assertEqual(len(compressed[0]["nhanes_rank_values"]), 51)
 
 
 if __name__ == "__main__":

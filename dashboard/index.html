@@ -1801,7 +1801,7 @@
 
   <script>
     const DATA_BASE = './data';
-    const DATA_VERSION = '1776694651';
+    const DATA_VERSION = '1776759564';
     const HAS_CLALIT = true;
     const HAS_SR_COMPARISON = true;
     const SPECIMEN_TITLE = 'Blood';
@@ -2020,6 +2020,10 @@
       srCategorySelectionSet: new Set(),
       srFitKey: null,
       waterfallSrFitKey: null,
+      srSelectedId: null,
+      srReferencePeers: null,
+      srReferencePeersLoaded: false,
+      srReferencePeersPromise: null,
     };
 
     const WATERFALL_AGE_BINS = [
@@ -2274,6 +2278,7 @@
 
       const previous = new Set(state.srCategorySelectionSet || []);
       const rows = getAllMetricsEnriched()
+        .concat(srReferencePeerRecords())
         .filter(record => isSrAllowedCategory(record.category))
         .filter(record => srIncludeEnvEl?.checked || !Boolean(record.is_environmental));
       const categories = sortedCategories(rows, true).filter(isSrAllowedCategory);
@@ -2369,6 +2374,35 @@
           state.srRankReferencesPromise = null;
         });
       return await state.srRankReferencesPromise;
+    }
+
+    async function ensureSrReferencePeers() {
+      if (!HAS_SR_COMPARISON) return null;
+      if (state.srReferencePeersLoaded) return state.srReferencePeers;
+      if (state.srReferencePeersPromise) return await state.srReferencePeersPromise;
+
+      state.srReferencePeersPromise = fetchOptionalJson(`${DATA_BASE}/sr_reference_peers.json`)
+        .then((payload) => {
+          state.srReferencePeers = payload;
+          state.srReferencePeersLoaded = true;
+          return payload;
+        })
+        .finally(() => {
+          state.srReferencePeersPromise = null;
+        });
+      return await state.srReferencePeersPromise;
+    }
+
+    function isReferenceRecordId(id) {
+      return String(id || '').startsWith('__reference__::');
+    }
+
+    function srReferencePeerRecords() {
+      return Array.isArray(state.srReferencePeers?.records) ? state.srReferencePeers.records : [];
+    }
+
+    function srReferencePeerDetail(id) {
+      return state.srReferencePeers?.detail_by_reference_id?.[id] || null;
     }
 
     function modeToStat(mode) {
@@ -2628,6 +2662,13 @@
 
     async function loadSeries(biomarkerId) {
       if (state.cache.has(biomarkerId)) return state.cache.get(biomarkerId);
+      if (isReferenceRecordId(biomarkerId)) {
+        const detail = srReferencePeerDetail(biomarkerId);
+        if (detail) {
+          state.cache.set(biomarkerId, detail);
+          return detail;
+        }
+      }
       const rel = state.seriesIndex[biomarkerId];
       if (!rel) return null;
       statusChip.textContent = `Loading series… ${biomarkerId}`;
@@ -2687,11 +2728,18 @@
       const trimMode = srActiveTrimMode();
       const fitKey = selectedSrFitKey();
       const summaryGetter = srCurrentMethod() === 'rank' ? srRankSummaryForRecordByFit : srSummaryForRecordByFit;
-      return getAllMetricsEnriched()
+      const biomarkerRecords = getAllMetricsEnriched()
         .filter(record => summaryGetter(record, fitKey, trimMode))
         .filter(record => isSrAllowedCategory(record.category))
         .filter(record => includeEnv || !Boolean(record.is_environmental))
         .filter(record => selectedCategories.has(record.category || 'Other Clinical'));
+      const peerRecords = srReferencePeerRecords()
+        .filter(record => record.reference_key !== fitKey)
+        .filter(record => summaryGetter(record, fitKey, trimMode))
+        .filter(record => isSrAllowedCategory(record.category))
+        .filter(record => includeEnv || !Boolean(record.is_environmental))
+        .filter(record => selectedCategories.has(record.category || 'Other Clinical'));
+      return biomarkerRecords.concat(peerRecords);
     }
 
     function getAllMetricsEnriched() {
@@ -2925,7 +2973,7 @@
       const options = getSrComparisonRecords()
         .slice()
         .sort((a, b) => String(a.display_name || a.biomarker_name || '').localeCompare(String(b.display_name || b.biomarker_name || '')));
-      const previousId = state.currentId || srBiomarkerEl.value || selectEl.value;
+      const previousId = state.srSelectedId || state.currentId || srBiomarkerEl.value || selectEl.value;
 
       srBiomarkerEl.innerHTML = '';
       srOptionsEl.innerHTML = '';
@@ -4244,6 +4292,17 @@
 
     function syncSharedBiomarkerSelection(id) {
       if (!id) return;
+      state.srSelectedId = id;
+      if (isReferenceRecordId(id)) {
+        if (srBiomarkerEl && Array.from(srBiomarkerEl.options).some(option => option.value === id)) {
+          srBiomarkerEl.value = id;
+        }
+        const peer = srReferencePeerRecords().find(record => record.biomarker_id === id);
+        if (srSearchEl) {
+          srSearchEl.value = peer?.display_name || peer?.biomarker_name || id;
+        }
+        return;
+      }
       state.currentId = id;
       if (Array.from(selectEl.options).some(option => option.value === id)) {
         selectEl.value = id;
@@ -4874,8 +4933,10 @@
         row.onclick = async () => {
           const id = row.getAttribute('data-id');
           syncSharedBiomarkerSelection(id);
-          renderMetrics(id);
-          await renderPlot(id);
+          if (!isReferenceRecordId(id)) {
+            renderMetrics(id);
+            await renderPlot(id);
+          }
           await renderSRComparison(id);
         };
       }
@@ -4930,6 +4991,7 @@
 
     async function renderSRComparison(biomarkerId = null) {
       if (!HAS_SR_COMPARISON) return;
+      await ensureSrReferencePeers();
       const trimMode = srActiveTrimMode();
       const method = srCurrentMethod();
       const fitKey = selectedSrFitKey();
@@ -4949,17 +5011,20 @@
       }
 
       const visibleId = renderSrBiomarkerOptions();
-      let id = biomarkerId || state.currentId || selectEl.value || visibleId || available[0].biomarker_id;
+      let id = biomarkerId || state.srSelectedId || state.currentId || selectEl.value || visibleId || available[0].biomarker_id;
       if (!available.some(record => record.biomarker_id === id)) {
         id = visibleId || available[0].biomarker_id;
       }
-      let record = state.metricsById.get(id);
+      state.srSelectedId = id;
+      let record = state.metricsById.get(id) || srReferencePeerRecords().find(item => item.biomarker_id === id) || null;
       syncSharedBiomarkerSelection(id);
-      renderMetrics(id);
+      if (!isReferenceRecordId(id)) {
+        renderMetrics(id);
+      }
 
       const md = state.metadataById.get(id) || {};
       const displayName = md.display_name || record?.biomarker_name || id;
-      const category = md.category || 'Other Clinical';
+      const category = md.category || record?.category || 'Other Clinical';
       if (method === 'rank') {
         await ensureSrRankReferences();
       }
@@ -6293,8 +6358,10 @@
         srBiomarkerEl.value = hit.biomarker_id;
       }
       syncSharedBiomarkerSelection(hit.biomarker_id);
-      renderMetrics(hit.biomarker_id);
-      await renderPlot(hit.biomarker_id);
+      if (!isReferenceRecordId(hit.biomarker_id)) {
+        renderMetrics(hit.biomarker_id);
+        await renderPlot(hit.biomarker_id);
+      }
       await renderSRComparison(hit.biomarker_id);
     }
 
@@ -6374,6 +6441,7 @@
       setAllTrimSliders(10);
       renderCategorySelect(categoryFilterEl, includeEnvEl.checked, 'all_core');
       renderCategorySelect(compareCategoryEl, compareIncludeEnvEl.checked, 'all_core');
+      await ensureSrReferencePeers();
       if (srCategoryMultiEl) {
         renderSrCategoryOptions(false);
       }
@@ -6484,8 +6552,10 @@
         const id = srBiomarkerEl.value;
         if (!id) return;
         syncSharedBiomarkerSelection(id);
-        renderMetrics(id);
-        await renderPlot(id);
+        if (!isReferenceRecordId(id)) {
+          renderMetrics(id);
+          await renderPlot(id);
+        }
         await renderSRComparison(id);
       });
       srCategorySearchEl?.addEventListener('input', () => {

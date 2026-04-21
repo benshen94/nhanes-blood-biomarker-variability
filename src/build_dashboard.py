@@ -3815,6 +3815,7 @@ def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, di
     sr_waterfall_references = sr_comparison_bundle.get("sr_waterfall_references")
     sr_rank_reference = sr_comparison_bundle.get("sr_rank_reference")
     sr_rank_references = sr_comparison_bundle.get("sr_rank_references")
+    sr_reference_peers = sr_comparison_bundle.get("reference_peer_records")
     payloads: dict[str, dict] = {}
     if sr_fit_manifest:
         payloads["sr_fit_manifest.json"] = sr_fit_manifest
@@ -3826,6 +3827,8 @@ def dashboard_shared_payloads(sr_comparison_bundle: dict | None) -> dict[str, di
         payloads["sr_rank_reference.json"] = sr_rank_reference
     if sr_rank_references:
         payloads["sr_rank_references.json"] = sr_rank_references
+    if sr_reference_peers:
+        payloads["sr_reference_peers.json"] = sr_reference_peers
     return payloads
 
 
@@ -3866,6 +3869,7 @@ def write_dashboard_bundle(
         "sr_waterfall_references.json",
         "sr_rank_reference.json",
         "sr_rank_references.json",
+        "sr_reference_peers.json",
     ]
     for file_name in shared_file_names:
         shared_path = data_dir / file_name
