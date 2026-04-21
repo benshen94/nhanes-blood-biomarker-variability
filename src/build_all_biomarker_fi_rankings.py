@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Rank NHANES biomarkers by age-bin correlation with the HRS-overlap FI."""
+"""Rank NHANES biomarkers by pooled percentile correlation with the HRS-overlap FI."""
 
 from __future__ import annotations
 
 from pathlib import Path
-
-import math
 
 import numpy as np
 import pandas as pd
@@ -33,7 +31,8 @@ def main() -> None:
     merged = add_biomarker_percentiles(merged)
 
     age_bin_stats = build_age_bin_stats(merged)
-    biomarker_summary = build_biomarker_summary(age_bin_stats)
+    eligible_merged = keep_eligible_age_bins(merged, age_bin_stats)
+    biomarker_summary = build_biomarker_summary(age_bin_stats, eligible_merged)
 
     age_bin_stats.to_csv(OUTPUT_DIR / "biomarker_age_bin_correlations.csv", index=False)
     biomarker_summary.to_csv(OUTPUT_DIR / "biomarker_rankings.csv", index=False)
@@ -123,25 +122,80 @@ def build_age_bin_stats(merged: pd.DataFrame) -> pd.DataFrame:
     return stats
 
 
-def build_biomarker_summary(age_bin_stats: pd.DataFrame) -> pd.DataFrame:
+def keep_eligible_age_bins(merged: pd.DataFrame, age_bin_stats: pd.DataFrame) -> pd.DataFrame:
     if age_bin_stats.empty:
+        return merged.iloc[0:0].copy()
+
+    eligible_bins = age_bin_stats.loc[:, ["biomarker_id", "age_bin"]].drop_duplicates()
+    eligible_merged = merged.merge(
+        eligible_bins,
+        on=["biomarker_id", "age_bin"],
+        how="inner",
+    )
+    return eligible_merged
+
+
+def build_biomarker_summary(
+    age_bin_stats: pd.DataFrame,
+    eligible_merged: pd.DataFrame,
+) -> pd.DataFrame:
+    if age_bin_stats.empty or eligible_merged.empty:
         return pd.DataFrame()
 
-    summary = (
+    age_bin_summary = (
         age_bin_stats.groupby(["biomarker_id", "biomarker_name", "unit"], as_index=False)
         .agg(
             age_bins_used=("age_bin", "nunique"),
-            total_n=("n_points", "sum"),
-            mean_r=("pearson_r", "mean"),
-            std_r=("pearson_r", "std"),
-            mean_p=("p_value", "mean"),
+            eligible_total_n=("n_points", "sum"),
+            mean_age_bin_r=("pearson_r", "mean"),
+            std_age_bin_r=("pearson_r", "std"),
+            mean_age_bin_p=("p_value", "mean"),
         )
     )
-    summary["sem_r"] = summary["std_r"] / np.sqrt(summary["age_bins_used"])
-    summary["std_r"] = summary["std_r"].fillna(0.0)
-    summary["sem_r"] = summary["sem_r"].fillna(0.0)
-    summary = summary.sort_values(["mean_r", "age_bins_used", "total_n"], ascending=[False, False, False])
-    return summary.reset_index(drop=True)
+    age_bin_summary["sem_age_bin_r"] = age_bin_summary["std_age_bin_r"] / np.sqrt(
+        age_bin_summary["age_bins_used"]
+    )
+    age_bin_summary["std_age_bin_r"] = age_bin_summary["std_age_bin_r"].fillna(0.0)
+    age_bin_summary["sem_age_bin_r"] = age_bin_summary["sem_age_bin_r"].fillna(0.0)
+
+    pooled_rows: list[dict[str, object]] = []
+    grouped = eligible_merged.groupby(["biomarker_id", "biomarker_name", "unit"], observed=True)
+    for (biomarker_id, biomarker_name, unit), frame in grouped:
+        pooled_n = int(frame.shape[0])
+        if pooled_n <= 1:
+            continue
+
+        x = frame[f"{FI_COLUMN}_pct"].to_numpy()
+        y = frame["biomarker_pct"].to_numpy()
+        if np.unique(y).size < 2:
+            continue
+
+        pooled_r, pooled_p = pearsonr(x, y)
+        pooled_rows.append(
+            {
+                "biomarker_id": biomarker_id,
+                "biomarker_name": biomarker_name,
+                "unit": unit,
+                "pooled_n": pooled_n,
+                "pooled_r": pooled_r,
+                "pooled_p": pooled_p,
+            }
+        )
+
+    pooled_summary = pd.DataFrame(pooled_rows)
+    if pooled_summary.empty:
+        return pd.DataFrame()
+
+    summary = age_bin_summary.merge(
+        pooled_summary,
+        on=["biomarker_id", "biomarker_name", "unit"],
+        how="inner",
+    )
+    summary = summary.sort_values(
+        ["pooled_r", "age_bins_used", "pooled_n"],
+        ascending=[False, False, False],
+    ).reset_index(drop=True)
+    return summary
 
 
 def write_markdown_report(biomarker_summary: pd.DataFrame) -> None:
@@ -152,17 +206,20 @@ def write_markdown_report(biomarker_summary: pd.DataFrame) -> None:
     lines = [
         "# FI HRS-overlap vs NHANES Biomarkers",
         "",
-        "This report ranks harmonized NHANES blood biomarkers by their mean age-bin Pearson correlation with the HRS-overlap FI percentile.",
+        "This report ranks harmonized NHANES blood biomarkers by pooled Pearson correlation with the HRS-overlap FI percentile.",
         "",
-        f"Rule: only age bins with \\(n > {MIN_POINTS_PER_AGE_BIN}\\) are used.",
-        f"Ranked markdown list includes only biomarkers with at least \\( {MIN_AGE_BINS_FOR_RANKING} \\) eligible age bins.",
+        f"Step 1: keep only biomarker age bins with \\(n > {MIN_POINTS_PER_AGE_BIN}\\).",
+        "Step 2: within each remaining age bin, convert FI and biomarker values to percentiles.",
+        "Step 3: stack all of those percentile dots across age bins for each biomarker and compute one pooled Pearson correlation.",
+        f"Ranked markdown list includes only biomarkers with at least \\({MIN_AGE_BINS_FOR_RANKING}\\) eligible age bins.",
         "",
         "Columns:",
-        "- `mean_r`: mean Pearson correlation across eligible age bins",
-        "- `sem_r`: standard error of the mean correlation across eligible age bins",
-        "- `mean_p`: mean p-value across eligible age bins",
+        "- `pooled_r`: Pearson correlation after pooling all eligible percentile dots across age bins",
+        "- `pooled_p`: p-value for that pooled Pearson correlation",
+        "- `pooled_n`: total pooled participant-dots used in that pooled correlation",
         "- `age_bins_used`: number of eligible age bins contributing to the summary",
-        "- `total_n`: total participants pooled across those eligible age bins",
+        "- `mean_age_bin_r`: mean Pearson correlation across eligible age bins",
+        "- `sem_age_bin_r`: standard error of the mean age-bin correlation",
         "",
         "Summary tables:",
         "",
@@ -172,52 +229,88 @@ def write_markdown_report(biomarker_summary: pd.DataFrame) -> None:
         lines.append("No eligible biomarker summaries were produced.")
     else:
         positive = report_summary.sort_values(
-            ["mean_r", "age_bins_used", "total_n"],
+            ["pooled_r", "age_bins_used", "pooled_n"],
             ascending=[False, False, False],
         ).head(SHOW_TOP_N)
         negative = report_summary.sort_values(
-            ["mean_r", "age_bins_used", "total_n"],
+            ["pooled_r", "age_bins_used", "pooled_n"],
             ascending=[True, False, False],
         ).head(SHOW_TOP_N)
         strongest_absolute = report_summary.assign(
-            abs_mean_r=report_summary["mean_r"].abs()
+            abs_pooled_r=report_summary["pooled_r"].abs()
         ).sort_values(
-            ["abs_mean_r", "age_bins_used", "total_n"],
+            ["abs_pooled_r", "age_bins_used", "pooled_n"],
             ascending=[False, False, False],
         ).head(SHOW_TOP_N)
         full_ranked = report_summary.head(REPORT_TOP_N)
 
         lines.extend(
             [
-                f"Top {SHOW_TOP_N} positive mean correlations:",
+                f"Top {SHOW_TOP_N} positive pooled correlations:",
                 "",
                 dataframe_to_markdown(
                     rename_for_report(positive)[
-                        ["biomarker", "unit", "mean_r", "sem_r", "mean_p", "age_bins_used", "total_n"]
+                        [
+                            "biomarker",
+                            "unit",
+                            "pooled_r",
+                            "pooled_p",
+                            "pooled_n",
+                            "age_bins_used",
+                            "mean_age_bin_r",
+                            "sem_age_bin_r",
+                        ]
                     ]
                 ),
                 "",
-                f"Top {SHOW_TOP_N} inverse mean correlations:",
+                f"Top {SHOW_TOP_N} inverse pooled correlations:",
                 "",
                 dataframe_to_markdown(
                     rename_for_report(negative)[
-                        ["biomarker", "unit", "mean_r", "sem_r", "mean_p", "age_bins_used", "total_n"]
+                        [
+                            "biomarker",
+                            "unit",
+                            "pooled_r",
+                            "pooled_p",
+                            "pooled_n",
+                            "age_bins_used",
+                            "mean_age_bin_r",
+                            "sem_age_bin_r",
+                        ]
                     ]
                 ),
                 "",
-                f"Top {SHOW_TOP_N} strongest absolute mean correlations:",
+                f"Top {SHOW_TOP_N} strongest absolute pooled correlations:",
                 "",
                 dataframe_to_markdown(
                     rename_for_report(strongest_absolute)[
-                        ["biomarker", "unit", "mean_r", "sem_r", "mean_p", "age_bins_used", "total_n"]
+                        [
+                            "biomarker",
+                            "unit",
+                            "pooled_r",
+                            "pooled_p",
+                            "pooled_n",
+                            "age_bins_used",
+                            "mean_age_bin_r",
+                            "sem_age_bin_r",
+                        ]
                     ]
                 ),
                 "",
-                f"Full ranked list, top {REPORT_TOP_N} by mean correlation:",
+                f"Full ranked list, top {REPORT_TOP_N} by pooled correlation:",
                 "",
                 dataframe_to_markdown(
                     rename_for_report(full_ranked)[
-                        ["biomarker", "unit", "mean_r", "sem_r", "mean_p", "age_bins_used", "total_n"]
+                        [
+                            "biomarker",
+                            "unit",
+                            "pooled_r",
+                            "pooled_p",
+                            "pooled_n",
+                            "age_bins_used",
+                            "mean_age_bin_r",
+                            "sem_age_bin_r",
+                        ]
                     ]
                 ),
             ]
@@ -237,11 +330,12 @@ def rename_for_report(frame: pd.DataFrame) -> pd.DataFrame:
         columns={
             "biomarker_name": "biomarker",
             "unit": "unit",
-            "mean_r": "mean_r",
-            "sem_r": "sem_r",
-            "mean_p": "mean_p",
+            "pooled_r": "pooled_r",
+            "pooled_p": "pooled_p",
+            "pooled_n": "pooled_n",
             "age_bins_used": "age_bins_used",
-            "total_n": "total_n",
+            "mean_age_bin_r": "mean_age_bin_r",
+            "sem_age_bin_r": "sem_age_bin_r",
         }
     )
 
